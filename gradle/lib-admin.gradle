@@ -1,0 +1,45 @@
+// Cache expensive file system check
+def libAdminUiExists = providers.provider {
+    new File( "$rootDir/../lib-admin-ui" ).exists()
+}
+
+def applyResourcesTaskDependencies()
+{
+    def libAdminBuild = gradle.includedBuild( 'lib-admin-ui' )
+    def libAdminDevJarTask = libAdminBuild.task( ':devJar' )
+    def libAdminBuildTask = libAdminBuild.task( ':build' )
+    def libAdminCleanTask = libAdminBuild.task( ':clean' )
+    def libAdminYoloTask = libAdminBuild.task( ':yolo' )
+
+    tasks.matching { it.name == 'copyDevResources' }.configureEach {
+        dependsOn libAdminDevJarTask
+    }
+
+    tasks.named( 'build' ).configure {
+        dependsOn libAdminBuildTask
+    }
+
+    tasks.named( 'clean' ).configure {
+        dependsOn libAdminCleanTask
+    }
+
+    tasks.named( 'yolo' ).configure {
+        dependsOn libAdminYoloTask
+    }
+}
+
+if ( hasEnvironment() && libAdminUiExists.get() )
+{
+    afterEvaluate {
+        applyResourcesTaskDependencies()
+    }
+}
+
+// Configure clean task to also remove .xp directory
+afterEvaluate {
+    tasks.matching { it.name == 'clean' }.configureEach {
+        delete '.xp'
+        delete '.webpack-cache'
+        delete '.eslintcache'
+    }
+}

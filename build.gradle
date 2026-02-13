@@ -1,0 +1,206 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+    alias( libs.plugins.enonic.defaults )
+    alias( libs.plugins.enonic.xp.app )
+    alias( libs.plugins.node.gradle )
+}
+
+apply from: "$rootDir/gradle/env.gradle"
+apply from: "$rootDir/gradle/node.gradle"
+apply from: "$rootDir/gradle/lib-admin.gradle"
+apply from: "$rootDir/gradle/lib-contentstudio.gradle"
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'com.enonic.defaults'
+    apply plugin: 'com.enonic.xp.base'
+    apply from: "$rootDir/gradle/env.gradle"
+    apply from: "$rootDir/gradle/node.gradle"
+    apply from: "$rootDir/gradle/lib-admin.gradle"
+    apply from: "$rootDir/gradle/lib-contentstudio.gradle"
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of( 25 )
+        }
+
+        sourceCompatibility = JavaVersion.VERSION_25
+        targetCompatibility = sourceCompatibility
+    }
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        xp.enonicRepo( 'dev' )
+    }
+}
+
+configurations {
+    devResources {
+        attributes {
+            attribute( LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named( LibraryElements, 'dev-resources' ) )
+        }
+    }
+}
+
+app {
+    name = "${group}.${projectName}"
+    displayName = 'Page Editor'
+    vendorName = 'Enonic AS'
+    vendorUrl = 'https://enonic.com'
+    systemVersion = "${xpVersion}"
+    devSourcePaths += file( "$rootDir/../lib-admin-ui/src/main/resources" )
+    devSourcePaths += file( "$rootDir/../app-contentstudio/modules/lib/src/main/resources" )
+}
+
+dependencies {
+    devResources "com.enonic.lib:lib-admin-ui:${libAdminUiVersion}"
+    devResources "com.enonic.lib:lib-contentstudio:${libContentStudioVersion}"
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    xp.enonicRepo( 'dev' )
+}
+
+tasks.register( 'checkTypes', PnpmTask ) {
+    dependsOn tasks.named( 'pnpmInstall' )
+    group = 'verification'
+    args = ['run', 'check:types']
+    outputs.cacheIf { false }
+}
+
+tasks.register( 'checkLint', PnpmTask ) {
+    dependsOn tasks.named( 'pnpmInstall' )
+    group = 'verification'
+    args = ['run', 'check:lint']
+    outputs.cacheIf { false }
+}
+
+tasks.register( 'pnpmCheck', PnpmTask ) {
+    dependsOn tasks.named( 'pnpmInstall' )
+    group = 'verification'
+    args = ['run', 'check']
+    outputs.cacheIf { false }
+}
+
+tasks.named( 'check' ).configure {
+    dependsOn tasks.named( 'pnpmCheck' )
+}
+
+tasks.register( 'pnpmBuild', PnpmTask ) {
+    dependsOn tasks.named( 'pnpmInstall' )
+    dependsOn tasks.named( 'javadoc' )
+    description = 'Build UI resources (ts, css, etc) with Vite.'
+    args = ['run', "build:${environmentShort()}"]
+    inputs.dir '.xp/dev'
+    inputs.dir 'src/main'
+    inputs.file 'vite.config.ts'
+    inputs.file 'tsconfig.json'
+    outputs.dir layout.buildDirectory.dir( 'resources/main' )
+}
+
+tasks.named( 'processResources' ).configure {
+    // Don't need source files
+    exclude 'assets/js/**'
+    exclude 'assets/css/**'
+
+    // Inlined by the Vite into CSS
+    exclude 'assets/fonts/**'
+    exclude 'assets/img/**'
+
+    includeEmptyDirs = false
+}
+
+tasks.named( 'jar' ).configure {
+    exclude 'assets/**/tsconfig.tsbuildinfo'
+
+    if ( isProd() )
+    {
+        exclude 'assets/**/*.map'
+    }
+
+    includeEmptyDirs = false
+
+    dependsOn tasks.named( 'pnpmBuild' )
+}
+
+tasks.register( 'yolo' ) {
+    description = 'Build without running install, check, or test tasks'
+
+    dependsOn tasks.named( 'deploy' )
+    dependsOn tasks.named( 'checkTypes' )
+
+    nodeSetup.enabled = false
+    npmSetup.enabled = false
+    pnpmSetup.enabled = false
+    pnpmCheck.enabled = false
+    checkLint.enabled = false
+    check.enabled = false
+    test.enabled = false
+}
+
+// ============================================================================
+// NPM Library Publishing Tasks
+// ============================================================================
+
+def npmDistDir = layout.buildDirectory.dir( 'npm-resources' )
+
+tasks.register( 'pnpmPreparePackage', Copy ) {
+    dependsOn tasks.named( 'pnpmBuild' )
+    description = 'Prepare npm package structure for publishing.'
+    group = 'pnpm'
+
+    // Copy built JS files from Vite output
+    from( layout.buildDirectory.dir( 'resources/main/assets/' ) ) {
+        into 'dist'
+    }
+
+    // Copy essential files
+    from( projectDir ) {
+        include 'LICENSE.txt'
+        include 'README.md'
+        include 'package.json'
+    }
+
+    into npmDistDir
+}
+
+tasks.register( 'pnpmPack', PnpmTask ) {
+    dependsOn tasks.named( 'pnpmPreparePackage' )
+    description = 'Create npm tarball ready for publishing.'
+    group = 'pnpm'
+
+    workingDir = npmDistDir
+    args = ['pack', '--pack-destination', layout.buildDirectory.dir( 'libs' ).get().asFile.absolutePath]
+
+    doLast {
+        logger.lifecycle "NPM package created in: ${npmDistDir.get().asFile}"
+    }
+}
+
+tasks.register( 'pnpmPublish', PnpmTask ) {
+    dependsOn tasks.named( 'pnpmPack' )
+    description = 'Publish npm package to registry. Use -PnpmTag=latest to set tag.'
+    group = 'pnpm'
+
+    def npmTag = providers.gradleProperty( 'npmTag' ).getOrElse( 'latest' )
+
+    workingDir = npmDistDir
+    args = ['publish', '--access', 'public', '--tag', npmTag]
+}
+
+tasks.register( 'pnpmPublishDryRun', PnpmTask ) {
+    dependsOn tasks.named( 'pnpmPack' )
+    description = 'Dry run of npm publish (does not actually publish).'
+    group = 'pnpm'
+
+    workingDir = npmDistDir
+    args = ['publish', '--access', 'public', '--dry-run']
+}
+
+tasks.named( 'build' ).configure {
+    dependsOn tasks.named( 'pnpmPack' )
+}

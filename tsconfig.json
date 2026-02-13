@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "types": [
+      "jquery",
+      "jqueryui",
+      "q",
+      "ckeditor"
+    ],
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "outDir": "build/resources/main/assets/js/",
+    "rootDir": "src",
+    // Ensures that types are generated for every file,
+    // essential for the "types" field in your package.json.
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    // Remove comments from the output to reduce npm package size.
+    "removeComments": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "jsx": "preserve"
+  },
+  "include": [
+    "./src/main/resources/assets/js/types.d.ts",
+    "src/**/*",
+    ".xp/dev/lib-admin-ui/**/*.ts",
+    ".xp/dev/lib-contentstudio/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
+}

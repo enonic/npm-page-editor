@@ -1,0 +1,56 @@
+apply plugin: 'com.github.node-gradle.node'
+
+node {
+    version = '24.13.0'
+    pnpmVersion = '10.16.0'
+    download = true
+}
+
+tasks.register( 'copyDevResources', Copy ) {
+    onlyIf {
+        configurations.hasProperty( 'devResources' )
+    }
+
+    from configurations.findByName( 'devResources' ).files.collect { zipTree( it ) }
+    include 'dev/**'
+    into '.xp'
+
+    outputs.dir '.xp'
+}
+
+// PNPM Optimizations
+
+tasks.named( 'pnpmInstall' ).configure {
+    // Don't track state or cache, save Gradle time, make pnpm do its thing
+    doNotTrackState 'pnpmInstall must not be tracked'
+
+    if ( configurations.hasProperty( 'devResources' ) )
+    {
+        dependsOn tasks.named( 'copyDevResources' )
+    }
+    // Fix for CI: make it work with dynamic lib-admin-ui version, back to npm-like behavior
+    if ( System.getenv( 'CI' ) == 'true' || project.hasProperty( 'ci' ) )
+    {
+        pnpmCommand.set( ['install', '--no-frozen-lockfile'] )
+    }
+
+    // I/O only necessary files
+    inputs.file 'package.json'
+    inputs.file 'pnpm-lock.yaml'
+    if ( file( '.npmrc' ).exists() )
+    {
+        inputs.file '.npmrc'
+    }
+    outputs.dir 'node_modules'
+}
+
+// Exclude heavy Node caches in Copy tasks from tracking by Gradle
+tasks.withType( Copy ).configureEach {
+    exclude '**/node_modules/**', '**/.webpack-cache/**', '**/dist/**', '**/coverage/**'
+}
+
+// Exclude node_modules in SourceTasks from tracking by Gradle, except for pnpmInstall
+tasks.matching { it.name != 'pnpmInstall' && it instanceof org.gradle.api.tasks.SourceTask }.configureEach {
+    exclude '**/node_modules/**'
+}
+

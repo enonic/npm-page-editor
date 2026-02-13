@@ -1,0 +1,16 @@
+rootProject.name = projectName
+
+if ( hasProperty( 'env' ) )
+{
+    addBuild( '../lib-admin-ui' )
+    addBuild( '../app-contentstudio' )
+}
+
+def addBuild( name )
+{
+    def dir = new File( (File) settingsDir, name )
+    if ( dir.directory )
+    {
+        includeBuild name
+    }
+}
