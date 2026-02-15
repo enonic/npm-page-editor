@@ -1344,6 +1344,9 @@ packages:
   jquery-ui@1.14.1:
     resolution: {integrity: sha512-DhzsYH8VeIvOaxwi+B/2BCsFFT5EGjShdzOcm5DssWjtcpGWIMsn66rJciDA6jBruzNiLf1q0KvwMoX1uGNvnQ==}
 
+  jquery-ui@1.14.2:
+    resolution: {integrity: sha512-1gSl7PUjyipa2adSr780Ujk16faicrV7PjPPzPtvWk7tTqBnsqp67NNV9jZK2+BIxUPXWSnIUU/LBCgwgGZE+Q==}
+
   jquery@3.7.1:
     resolution: {integrity: sha512-m4avr8yL8kmFN8psrbFFFmB/If14iN5o9nw/NgnnM+kybDJpRsAynV2BsfpTYrTRysYUdADVD7CkUUizgkpLfg==}
 
@@ -2080,7 +2083,7 @@ snapshots:
       fine-uploader: 5.16.2
       jquery: 3.7.1
       jquery-simulate: 1.0.2
-      jquery-ui: 1.14.1
+      jquery-ui: 1.14.2
       mousetrap: 1.6.5
       q: 1.5.1
 
@@ -3307,6 +3310,10 @@ snapshots:
   jquery-simulate@1.0.2: {}
 
   jquery-ui@1.14.1:
+    dependencies:
+      jquery: 3.7.1
+
+  jquery-ui@1.14.2:
     dependencies:
       jquery: 3.7.1
 

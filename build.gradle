@@ -148,7 +148,7 @@ tasks.register( 'yolo' ) {
 
 def npmDistDir = layout.buildDirectory.dir( 'npm-resources' )
 
-tasks.register( 'pnpmPreparePackage', Copy ) {
+tasks.register( 'preparePackage', Copy ) {
     dependsOn tasks.named( 'pnpmBuild' )
     description = 'Prepare npm package structure for publishing.'
     group = 'pnpm'
@@ -169,36 +169,37 @@ tasks.register( 'pnpmPreparePackage', Copy ) {
 }
 
 tasks.register( 'pnpmPack', PnpmTask ) {
-    dependsOn tasks.named( 'pnpmPreparePackage' )
+    dependsOn tasks.named( 'preparePackage' )
     description = 'Create npm tarball ready for publishing.'
     group = 'pnpm'
 
     workingDir = npmDistDir
     args = ['pack', '--pack-destination', layout.buildDirectory.dir( 'libs' ).get().asFile.absolutePath]
 
-    doLast {
-        logger.lifecycle "NPM package created in: ${npmDistDir.get().asFile}"
-    }
+    inputs.dir npmDistDir
+    outputs.dir layout.buildDirectory.dir( 'libs' )
 }
 
 tasks.register( 'pnpmPublish', PnpmTask ) {
-    dependsOn tasks.named( 'pnpmPack' )
+    dependsOn tasks.named( 'preparePackage' )
     description = 'Publish npm package to registry. Use -PnpmTag=latest to set tag.'
     group = 'pnpm'
 
     def npmTag = providers.gradleProperty( 'npmTag' ).getOrElse( 'latest' )
 
     workingDir = npmDistDir
-    args = ['publish', '--access', 'public', '--tag', npmTag]
+    args = ['publish', '--access', 'public', '--tag', npmTag, '--no-git-checks']
 }
 
-tasks.register( 'pnpmPublishDryRun', PnpmTask ) {
-    dependsOn tasks.named( 'pnpmPack' )
+tasks.register( 'pnpmPublishDry', PnpmTask ) {
+    dependsOn tasks.named( 'preparePackage' )
     description = 'Dry run of npm publish (does not actually publish).'
     group = 'pnpm'
 
+    def npmTag = providers.gradleProperty( 'npmTag' ).getOrElse( 'latest' )
+
     workingDir = npmDistDir
-    args = ['publish', '--access', 'public', '--dry-run']
+    args = ['publish', '--access', 'public', '--tag', npmTag, '--no-git-checks', '--dry-run']
 }
 
 tasks.named( 'build' ).configure {

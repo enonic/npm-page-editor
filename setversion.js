@@ -3,6 +3,9 @@
 "use strict";
 
 const {execSync} = require("child_process");
-const version = execSync("git describe --tags --abbrev=0").toString().slice(1).trim();
+const fs = require("fs");
 
-execSync(`awk -v ver="${version}" '{gsub(/"version": ".*"/,"\\"version\\": \\""ver"\\"")}1' package.json > tmp && mv tmp package.json`);
+const version = execSync("git describe --tags --abbrev=0").toString().slice(1).trim();
+const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+pkg.version = version;
+fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");

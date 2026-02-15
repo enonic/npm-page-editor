@@ -4,6 +4,14 @@
   "description": "Adds page editing capability for externally rendered sites in Enonic XP",
   "license": "GPL-3.0",
   "author": "Pavel Milkevich <pmi@enonic.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/enonic/npm-page-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/enonic/npm-page-editor/issues"
+  },
+  "homepage": "https://github.com/enonic/npm-page-editor#readme",
   "keywords": [
     "enonic",
     "xp",
@@ -36,8 +44,7 @@
   },
   "files": [
     "dist",
-    "main.css",
-    "LICENSE",
+    "LICENSE.txt",
     "README.md"
   ],
   "exports": {
