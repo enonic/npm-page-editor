@@ -1,6 +1,6 @@
 {
   "name": "@enonic/page-editor",
-  "version": "0.0.1",
+  "version": "0.0.1-SNAPSHOT",
   "description": "Adds page editing capability for externally rendered sites in Enonic XP",
   "license": "GPL-3.0",
   "author": "Pavel Milkevich <pmi@enonic.com>",
