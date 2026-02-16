@@ -6,6 +6,7 @@ on:
       - 'v*'
 
 permissions:
+  id-token: write  # Required for OIDC
   contents: write
 
 concurrency:
@@ -14,7 +15,7 @@ concurrency:
 
 jobs:
 
-  build:
+  release:
     runs-on: ubuntu-latest
 
     steps:
@@ -28,6 +29,13 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
 
+      - name: Set release version from NPM tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s/^version=.*/version=$VERSION/" gradle.properties
+          npm version "$VERSION" --no-git-tag-version
+          echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Get publishing variables
         id: publish_vars
         uses: enonic/release-tools/publish-vars@master
@@ -39,21 +47,16 @@ jobs:
         if: steps.publish_vars.outputs.release != 'true'
         run: exit 1
 
-      - name: Set npm tag
+      - name: Set NPM publish tag
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "NPM_TAG=latest" >> $GITHUB_ENV
           else
             echo "NPM_TAG=beta" >> $GITHUB_ENV
           fi
 
       - name: Publish to npm
-        run: |
-          node setversion.js
-          ./gradlew pnpmPublish -PnpmTag=${{ env.NPM_TAG }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: ./gradlew pnpmPublish -PnpmTag=$NPM_TAG
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -62,14 +65,17 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ steps.publish_vars.outputs.prerelease == 'true' }}
 
-      - name: Write new snapshot version
+      - name: Update to next snapshot version
         if: steps.publish_vars.outputs.release == 'true'
-        run: sed -i "s/^version=.*/version=${{ steps.publish_vars.outputs.nextSnapshot }}/" gradle.properties
+        run: |
+          NEXT_SNAPSHOT="${{ steps.publish_vars.outputs.nextSnapshot }}"
+          sed -i "s/^version=.*/version=$NEXT_SNAPSHOT/" gradle.properties
+          npm version "$NEXT_SNAPSHOT" --no-git-tag-version
 
-      - name: Commit and push new version
+      - name: Commit and push snapshot version
         if: steps.publish_vars.outputs.release == 'true'
         uses: EndBug/add-and-commit@v9
         with:
-          add: ./gradle.properties
+          add: './gradle.properties ./package.json'
           message: 'Updated to next SNAPSHOT version'
 
