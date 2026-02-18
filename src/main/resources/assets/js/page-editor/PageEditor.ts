@@ -1,6 +1,6 @@
 /*global JQuery */
-import 'jquery'; // ensure jQuery is loaded, but use the global one
-import "jquery-ui/dist/jquery-ui.js";
+import 'jquery';
+import 'jquery-ui/dist/jquery-ui.js';
 import 'jquery-simulate/jquery.simulate.js';
 import {StyleHelper} from '@enonic/lib-admin-ui/StyleHelper';
 import {IframeEventBus} from '@enonic/lib-admin-ui/event/IframeEventBus';
@@ -48,80 +48,77 @@ import {DuplicateComponentViewEvent} from '@enonic/lib-contentstudio/page-editor
 import {MinimizeWizardPanelEvent} from '@enonic/lib-admin-ui/app/wizard/MinimizeWizardPanelEvent';
 import {SetDraggableVisibleEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetDraggableVisibleEvent';
 
-function initEventBus() {
+// ============================================================================
+// Event Handlers
+// ============================================================================
 
-// Initialize the live edit iframe event bus on this window
-// to receive my own events(like LiveEditPageViewReadyEvent)
-// and add the parent window as receiver too
-    IframeEventBus.get().addReceiver(parent).setId('iframe-bus');
-
-// Register events coming from CS here to be able to revive them in the iframe
-    IframeEventBus.get().registerClass('ContentSummaryAndCompareStatus', ContentSummaryAndCompareStatus);
-    IframeEventBus.get().registerClass('ContentSummary', ContentSummary);
-    IframeEventBus.get().registerClass('ContentPath', ContentPath);
-    IframeEventBus.get().registerClass('ContentName', ContentName);
-    IframeEventBus.get().registerClass('ContentTypeName', ContentTypeName);
-    IframeEventBus.get().registerClass('ApplicationKey', ApplicationKey);
-    IframeEventBus.get().registerClass('PrincipalKey', PrincipalKey);
-    IframeEventBus.get().registerClass('IdProviderKey', IdProviderKey);
-    IframeEventBus.get().registerClass('ContentId', ContentId);
-    IframeEventBus.get().registerClass('ChildOrder', ChildOrder);
-    IframeEventBus.get().registerClass('FieldOrderExpr', FieldOrderExpr);
-    IframeEventBus.get().registerClass('Workflow', Workflow);
-    IframeEventBus.get().registerClass('ComponentPath', ComponentPath);
-    IframeEventBus.get().registerClass('PartComponentType', PartComponentType);
-    IframeEventBus.get().registerClass('LayoutComponentType', LayoutComponentType);
-    IframeEventBus.get().registerClass('FragmentComponentType', FragmentComponentType);
-
-    IframeEventBus.get().registerClass('AddComponentViewEvent', AddComponentViewEvent);
-    IframeEventBus.get().registerClass('MoveComponentViewEvent', MoveComponentViewEvent);
-    IframeEventBus.get().registerClass('RemoveComponentViewEvent', RemoveComponentViewEvent);
-    IframeEventBus.get().registerClass('SelectComponentViewEvent', SelectComponentViewEvent);
-    IframeEventBus.get().registerClass('DeselectComponentViewEvent', DeselectComponentViewEvent);
-    IframeEventBus.get().registerClass('DuplicateComponentViewEvent', DuplicateComponentViewEvent);
-    IframeEventBus.get().registerClass('LoadComponentViewEvent', LoadComponentViewEvent);
-    IframeEventBus.get().registerClass('ResetComponentViewEvent', ResetComponentViewEvent);
-    IframeEventBus.get().registerClass('UpdateTextComponentViewEvent', UpdateTextComponentViewEvent);
-
-    IframeEventBus.get().registerClass('SkipLiveEditReloadConfirmationEvent', SkipLiveEditReloadConfirmationEvent);
-    IframeEventBus.get().registerClass('LiveEditParams', LiveEditParams);
-    IframeEventBus.get().registerClass('InitializeLiveEditEvent', InitializeLiveEditEvent);
-    IframeEventBus.get().registerClass('PageStateEvent', PageStateEvent);
-    IframeEventBus.get().registerClass('SetPageLockStateEvent', SetPageLockStateEvent);
-    IframeEventBus.get().registerClass('IframeBeforeContentSavedEvent', IframeBeforeContentSavedEvent);
-    IframeEventBus.get().registerClass('CreateOrDestroyDraggableEvent', CreateOrDestroyDraggableEvent);
-    IframeEventBus.get().registerClass('SetDraggableVisibleEvent', SetDraggableVisibleEvent);
-    IframeEventBus.get().registerClass('TextComponentType', TextComponentType);
-    IframeEventBus.get().registerClass('MinimizeWizardPanelEvent', MinimizeWizardPanelEvent);
+function shouldBubble(event: JQuery.TriggeredEvent): boolean {
+    return (event.metaKey || event.ctrlKey || event.altKey) && !!event.keyCode;
 }
 
-function initListeners() {
+function shouldBubbleEvent(event: JQuery.TriggeredEvent): boolean {
+    switch (event.keyCode) {
+    case 113:
+        return true;
+    default:
+        return shouldBubble(event);
+    }
+}
 
-    Store.instance().set('$', $);
-    /*
-     Prefix must match @_CLS_PREFIX in assets\page-editor\styles\main.less
-     */
-    StyleHelper.setCurrentPrefix(ItemViewPlaceholder.PAGE_EDITOR_PREFIX);
+function hasMatchingBinding(keys: KeyBinding[], event: JQuery.TriggeredEvent): boolean {
+    const isMod = event.ctrlKey || event.metaKey;
+    const isAlt = event.altKey;
+    const eventKey = event.keyCode || event.which;
 
+    for (const key of keys) {
+        let matches = false;
 
-    window.onload = function () {
-        // ...send a message to the parent window.
-        // The '*' is a wildcard, but for security, it's better to specify the parent's origin.
-        // e.g., 'https://parent-domain.com'
+        switch (key.getCombination()) {
+        case 'backspace':
+            matches = eventKey === 8;
+            break;
+        case 'del':
+            matches = eventKey === 46;
+            // eslint-disable-next-line no-fallthrough
+        case 'mod+del':
+            matches = matches && isMod;
+            break;
+        case 'mod+s':
+            matches = eventKey === 83 && isMod;
+            break;
+        case 'mod+esc':
+            matches = eventKey === 83 && isMod;
+            break;
+        case 'mod+alt+f4':
+            matches = eventKey === 115 && isMod && isAlt;
+            break;
+        }
 
-        IframeEventBus.get().fireEvent(new IframeEvent('editor-iframe-loaded'))
-    };
+        if (matches) {
+            return true;
+        }
+    }
 
-    // Notify parent frame if any modifier except shift is pressed
-    // For the parent shortcuts to work if the inner iframe has focus
-    $(document).on('keypress keydown keyup', (event: JQuery.TriggeredEvent) => {
+    return false;
+}
 
+function stopBrowserShortcuts(event: JQuery.TriggeredEvent): void {
+    const hasKeyBindings = Store.parentInstance().has(KEY_BINDINGS_KEY);
+    const keyBindings = Store.parentInstance().get(KEY_BINDINGS_KEY);
+    const activeBindings: KeyBinding[] = hasKeyBindings ? keyBindings.getActiveBindings() : [];
+
+    const hasMatch = hasMatchingBinding(activeBindings, event);
+
+    if (hasMatch) {
+        event.preventDefault();
+        console.log('Prevented default for event in live edit because it has binding in parent', event);
+    }
+}
+
+function createDocumentKeyListener(): (event: JQuery.TriggeredEvent) => void {
+    return (event: JQuery.TriggeredEvent) => {
         if (shouldBubbleEvent(event)) {
-
             stopBrowserShortcuts(event);
-
-            // Cannot simulate events on parent document due to cross-origin restrictions
-            // Use postMessage to notify parent about the modifier key event details
 
             const modifierEvent = new IframeEvent('editor-modifier-pressed').setData({
                 type: event.type,
@@ -138,81 +135,100 @@ function initListeners() {
             });
             IframeEventBus.get().fireEvent(modifierEvent);
         }
-    });
-
-    function shouldBubble(event: JQuery.TriggeredEvent): boolean {
-        return (event.metaKey || event.ctrlKey || event.altKey) && !!event.keyCode;
-    }
-
-    function shouldBubbleEvent(event: JQuery.TriggeredEvent): boolean {
-        switch (event.keyCode) {
-        case 113:  // F2 global help shortcut
-            return true;
-        default:
-            return shouldBubble(event);
-        }
-    }
-
-    function stopBrowserShortcuts(event: JQuery.TriggeredEvent) {
-        // get the parent's frame bindings
-        const hasKeyBindings = Store.parentInstance().has(KEY_BINDINGS_KEY);
-        const keyBindings = Store.parentInstance().get(KEY_BINDINGS_KEY);
-        const activeBindings: KeyBinding[] = hasKeyBindings ? keyBindings.getActiveBindings() : [];
-
-        const hasMatch = hasMatchingBinding(activeBindings, event);
-
-        if (hasMatch) {
-            event.preventDefault();
-            console.log('Prevented default for event in live edit because it has binding in parent', event);
-        }
-    }
-
-    function hasMatchingBinding(keys: KeyBinding[], event: JQuery.TriggeredEvent) {
-        const isMod = event.ctrlKey || event.metaKey;
-        const isAlt = event.altKey;
-        const eventKey = event.keyCode || event.which;
-
-        for (const key of keys) {
-            let matches = false;
-
-            switch (key.getCombination()) {
-            case 'backspace':
-                matches = eventKey === 8;
-                break;
-            case 'del':
-                matches = eventKey === 46;
-                // eslint-disable-next-line no-fallthrough
-            case 'mod+del':
-                matches = matches && isMod;
-                break;
-            case 'mod+s':
-                matches = eventKey === 83 && isMod;
-                break;
-            case 'mod+esc':
-                matches = eventKey === 83 && isMod;
-                break;
-            case 'mod+alt+f4':
-                matches = eventKey === 115 && isMod && isAlt;
-                break;
-            }
-
-            if (matches) {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    };
 }
 
-export class PageEditor {
+function createWindowLoadListener(): () => void {
+    return () => {
+        IframeEventBus.get().fireEvent(new IframeEvent('editor-iframe-loaded'));
+    };
+}
 
-    private static liveEditPage: LiveEditPage;
+// ============================================================================
+// Initialization Helpers
+// ============================================================================
+
+function initializeEventBus(): void {
+    const eventBus = IframeEventBus.get();
+
+    eventBus.addReceiver(parent).setId('iframe-bus');
+
+    eventBus.registerClass('ContentSummaryAndCompareStatus', ContentSummaryAndCompareStatus);
+    eventBus.registerClass('ContentSummary', ContentSummary);
+    eventBus.registerClass('ContentPath', ContentPath);
+    eventBus.registerClass('ContentName', ContentName);
+    eventBus.registerClass('ContentTypeName', ContentTypeName);
+    eventBus.registerClass('ApplicationKey', ApplicationKey);
+    eventBus.registerClass('PrincipalKey', PrincipalKey);
+    eventBus.registerClass('IdProviderKey', IdProviderKey);
+    eventBus.registerClass('ContentId', ContentId);
+    eventBus.registerClass('ChildOrder', ChildOrder);
+    eventBus.registerClass('FieldOrderExpr', FieldOrderExpr);
+    eventBus.registerClass('Workflow', Workflow);
+    eventBus.registerClass('ComponentPath', ComponentPath);
+    eventBus.registerClass('PartComponentType', PartComponentType);
+    eventBus.registerClass('LayoutComponentType', LayoutComponentType);
+    eventBus.registerClass('FragmentComponentType', FragmentComponentType);
+
+    eventBus.registerClass('AddComponentViewEvent', AddComponentViewEvent);
+    eventBus.registerClass('MoveComponentViewEvent', MoveComponentViewEvent);
+    eventBus.registerClass('RemoveComponentViewEvent', RemoveComponentViewEvent);
+    eventBus.registerClass('SelectComponentViewEvent', SelectComponentViewEvent);
+    eventBus.registerClass('DeselectComponentViewEvent', DeselectComponentViewEvent);
+    eventBus.registerClass('DuplicateComponentViewEvent', DuplicateComponentViewEvent);
+    eventBus.registerClass('LoadComponentViewEvent', LoadComponentViewEvent);
+    eventBus.registerClass('ResetComponentViewEvent', ResetComponentViewEvent);
+    eventBus.registerClass('UpdateTextComponentViewEvent', UpdateTextComponentViewEvent);
+
+    eventBus.registerClass('SkipLiveEditReloadConfirmationEvent', SkipLiveEditReloadConfirmationEvent);
+    eventBus.registerClass('LiveEditParams', LiveEditParams);
+    eventBus.registerClass('InitializeLiveEditEvent', InitializeLiveEditEvent);
+    eventBus.registerClass('PageStateEvent', PageStateEvent);
+    eventBus.registerClass('SetPageLockStateEvent', SetPageLockStateEvent);
+    eventBus.registerClass('IframeBeforeContentSavedEvent', IframeBeforeContentSavedEvent);
+    eventBus.registerClass('CreateOrDestroyDraggableEvent', CreateOrDestroyDraggableEvent);
+    eventBus.registerClass('SetDraggableVisibleEvent', SetDraggableVisibleEvent);
+    eventBus.registerClass('TextComponentType', TextComponentType);
+    eventBus.registerClass('MinimizeWizardPanelEvent', MinimizeWizardPanelEvent);
+}
+
+function initializeGlobalState(): void {
+    Store.instance().set('$', $);
+    StyleHelper.setCurrentPrefix(ItemViewPlaceholder.PAGE_EDITOR_PREFIX);
+}
+
+// ============================================================================
+// PageEditor Class
+// ============================================================================
+
+export class PageEditor {
+    private static liveEditPage: LiveEditPage | null = null;
+    private static documentKeyListener: ((event: JQuery.TriggeredEvent) => void) | null = null;
+    private static windowLoadListener: (() => void) | null = null;
 
     static init(): void {
-        initEventBus();
-        initListeners();
-        PageEditor.liveEditPage = new LiveEditPage();
+        if (this.liveEditPage) {
+            throw new Error('Page editor is already initialized.');
+        }
+
+        initializeEventBus();
+        initializeGlobalState();
+
+        this.initListeners();
+
+        this.liveEditPage = new LiveEditPage();
     }
 
+
+    private static initListeners(): void {
+        if (!this.documentKeyListener) {
+            this.documentKeyListener = createDocumentKeyListener();
+        }
+        if (!this.windowLoadListener) {
+            this.windowLoadListener = createWindowLoadListener();
+        }
+
+        $(document).on('keypress keydown keyup', this.documentKeyListener);
+        $(window).on('load', this.windowLoadListener);
+    }
 }
