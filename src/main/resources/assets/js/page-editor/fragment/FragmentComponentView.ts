@@ -34,7 +34,6 @@ export class FragmentComponentView
         super(builder.setInspectActionRequired(true).setPlaceholder(new FragmentPlaceholder()));
 
         this.fragmentContainsLayout = false;
-        (this.placeholder as FragmentPlaceholder).setComponentView(this);
         this.disableLinks();
 
         this.parseFragmentComponents(this);
