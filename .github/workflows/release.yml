@@ -63,7 +63,9 @@ jobs:
 
       - name: Publish to npm
         working-directory: build/npm-resources
-        run: npm publish --provenance --tag $NPM_TAG
+        run: |
+          npm install -g npm@latest
+          npm publish --tag $NPM_TAG
 
       - name: Create github release
         uses: softprops/action-gh-release@v2
