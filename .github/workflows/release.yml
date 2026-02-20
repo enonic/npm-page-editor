@@ -29,6 +29,10 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
 
+      - uses: actions/setup-node@v6
+        with:
+          registry-url: 'https://registry.npmjs.org'
+
       - name: Set release version from git tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
