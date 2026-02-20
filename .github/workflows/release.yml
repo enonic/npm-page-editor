@@ -26,8 +26,7 @@ jobs:
           java-version: 25
           distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@v5
 
       - uses: actions/setup-node@v6
         with:
@@ -64,7 +63,7 @@ jobs:
 
       - name: Publish to npm
         working-directory: build/npm-resources
-        run: npm publish --tag $NPM_TAG
+        run: npm publish --provenance --tag $NPM_TAG
 
       - name: Create github release
         uses: softprops/action-gh-release@v2
