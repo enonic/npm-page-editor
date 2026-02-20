@@ -17,6 +17,7 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
+    if: github.event.base_ref == 'refs/heads/master'
 
     steps:
       - uses: actions/checkout@v6
@@ -69,7 +70,7 @@ jobs:
       - name: Create github release
         uses: softprops/action-gh-release@v2
         with:
-          name: Enonic Page Editor ${{ steps.publish_vars.outputs.version }}
+          name: Enonic Page Editor v${{ steps.publish_vars.outputs.version }}
           generate_release_notes: true
           prerelease: ${{ steps.publish_vars.outputs.prerelease == 'true' }}
 
@@ -86,4 +87,5 @@ jobs:
         with:
           add: './gradle.properties ./package.json'
           message: 'Updated to next SNAPSHOT version'
+          push: 'origin HEAD:master'
 
