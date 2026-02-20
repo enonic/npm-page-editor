@@ -180,28 +180,6 @@ tasks.register( 'pnpmPack', PnpmTask ) {
     outputs.dir layout.buildDirectory.dir( 'libs' )
 }
 
-tasks.register( 'pnpmPublish', PnpmTask ) {
-    dependsOn tasks.named( 'preparePackage' )
-    description = 'Publish npm package to registry. Use -PnpmTag=latest to set tag.'
-    group = 'pnpm'
-
-    def npmTag = providers.gradleProperty( 'npmTag' ).getOrElse( 'latest' )
-
-    workingDir = npmDistDir
-    args = ['publish', '--access', 'public', '--tag', npmTag, '--no-git-checks']
-}
-
-tasks.register( 'pnpmPublishDry', PnpmTask ) {
-    dependsOn tasks.named( 'preparePackage' )
-    description = 'Dry run of npm publish (does not actually publish).'
-    group = 'pnpm'
-
-    def npmTag = providers.gradleProperty( 'npmTag' ).getOrElse( 'latest' )
-
-    workingDir = npmDistDir
-    args = ['publish', '--access', 'public', '--tag', npmTag, '--no-git-checks', '--dry-run']
-}
-
 tasks.named( 'build' ).configure {
     dependsOn tasks.named( 'pnpmPack' )
 }

@@ -59,7 +59,8 @@ jobs:
         run: ./gradlew preparePackage
 
       - name: Publish to npm
-        run: cd build/npm-resources && npm publish --tag $NPM_TAG
+        working-directory: build/npm-resources
+        run: npm publish --tag $NPM_TAG
 
       - name: Create github release
         uses: softprops/action-gh-release@v2
