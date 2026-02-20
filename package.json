@@ -11,6 +11,9 @@
   "bugs": {
     "url": "https://github.com/enonic/npm-page-editor/issues"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "homepage": "https://github.com/enonic/npm-page-editor#readme",
   "keywords": [
     "enonic",
