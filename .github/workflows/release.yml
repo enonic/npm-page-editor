@@ -28,10 +28,6 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
-      - uses: actions/setup-node@v6
-        with:
-          registry-url: 'https://registry.npmjs.org'
-
       - name: Set release version from git tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
@@ -61,12 +57,14 @@ jobs:
       - name: Build and prepare package with Gradle
         run: ./gradlew preparePackage
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
       - name: Publish to npm
         working-directory: build/npm-resources
-        run: |
-          npm config delete //registry.npmjs.org/:_authToken 2>/dev/null || true
-          rm -f ~/.npmrc 2>/dev/null || true
-          npm publish --provenance --tag $NPM_TAG
+        run: npm publish --tag $NPM_TAG
 
       - name: Create github release
         uses: softprops/action-gh-release@v2
