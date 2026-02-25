@@ -908,13 +908,6 @@ export abstract class ItemView
         this.placeholder?.deselect();
     }
 
-    showRenderingError(url: string, errorMessage?: string) {
-        if (this.placeholder) {
-            this.addClass('error');
-            this.placeholder.showRenderingError(url, errorMessage);
-        }
-    }
-
     getName(): string {
         return i18n('live.view.itemview.noname');
     }

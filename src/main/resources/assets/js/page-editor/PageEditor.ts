@@ -39,6 +39,9 @@ import {DeselectComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/
 import {MoveComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/MoveComponentViewEvent';
 import {LoadComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/LoadComponentViewEvent';
 import {SetPageLockStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetPageLockStateEvent';
+import {PageReloadRequestedEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/PageReloadRequestedEvent';
+import {ComponentLoadedEvent} from '@enonic/lib-contentstudio/page-editor/event/ComponentLoadedEvent';
+import {LoadComponentFailedEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/LoadComponentFailedEvent';
 import {
     CreateOrDestroyDraggableEvent
 } from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/CreateOrDestroyDraggableEvent';
@@ -47,6 +50,8 @@ import {UpdateTextComponentViewEvent} from '@enonic/lib-contentstudio/page-edito
 import {DuplicateComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/DuplicateComponentViewEvent';
 import {MinimizeWizardPanelEvent} from '@enonic/lib-admin-ui/app/wizard/MinimizeWizardPanelEvent';
 import {SetDraggableVisibleEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetDraggableVisibleEvent';
+import {Event} from '@enonic/lib-admin-ui/event/Event';
+import {EditorEvents, type EditorEvent} from './event/EditorEvent';
 
 // ============================================================================
 // Event Handlers
@@ -148,7 +153,7 @@ function createWindowLoadListener(): () => void {
 // Initialization Helpers
 // ============================================================================
 
-function initializeEventBus(): void {
+function initializeEventBus(): IframeEventBus {
     const eventBus = IframeEventBus.get();
 
     eventBus.addReceiver(parent).setId('iframe-bus');
@@ -190,6 +195,8 @@ function initializeEventBus(): void {
     eventBus.registerClass('SetDraggableVisibleEvent', SetDraggableVisibleEvent);
     eventBus.registerClass('TextComponentType', TextComponentType);
     eventBus.registerClass('MinimizeWizardPanelEvent', MinimizeWizardPanelEvent);
+
+    return eventBus
 }
 
 function initializeGlobalState(): void {
@@ -203,6 +210,7 @@ function initializeGlobalState(): void {
 
 export class PageEditor {
     private static liveEditPage: LiveEditPage | null = null;
+    private static iframeEventBus: IframeEventBus;
     private static documentKeyListener: ((event: JQuery.TriggeredEvent) => void) | null = null;
     private static windowLoadListener: (() => void) | null = null;
 
@@ -211,14 +219,51 @@ export class PageEditor {
             throw new Error('Page editor is already initialized.');
         }
 
-        initializeEventBus();
         initializeGlobalState();
 
-        this.initListeners();
-
+        this.iframeEventBus = initializeEventBus();
         this.liveEditPage = new LiveEditPage();
+
+        this.initListeners();
     }
 
+    static getContent(): ContentSummaryAndCompareStatus | undefined {
+        return this.liveEditPage?.getContent();
+    }
+
+    static on(eventName: EditorEvents, handler: (event: EditorEvent) => void): void {
+        Event.bind(eventName, handler);
+    }
+
+    static un(eventName: EditorEvents, handler: (event: EditorEvent) => void): void {
+        Event.unbind(eventName, handler);
+    }
+
+    static notify(event: EditorEvents.PageReloadRequest): void;
+    static notify(event: EditorEvents.ComponentLoaded, data: { path: ComponentPath }): void;
+    static notify(event: EditorEvents.ComponentLoadFailed, data: { path: ComponentPath, reason: Error }): void;
+    static notify(event: EditorEvents, data?: object): void {
+        // Hide the iframe event bus behind the EditorEvent abstraction
+        if (event === EditorEvents.PageReloadRequest) {
+            this.iframeEventBus.fireEvent(new PageReloadRequestedEvent());
+        } else if (event === EditorEvents.ComponentLoaded) {
+            const isDataValid = data && typeof data === 'object' && 'path' in data;
+            if (!isDataValid) {
+                throw new Error(`path is required for "${event}" event`);
+            }
+            const {path} = data as { path: ComponentPath };
+            this.iframeEventBus.fireEvent(new ComponentLoadedEvent(path));
+        } else if (event === EditorEvents.ComponentLoadFailed) {
+            const isDataValid = data && typeof data === 'object' && 'path' in data && 'reason' in data;
+            if (!isDataValid) {
+                throw new Error(`path and reason are required for "${event}" event`);
+            }
+            const {path, reason} = data as { path: ComponentPath, reason: Error };
+            this.iframeEventBus.fireEvent(new LoadComponentFailedEvent(path, reason));
+        } else {
+            throw new Error(`PageEditor.notify: unsupported event name "${event}"`);
+        }
+    }
 
     private static initListeners(): void {
         if (!this.documentKeyListener) {
