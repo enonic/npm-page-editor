@@ -4,9 +4,6 @@ import {Exception} from '@enonic/lib-admin-ui/Exception';
 import {Tooltip} from '@enonic/lib-admin-ui/ui/Tooltip';
 import {WindowDOM} from '@enonic/lib-admin-ui/dom/WindowDOM';
 import {CONFIG} from '@enonic/lib-admin-ui/util/Config';
-import {assertNotNull} from '@enonic/lib-admin-ui/util/Assert';
-import {Element} from '@enonic/lib-admin-ui/dom/Element';
-import {DivEl} from '@enonic/lib-admin-ui/dom/DivEl';
 import {Messages} from '@enonic/lib-admin-ui/util/Messages';
 import {AuthContext} from '@enonic/lib-admin-ui/auth/AuthContext';
 import {Principal} from '@enonic/lib-admin-ui/security/Principal';
@@ -26,7 +23,7 @@ import {Shader} from './Shader';
 import {Cursor} from './Cursor';
 import {ComponentViewDragStartedEvent} from '@enonic/lib-contentstudio/page-editor/event/ComponentViewDragStartedEvent';
 import {ComponentViewDragStoppedEvent} from '@enonic/lib-contentstudio/page-editor/event/ComponentViewDragStoppedEvent';
-import {DefaultItemViewFactory, type ItemViewFactory} from './ItemViewFactory';
+import {DefaultItemViewFactory} from './ItemViewFactory';
 import {ItemViewContextMenuPosition} from './ItemViewContextMenuPosition';
 import {SelectComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/navigation/SelectComponentViewEvent';
 import {type ItemView} from './ItemView';
@@ -37,12 +34,7 @@ import {RegionView} from './RegionView';
 import {ItemType} from '@enonic/lib-contentstudio/page-editor/ItemType';
 import {RemoveComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/RemoveComponentViewEvent';
 import {ComponentView} from './ComponentView';
-import {CreateItemViewConfig} from './CreateItemViewConfig';
-import {type ComponentItemType} from './ComponentItemType';
-import {FragmentItemType} from './fragment/FragmentItemType';
-import DOMPurify from 'dompurify';
 import {LoadComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/LoadComponentViewEvent';
-import {LoadComponentFailedEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/LoadComponentFailedEvent';
 import {DuplicateComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/DuplicateComponentViewEvent';
 import {MoveComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/MoveComponentViewEvent';
 import {SetPageLockStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetPageLockStateEvent';
@@ -55,21 +47,19 @@ import {ResetComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/eve
 import {PageStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/common/PageStateEvent';
 import {UpdateTextComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/UpdateTextComponentViewEvent';
 import {SetComponentStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetComponentStateEvent';
-import {PageReloadRequestedEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/PageReloadRequestedEvent';
 import {LayoutItemType} from './layout/LayoutItemType';
 
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
 import {ComponentType} from '@enonic/lib-contentstudio/app/page/region/ComponentType';
 import {ContentContext} from '@enonic/lib-contentstudio/app/wizard/ContentContext';
-import {DescriptorBasedComponent} from '@enonic/lib-contentstudio/app/page/region/DescriptorBasedComponent';
-import {HTMLAreaHelper} from '@enonic/lib-contentstudio/app/inputtype/ui/text/HTMLAreaHelper';
 import {IframeBeforeContentSavedEvent} from '@enonic/lib-contentstudio/app/event/IframeBeforeContentSavedEvent';
 import {PageBuilder} from '@enonic/lib-contentstudio/app/page/Page';
-import {PageHelper} from '@enonic/lib-contentstudio/app/util/PageHelper';
 import {PageState} from '@enonic/lib-contentstudio/app/wizard/page/PageState';
 import {Project} from '@enonic/lib-contentstudio/app/settings/data/project/Project';
 import {ProjectContext} from '@enonic/lib-contentstudio/app/project/ProjectContext';
 import {SessionStorageHelper} from '@enonic/lib-contentstudio/app/util/SessionStorageHelper';
+import {EditorEvent, EditorEvents} from './event/EditorEvent';
+import type {ContentSummaryAndCompareStatus} from '@enonic/lib-contentstudio/app/content/ContentSummaryAndCompareStatus';
 
 
 export class LiveEditPage {
@@ -124,6 +114,8 @@ export class LiveEditPage {
 
     private static debug: boolean = false;
 
+    private content: ContentSummaryAndCompareStatus;
+
     constructor() {
         this.skipConfirmationListener = (event: SkipLiveEditReloadConfirmationEvent) => {
             this.skipNextReloadConfirmation = event.isSkip();
@@ -141,6 +133,9 @@ export class LiveEditPage {
         if (LiveEditPage.debug) {
             console.debug('LiveEditPage: starting live edit initialization', event);
         }
+
+        this.content = event.getContent();
+
         // Setting up parent-like environment inside iframe
         UriHelper.setDomain(event.getHostDomain());
 
@@ -199,6 +194,10 @@ export class LiveEditPage {
             selected.selectWithoutMenu();
             selected.scrollComponentIntoView();
         }
+    }
+
+    public getContent(): ContentSummaryAndCompareStatus | undefined {
+        return this.content;
     }
 
     public destroy(win: Window = window): void {
@@ -309,7 +308,7 @@ export class LiveEditPage {
         SetComponentStateEvent.on(this.setComponentStateEventListener);
 
         this.addItemViewRequestListener = (event: AddComponentViewEvent) => {
-            const path: ComponentPath = ComponentPath.fromString(event.getComponentPath().toString());
+            const path: ComponentPath = event.getComponentPath();
             const type: ComponentType = ComponentType.byShortName(event.getComponentType().getShortName());
             const viewType: ItemType = ItemType.fromComponentType(type);
             const parentView: ItemView = this.getItemViewByPath(path.getParentPath());
@@ -322,7 +321,7 @@ export class LiveEditPage {
         AddComponentViewEvent.on(this.addItemViewRequestListener);
 
         this.removeItemViewRequestListener = (event: RemoveComponentViewEvent) => {
-            const path: ComponentPath = ComponentPath.fromString(event.getComponentPath().toString());
+            const path: ComponentPath = event.getComponentPath();
             const view: ItemView = this.getItemViewByPath(path);
 
             if (view) {
@@ -337,21 +336,23 @@ export class LiveEditPage {
         RemoveComponentViewEvent.on(this.removeItemViewRequestListener);
 
         this.loadComponentRequestListener = (event: LoadComponentViewEvent) => {
-            const path: ComponentPath = ComponentPath.fromString(event.getComponentPath().toString());
+            const path: ComponentPath = event.getComponentPath();
             const view: ItemView = this.getItemViewByPath(path);
 
-            if (view instanceof ComponentView) {
-                this.loadComponent(view, event.getURI(), event.isExisting()).catch((reason) => {
-                    console.warn(`LiveEditPage: loadComponent at [${path}] failed:`, reason);
-                    new LoadComponentFailedEvent(path, reason).fire();
-                });
+            if (!view) {
+                return;
             }
+
+            new EditorEvent(EditorEvents.ComponentLoadRequest, {
+                view,
+                isExisting: event.isExisting(),
+            }).fire();
         };
 
         LoadComponentViewEvent.on(this.loadComponentRequestListener);
 
         this.duplicateComponentViewRequestedListener = (event: DuplicateComponentViewEvent) => {
-            const newItemPath: ComponentPath = ComponentPath.fromString(event.getComponentPath().toString());
+            const newItemPath: ComponentPath = event.getComponentPath();
             const sourceItemPath: ComponentPath = new ComponentPath(newItemPath.getPath() as number - 1, newItemPath.getParentPath());
             const view: ItemView = this.getItemViewByPath(sourceItemPath);
 
@@ -447,7 +448,7 @@ export class LiveEditPage {
         SetDraggableVisibleEvent.on(this.setDraggableVisibleEventListener);
 
         this.resetComponentViewRequestListener = (event: ResetComponentViewEvent): void => {
-            const path: ComponentPath = ComponentPath.fromString(event.getComponentPath().toString());
+            const path: ComponentPath = event.getComponentPath();
             const view: ItemView = this.getItemViewByPath(path);
 
             if (view instanceof ComponentView) {
@@ -468,7 +469,7 @@ export class LiveEditPage {
                 return;
             }
 
-            const path: ComponentPath = ComponentPath.fromString(event.getComponentPath().toString());
+            const path: ComponentPath = event.getComponentPath();
             const view: ItemView = this.getItemViewByPath(path);
 
             if (view instanceof TextComponentView) {
@@ -524,92 +525,6 @@ export class LiveEditPage {
         PageStateEvent.un(this.pageStateListener);
 
         UpdateTextComponentViewEvent.un(this.updateTextComponentViewListener);
-    }
-
-    public loadComponent(componentView: ComponentView, componentUrl: string, isExisting: boolean): Promise<void> {
-        assertNotNull(componentView, 'componentView cannot be null');
-        assertNotNull(componentUrl, 'componentUrl cannot be null');
-
-        componentView.showLoadingSpinner();
-
-        return fetch(componentUrl)
-            .then(response => {
-                if (!isExisting) {
-                    const hasContributions = response.headers.has('X-Has-Contributions');
-
-                    // reloading entire live page if the component has contributions and there are no equal components on the page
-                    if (hasContributions && !this.hasSameComponentOnPage(componentView.getPath())) {
-                        new PageReloadRequestedEvent().fire();
-                        return;
-                    }
-                }
-
-                return response.text().then(htmlAsString => {
-                    this.handleComponentHtml(componentView, htmlAsString);
-                })
-            });
-    }
-
-    private hasSameComponentOnPage(path: ComponentPath): boolean {
-        const component = PageState.getComponentByPath(path);
-
-        if (component instanceof DescriptorBasedComponent) {
-            const key = component.getDescriptorKey();
-            const allPageComponents = PageHelper.flattenPageComponents(PageState.getState());
-
-            return allPageComponents.some(
-                (c) => !c.getPath().equals(path) && c instanceof DescriptorBasedComponent && c.getDescriptorKey()?.equals(key));
-        }
-
-        return false;
-    }
-
-    private handleComponentHtml(componentView: ComponentView, htmlAsString: string): void {
-        const newElement: Element = this.wrapLoadedComponentHtml(htmlAsString, componentView.getType());
-        const itemViewIdProducer: ItemViewIdProducer = componentView.getItemViewIdProducer();
-        const itemViewFactory: ItemViewFactory = componentView.getItemViewFactory();
-
-        const createViewConfig: CreateItemViewConfig<RegionView> = new CreateItemViewConfig<RegionView>()
-            .setItemViewIdProducer(itemViewIdProducer)
-            .setItemViewFactory(itemViewFactory)
-            .setLiveEditParams(this.pageView.getLiveEditParams())
-            .setParentView(componentView.getParentItemView())
-            .setPositionIndex(componentView.getPath().getPath() as number)
-            .setElement(newElement);
-
-        const newComponentView: ComponentView = itemViewFactory.createView(
-            componentView.getType(),
-            createViewConfig) as ComponentView;
-
-        componentView.replaceWith(newComponentView);
-
-        const parentItemView = newComponentView.getParentItemView();
-
-        if (parentItemView instanceof RegionView) { // PageView for a fragment|
-            newComponentView.getParentItemView().registerComponentViewListeners(newComponentView);
-        }
-
-        const event: ComponentLoadedEvent = new ComponentLoadedEvent(newComponentView.getPath());
-        event.fire();
-    }
-
-    private wrapLoadedComponentHtml(htmlAsString: string, componentType: ComponentItemType): Element {
-        if (FragmentItemType.get().equals(componentType)) {
-            return this.wrapLoadedFragmentHtml(htmlAsString);
-        }
-
-        return Element.fromString(htmlAsString);
-    }
-
-    private wrapLoadedFragmentHtml(htmlAsString: string): Element {
-        const sanitized: string = DOMPurify.sanitize(htmlAsString, {ALLOWED_URI_REGEXP: HTMLAreaHelper.getAllowedUriRegexp()});
-        const sanitizedElement: Element = Element.fromHtml(sanitized);
-
-        const fragmentWrapperEl: Element = new DivEl();
-        fragmentWrapperEl.getEl().setAttribute(`data-${ItemType.ATTRIBUTE_TYPE}`, 'fragment');
-        fragmentWrapperEl.appendChild(sanitizedElement);
-
-        return fragmentWrapperEl;
     }
 
     private getComponentErrorText(error) {
