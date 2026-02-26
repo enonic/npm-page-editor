@@ -20,6 +20,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: 'master'
+          fetch-depth: 0
+
+      - name: Verify tag points to HEAD of master
+        run: |
+          if [ "$GITHUB_SHA" != "$(git rev-parse HEAD)" ]; then
+            echo "Tag $GITHUB_REF_NAME does not point to the latest commit on master"
+            exit 1
+          fi
 
       - uses: actions/setup-java@v5
         with:
@@ -84,7 +94,10 @@ jobs:
         if: steps.publish_vars.outputs.release == 'true'
         uses: EndBug/add-and-commit@v9
         with:
-          add: './gradle.properties ./package.json'
+          add: |
+            - gradle.properties
+            - package.json
           message: 'Updated to next SNAPSHOT version'
           push: 'origin HEAD:master'
+          default_author: github_actions
 
