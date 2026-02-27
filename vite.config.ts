@@ -74,9 +74,10 @@ export default defineConfig(({mode}) => {
             },
             plugins: [
                 dts({
-                    outDir: OUT_PATH,
-                    insertTypesEntry: true,
-                    entryRoot: path.join(IN_PATH, 'js'),
+                    root: OUT_PATH,
+                    rollupTypes: true,
+                    aliasesExclude: ['@enonic/lib-admin-ui', '@enonic/lib-contentstudio'],
+                    bundledPackages: ['@enonic/lib-admin-ui', '@enonic/lib-contentstudio'],
                 })
             ],
             esbuild: {
