@@ -20,3 +20,7 @@ export {FragmentItemType} from './page-editor/fragment/FragmentItemType';
 export {FragmentComponentView} from './page-editor/fragment/FragmentComponentView';
 export {RegionView} from './page-editor/RegionView';
 export {PageView} from './page-editor/PageView';
+
+// To allow creation of custom elements
+export {Element, NewElementBuilder} from '@enonic/lib-admin-ui/dom/Element';
+export {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
