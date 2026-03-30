@@ -66,10 +66,7 @@ export default defineConfig(({mode}) => {
                                 constBindings: true
                             }
                         })
-                    },
-                    external: [
-                        'jquery',
-                    ]
+                    }
                 }
             },
             plugins: [

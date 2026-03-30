@@ -52,6 +52,9 @@ import {MinimizeWizardPanelEvent} from '@enonic/lib-admin-ui/app/wizard/Minimize
 import {SetDraggableVisibleEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetDraggableVisibleEvent';
 import {Event} from '@enonic/lib-admin-ui/event/Event';
 import {EditorEvents, type EditorEvent} from './event/EditorEvent';
+import {RenderingMode} from '@enonic/lib-contentstudio/app/rendering/RenderingMode';
+import {UriHelper} from '@enonic/lib-admin-ui/util/UriHelper';
+import {ContentPreviewPathChangedEvent} from '@enonic/lib-contentstudio/app/view/ContentPreviewPathChangedEvent';
 
 // ============================================================================
 // Event Handlers
@@ -149,6 +152,46 @@ function createWindowLoadListener(): () => void {
     };
 }
 
+function createWindowClickListener(window: Window): (event: JQuery.ClickEvent) => void {
+    return (event: JQuery.ClickEvent): void => {
+        const clickedLink: string = getClickedLink(event);
+
+        if (clickedLink) {
+            if (!!window && !UriHelper.isNavigatingOutsideOfXP(clickedLink, window)) {
+                const contentPreviewPath = '/' + UriHelper.trimUrlParams(
+                    UriHelper.trimAnchor(UriHelper.trimWindowProtocolAndPortFromHref(clickedLink,
+                        window)));
+
+                if (!UriHelper.isNavigatingWithinSamePage(contentPreviewPath, window) &&
+                    !UriHelper.isDownloadLink(contentPreviewPath)) {
+                    new ContentPreviewPathChangedEvent(contentPreviewPath).fire();
+                }
+            }
+        }
+    }
+}
+
+function getClickedLink(event: JQuery.ClickEvent): string {
+    const findPath = (a: HTMLLinkElement): string | undefined => {
+        return a.dataset.contentPath || a.href;
+    };
+
+    if (event.target && (event.target as HTMLElement).tagName.toLowerCase() === 'a') {
+        return findPath(event.target);
+    }
+
+    let el = event.target as HTMLElement;
+    if (el) {
+        while (el.parentNode) {
+            el = el.parentNode as HTMLElement;
+            if (el.tagName?.toLowerCase() === 'a') {
+                return findPath(el as HTMLLinkElement);
+            }
+        }
+    }
+    return '';
+}
+
 // ============================================================================
 // Initialization Helpers
 // ============================================================================
@@ -209,22 +252,30 @@ function initializeGlobalState(): void {
 // ============================================================================
 
 export class PageEditor {
+    private static mode: RenderingMode;
     private static liveEditPage: LiveEditPage | null = null;
     private static iframeEventBus: IframeEventBus;
     private static documentKeyListener: ((event: JQuery.TriggeredEvent) => void) | null = null;
+    private static windowClickListener: ((event: JQuery.ClickEvent) => void) | null = null;
     private static windowLoadListener: (() => void) | null = null;
 
-    static init(): void {
-        if (this.liveEditPage) {
-            throw new Error('Page editor is already initialized.');
+    static init(editMode: boolean): void {
+        if (this.mode) {
+            throw new Error(`Page editor is already initialized in "${this.mode}" mode.`);
         }
+        this.mode = editMode ? RenderingMode.EDIT : RenderingMode.INLINE;
 
         initializeGlobalState();
-
         this.iframeEventBus = initializeEventBus();
-        this.liveEditPage = new LiveEditPage();
+        this.initListeners(editMode);
 
-        this.initListeners();
+        if (editMode) {
+            this.liveEditPage = new LiveEditPage();
+        }
+    }
+
+    static isInitialized(): boolean {
+        return !!this.mode;
     }
 
     static getContent(): ContentSummaryAndCompareStatus | undefined {
@@ -265,15 +316,18 @@ export class PageEditor {
         }
     }
 
-    private static initListeners(): void {
-        if (!this.documentKeyListener) {
+    private static initListeners(editMode: boolean): void {
+        if (!this.documentKeyListener && editMode) {
             this.documentKeyListener = createDocumentKeyListener();
+            $(document).on('keypress keydown keyup', this.documentKeyListener);
         }
-        if (!this.windowLoadListener) {
+        if (!this.windowLoadListener && editMode) {
             this.windowLoadListener = createWindowLoadListener();
+            $(window).on('load', this.windowLoadListener);
         }
-
-        $(document).on('keypress keydown keyup', this.documentKeyListener);
-        $(window).on('load', this.windowLoadListener);
+        if (!this.windowClickListener) {
+            this.windowClickListener = createWindowClickListener(window);
+            $(window).on('click', this.windowClickListener)
+        }
     }
 }
