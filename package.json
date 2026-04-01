@@ -65,12 +65,14 @@
     "jquery-simulate": "^1.0.2",
     "jquery-ui": "^1.14.1",
     "mousetrap": "^1.6.5",
+    "nanostores": "^1.2.0",
     "q": "^1.5.1"
   },
   "devDependencies": {
     "@enonic/eslint-config": "^2.1.0",
     "@enonic/lib-admin-ui": "file:.xp/dev/lib-admin-ui",
     "@enonic/lib-contentstudio": "file:.xp/dev/lib-contentstudio",
+    "@enonic/ui": "^0.47.5",
     "@eslint/js": "^9.39.2",
     "@rollup/plugin-inject": "^5.0.5",
     "@types/ckeditor": "^4.9.10",
@@ -92,6 +94,7 @@
     "postcss": "^8.5.6",
     "postcss-normalize": "^13.0.1",
     "postcss-sort-media-queries": "^5.2.0",
+    "preact": "^10.29.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.39.1",
     "vite": "^7.1.2",

@@ -90,7 +90,11 @@ export default defineConfig(({mode}) => {
                 alias: {
                     '@enonic/lib-admin-ui': path.join(__dirname, '.xp/dev/lib-admin-ui'),
                     '@enonic/lib-contentstudio': path.join(__dirname, '.xp/dev/lib-contentstudio'),
-                    '~enonic-admin-artifacts': 'enonic-admin-artifacts/index.less'
+                    '~enonic-admin-artifacts': 'enonic-admin-artifacts/index.less',
+                    'react': 'preact/compat',
+                    'react-dom': 'preact/compat',
+                    'react/jsx-runtime': 'preact/jsx-runtime',
+                    'react/jsx-dev-runtime': 'preact/jsx-dev-runtime',
                 },
                 extensions: ['.ts', '.js']
             },
