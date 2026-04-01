@@ -23,6 +23,9 @@ importers:
       mousetrap:
         specifier: ^1.6.5
         version: 1.6.5
+      nanoid:
+        specifier: ^5.1.7
+        version: 5.1.7
       nanostores:
         specifier: ^1.2.0
         version: 1.2.0
