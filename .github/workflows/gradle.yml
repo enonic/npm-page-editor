@@ -33,7 +33,7 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew --refresh-dependencies pnpmPack
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: pageeditor
           path: build/libs/*.tgz
