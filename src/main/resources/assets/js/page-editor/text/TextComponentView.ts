@@ -12,6 +12,7 @@ import {EditTextComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/
 import {Action} from '@enonic/lib-admin-ui/ui/Action';
 import {i18n} from '@enonic/lib-admin-ui/util/Messages';
 import {type ItemView} from '../ItemView';
+import {TEXT_COMPONENT_DBL_CLICK_TIMEOUT} from './constants';
 
 export class TextComponentViewBuilder
     extends ComponentViewBuilder {
@@ -42,7 +43,7 @@ export class TextComponentView
     private editAction: Action;
 
     // special handling for click to allow dblclick event without triggering 2 clicks before it
-    public static DBL_CLICK_TIMEOUT: number = 250;
+    public static DBL_CLICK_TIMEOUT: number = TEXT_COMPONENT_DBL_CLICK_TIMEOUT;
     private singleClickTimer: number;
     private lastClicked: number = 0;
 

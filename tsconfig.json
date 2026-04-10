@@ -28,7 +28,15 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "jsx": "preserve"
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "baseUrl": ".",
+    "paths": {
+      "react": ["./node_modules/preact/compat"],
+      "react-dom": ["./node_modules/preact/compat"],
+      "react/jsx-runtime": ["./node_modules/preact/jsx-runtime"],
+      "react/jsx-dev-runtime": ["./node_modules/preact/jsx-dev-runtime"]
+    }
   },
   "include": [
     "./src/main/resources/assets/js/types.d.ts",
@@ -41,6 +49,9 @@
     "dist",
     "build",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "src/main/resources/assets/js/test/**/*"
   ]
 }

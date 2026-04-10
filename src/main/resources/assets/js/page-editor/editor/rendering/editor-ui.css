@@ -1,0 +1,46 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@enonic/ui/preset.css';
+
+@source "../../../../../../../../node_modules/@enonic/ui";
+@source "../";
+
+/* Preset 0.47.7+ sets tokens + color + font-smoothing on :host — only extras here. */
+@layer base {
+    :host,
+    :root {
+        --tw-border-style: solid;
+
+        font-family: 'Open Sans', 'Segoe UI', sans-serif;
+        line-height: 1.4;
+        text-rendering: optimizeLegibility;
+    }
+
+    /*
+     * ! Shadow-DOM rem isolation
+     * `rem` inside a shadow root always resolves against the document's
+     * `<html>`, not `:host`. Host pages using the legacy 62.5% reset
+     * (`html { font-size: 62.5% }`) collapse every rem-based token to 0.625x,
+     * making the editor UI render at ~10px-base. Redeclare all rem-based
+     * theme tokens as absolute px so the editor scale is invariant of the
+     * embedding page. Line-heights are unitless ratios and tracking uses
+     * `em`, so neither needs overriding.
+     */
+    :host {
+        --spacing: 4px;
+        --text-xs: 12px;
+        --text-sm: 14px;
+        --text-base: 16px;
+        --text-lg: 18px;
+        --text-2xl: 24px;
+        --radius-xs: 2px;
+        --radius-sm: 4px;
+        --radius-md: 6px;
+        --radius-lg: 8px;
+        --container-sm: 384px;
+        --container-lg: 512px;
+        --container-xl: 576px;
+    }
+}
+
+@import './pe-components.css';

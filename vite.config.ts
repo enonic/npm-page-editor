@@ -1,4 +1,5 @@
 import inject from '@rollup/plugin-inject';
+import tailwindcss from '@tailwindcss/vite';
 import autoprefixer from 'autoprefixer';
 import cssnano from 'cssnano';
 import path from 'path';
@@ -70,6 +71,7 @@ export default defineConfig(({mode}) => {
                 }
             },
             plugins: [
+                tailwindcss(),
                 dts({
                     root: OUT_PATH,
                     rollupTypes: true,
@@ -78,6 +80,8 @@ export default defineConfig(({mode}) => {
                 })
             ],
             esbuild: {
+                jsx: 'automatic',
+                jsxImportSource: 'preact',
                 minifyIdentifiers: false,
                 keepNames: true,
                 treeShaking: true,
@@ -96,7 +100,7 @@ export default defineConfig(({mode}) => {
                     'react/jsx-runtime': 'preact/jsx-runtime',
                     'react/jsx-dev-runtime': 'preact/jsx-dev-runtime',
                 },
-                extensions: ['.ts', '.js']
+                extensions: ['.ts', '.tsx', '.js', '.jsx']
             },
             ...(isDevelopment && {
                 server: {

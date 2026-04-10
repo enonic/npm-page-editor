@@ -60,6 +60,8 @@ import {ProjectContext} from '@enonic/lib-contentstudio/app/project/ProjectConte
 import {SessionStorageHelper} from '@enonic/lib-contentstudio/app/util/SessionStorageHelper';
 import {EditorEvent, EditorEvents} from './event/EditorEvent';
 import type {ContentSummaryAndCompareStatus} from '@enonic/lib-contentstudio/app/content/ContentSummaryAndCompareStatus';
+import {claimNewUiOwnership, initNewUi} from './editor/init';
+import {isOwnedByNewUI} from './editor/coexistence/ownership';
 
 
 export class LiveEditPage {
@@ -116,6 +118,8 @@ export class LiveEditPage {
 
     private content: ContentSummaryAndCompareStatus;
 
+    private destroyNewUi?: () => void;
+
     constructor() {
         this.skipConfirmationListener = (event: SkipLiveEditReloadConfirmationEvent) => {
             this.skipNextReloadConfirmation = event.isSkip();
@@ -150,6 +154,10 @@ export class LiveEditPage {
 
 
         const body = Body.get().loadExistingChildren();
+        // ! Claim new-UI ownership before building the legacy view tree so
+        // ! constructors see the gates as transferred and skip attaching
+        // ! legacy placeholders/highlighters that the new UI now renders.
+        claimNewUiOwnership();
         try {
             this.pageView = new PageViewBuilder()
                 .setItemViewIdProducer(new ItemViewIdProducer())
@@ -175,25 +183,13 @@ export class LiveEditPage {
         Tooltip.allowMultipleInstances(false);
 
         this.registerGlobalListeners();
-
-        this.restoreSelection(event.getParams().contentId);
+        this.destroyNewUi = initNewUi(this.pageView);
 
         if (LiveEditPage.debug) {
             console.debug('LiveEditPage: done live edit initializing in ' + (Date.now() - startTime) + 'ms');
         }
 
         new LiveEditPageViewReadyEvent().fire();
-    }
-
-    private restoreSelection(contentId: string): void {
-        const selectedItemViewPath: ComponentPath = SessionStorageHelper.getSelectedPathFromStorage(contentId);
-
-        const selected: ItemView = selectedItemViewPath && this.pageView.getComponentViewByPath(selectedItemViewPath);
-
-        if (selected) {
-            selected.selectWithoutMenu();
-            selected.scrollComponentIntoView();
-        }
     }
 
     public getContent(): ContentSummaryAndCompareStatus | undefined {
@@ -210,6 +206,8 @@ export class LiveEditPage {
         InitializeLiveEditEvent.un(this.initializeListener, win);
 
         this.unregisterGlobalListeners();
+        this.destroyNewUi?.();
+        this.destroyNewUi = undefined;
     }
 
     private registerGlobalListeners(): void {
@@ -412,6 +410,9 @@ export class LiveEditPage {
         SetModifyAllowedEvent.on(this.setModifyAllowedListener);
 
         this.createOrDestroyDraggableListener = (event: CreateOrDestroyDraggableEvent): void => {
+            if (isOwnedByNewUI('context-window-drag')) {
+                return;
+            }
 
             const idAttr = `drag-helper-${event.getType()}`;
             const dataAttr = `data-${ItemType.ATTRIBUTE_TYPE}="${event.getType()}"`;
@@ -433,6 +434,9 @@ export class LiveEditPage {
         CreateOrDestroyDraggableEvent.on(this.createOrDestroyDraggableListener);
 
         this.setDraggableVisibleEventListener = (event: SetDraggableVisibleEvent): void => {
+            if (isOwnedByNewUI('context-window-drag')) {
+                return;
+            }
 
             const idAttr = `drag-helper-${event.getType()}`;
             const dataAttr = `data-${ItemType.ATTRIBUTE_TYPE}="${event.getType()}"`;

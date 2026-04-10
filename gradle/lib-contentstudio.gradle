@@ -1,11 +1,11 @@
 // Cache expensive file system check
 def libContentStudioExists = providers.provider {
-    new File( "$rootDir/../app-contentstudio" ).exists()
+    new File( "$rootDir/../app-contentstudio2" ).exists()
 }
 
 def applyResourcesTaskDependencies()
 {
-    def libContentStudioBuild = gradle.includedBuild( 'app-contentstudio' )
+    def libContentStudioBuild = gradle.includedBuild( 'app-contentstudio2' )
     def libContentStudioDevJarTask = libContentStudioBuild.task( ':lib-contentstudio:devJar' )
     def libContentStudioBuildTask = libContentStudioBuild.task( ':lib-contentstudio:build' )
     def libContentStudioCleanTask = libContentStudioBuild.task( ':lib-contentstudio:clean' )

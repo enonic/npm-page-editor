@@ -42,6 +42,7 @@ import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/Component
 import {type LiveEditParams} from '@enonic/lib-contentstudio/page-editor/LiveEditParams';
 import {AddComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/AddComponentEvent';
 import {DragAndDrop} from './DragAndDrop';
+import {isOwnedByNewUI} from './editor/coexistence/ownership';
 
 export interface ElementDimensions {
     top: number;
@@ -393,6 +394,11 @@ export abstract class ItemView
     }
 
     highlight() {
+        if (isOwnedByNewUI('highlighter')) {
+            Highlighter.get().hide();
+            return;
+        }
+
         if (PageViewController.get().isHighlightingDisabled() || this.isViewInsideSelectedContainer()) {
             return;
         }
@@ -404,6 +410,11 @@ export abstract class ItemView
     }
 
     unhighlight() {
+        if (isOwnedByNewUI('highlighter')) {
+            Highlighter.get().hide();
+            return;
+        }
+
         Highlighter.get().hide();
         if (this.isSelected()) {
             // Restore selected highlight after leaving
@@ -412,6 +423,11 @@ export abstract class ItemView
     }
 
     highlightSelected() {
+        if (isOwnedByNewUI('selection')) {
+            SelectedHighlighter.get().hide();
+            return;
+        }
+
         if (PageViewController.get().isHighlightingDisabled()) {
             return;
         }
@@ -420,15 +436,30 @@ export abstract class ItemView
     }
 
     unhighlightSelected() {
+        if (isOwnedByNewUI('selection')) {
+            SelectedHighlighter.get().hide();
+            return;
+        }
+
         SelectedHighlighter.get().unselect();
     }
 
     shade() {
+        if (isOwnedByNewUI('shader')) {
+            Shader.get().hide();
+            return;
+        }
+
         Shader.get().shade(this);
         this.shaded = true;
     }
 
     unshade() {
+        if (isOwnedByNewUI('shader')) {
+            Shader.get().hide();
+            return;
+        }
+
         Shader.get().hide();
         this.shaded = false;
     }
@@ -609,10 +640,29 @@ export abstract class ItemView
     }
 
     protected togglePlaceholder(): void {
+        if (isOwnedByNewUI('placeholder')) {
+            this.removePlaceholder();
+            this.stripLegacyPlaceholderNodes();
+            return;
+        }
+
         if (this.isPlaceholderNeeded()) {
             this.addPlaceholder();
         } else {
             this.removePlaceholder();
+        }
+    }
+
+    private stripLegacyPlaceholderNodes(): void {
+        // ! New UI owns placeholders, but server-rendered or already-attached
+        // ! legacy placeholder nodes won't match `this.placeholder` and would
+        // ! survive `removePlaceholder()`. Sweep them by class instead.
+        const cls = ItemViewPlaceholder.PAGE_EDITOR_PREFIX + 'item-placeholder';
+        const root = this.getHTMLElement();
+        for (const child of Array.from(root.children)) {
+            if (child.classList.contains(cls)) {
+                root.removeChild(child);
+            }
         }
     }
 
@@ -643,6 +693,11 @@ export abstract class ItemView
     abstract getPath(): ComponentPath;
 
     handleClick(event: MouseEvent) {
+        if (isOwnedByNewUI('click-selection')) {
+            event.stopPropagation();
+            return;
+        }
+
         event.stopPropagation();
 
         if (event instanceof PointerEvent && event.pointerType === 'touch' || DragAndDrop.get().isNewlyDropped()) {
@@ -699,6 +754,11 @@ export abstract class ItemView
     }
 
     handleShaderClick(event: MouseEvent) {
+        if (isOwnedByNewUI('shader')) {
+            event.stopPropagation();
+            return;
+        }
+
         event.stopPropagation();
 
         if (PageViewController.get().isLocked()) {
@@ -736,6 +796,11 @@ export abstract class ItemView
     }
 
     showContextMenu(clickPosition?: ClickPosition, menuPosition?: ItemViewContextMenuPosition) {
+        if (isOwnedByNewUI('selection') || isOwnedByNewUI('shader')) {
+            this.hideContextMenu();
+            return;
+        }
+
         if (PageViewController.get().isContextMenuDisabled()) {
             return;
         }
