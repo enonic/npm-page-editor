@@ -25,6 +25,17 @@ import {AddComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/out
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
 import {MoveComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/MoveComponentEvent';
 import {Body} from '@enonic/lib-admin-ui/dom/Body';
+import {isOwnedByNewUI} from './editor/coexistence/ownership';
+
+export interface LegacyDragState {
+    itemType: string;
+    itemLabel: string;
+    sourcePath: string | undefined;
+    targetPath: string | undefined;
+    dropAllowed: boolean;
+    message: string | undefined;
+    placeholderElement: HTMLElement | undefined;
+}
 
 export class DragAndDrop {
 
@@ -65,6 +76,17 @@ export class DragAndDrop {
     private dragStoppedListeners: ((componentView: ComponentView) => void)[] = [];
     private droppedListeners: ((componentView: ComponentView, regionView: RegionView) => void)[] = [];
     private canceledListeners: ((componentView: ComponentView) => void)[] = [];
+    private stateListeners: ((state: LegacyDragState | undefined) => void)[] = [];
+
+    private activeRegionView: RegionView | null = null;
+
+    private activePlaceholderElement: HTMLElement | null = null;
+
+    private dropAllowed: boolean = false;
+
+    private dropMessage: string | null = null;
+
+    private legacySortablesEnabled: boolean = true;
 
     public static init(pageView: PageView) {
         DragAndDrop.instance = new DragAndDrop(pageView);
@@ -87,14 +109,42 @@ export class DragAndDrop {
         return this.dragging;
     }
 
+    getState(): LegacyDragState | undefined {
+        return this.createState();
+    }
+
     createSortableLayout(component: ItemView) {
+        if (!this.legacySortablesEnabled) {
+            return;
+        }
+
         $(component.getHTMLElement()).find(this.REGION_SELECTOR).each((_index, element) => {
             this.createSortable($(element));
         });
     }
 
     refreshSortable(): void {
+        if (!this.legacySortablesEnabled) {
+            return;
+        }
+
         $(this.REGION_SELECTOR).sortable('refresh');
+    }
+
+    disableLegacySortables(): void {
+        if (!this.legacySortablesEnabled) {
+            return;
+        }
+
+        $(this.REGION_SELECTOR).each((_index, element) => {
+            const sortable = $(element);
+
+            if (sortable.data('ui-sortable')) {
+                sortable.sortable('destroy');
+            }
+        });
+
+        this.legacySortablesEnabled = false;
     }
 
     private processMouseOverRegionView(regionView: RegionView) {
@@ -117,6 +167,9 @@ export class DragAndDrop {
     }
 
     createSortable(selector: JQuery<HTMLElement>): void {
+        if (!this.legacySortablesEnabled) {
+            return;
+        }
 
         $(selector).sortable({
             // append helper to pageView so it doesn't jump when sortable jumps
@@ -130,7 +183,7 @@ export class DragAndDrop {
             distance: 20,
             delay: 50,
             tolerance: 'intersect',
-            cursor: 'move',
+            cursor: 'grabbing',
             cursorAt: DragHelper.CURSOR_AT,
             scrollSensitivity: this.calculateScrollSensitivity(),
             placeholder: this.PLACEHOLDER_CONTAINER_SELECTOR,
@@ -158,7 +211,7 @@ export class DragAndDrop {
         jq.draggable({
             connectToSortable: this.REGION_SELECTOR,
             addClasses: false,
-            cursor: 'move',
+            cursor: 'grabbing',
             appendTo: 'body',
             cursorAt: DragHelper.CURSOR_AT,
             helper: (_event, _ui) => DragHelper.get().getHTMLElement(),
@@ -240,12 +293,17 @@ export class DragAndDrop {
 
         // Set it as html first time only
         // update the singleton after
-        ui.placeholder.append(placeholder.setItemType(itemType).getHTMLElement());
-        ui.helper.show();
+        if (isOwnedByNewUI('drag-drop')) {
+            ui.placeholder.empty();
+            ui.helper.hide();
+        } else {
+            ui.placeholder.append(placeholder.setItemType(itemType).getHTMLElement());
+            ui.helper.show();
+        }
 
         this.processMouseOverRegionView(regionView);
 
-        this.updateHelperAndPlaceholder(regionView);
+        this.updateHelperAndPlaceholder(regionView, true, ui.placeholder.get(0) as HTMLElement | undefined);
 
         this.updateScrollSensitivity(event.target);
 
@@ -377,7 +435,7 @@ export class DragAndDrop {
 
         this.processMouseOverRegionView(regionView);
 
-        this.updateHelperAndPlaceholder(regionView);
+        this.updateHelperAndPlaceholder(regionView, true, ui.placeholder.get(0) as HTMLElement | undefined);
     }
 
     /*
@@ -484,6 +542,7 @@ export class DragAndDrop {
         this.dragStartedListeners.forEach((curr) => {
             curr(componentView);
         });
+        this.emitState();
 
         new ComponentViewDragStartedEvent(componentView?.getPath()).fire();
     }
@@ -504,6 +563,8 @@ export class DragAndDrop {
         }
 
         this.dragging = false;
+        this.resetState();
+        this.emitState();
         DragHelper.get().reset();
         this.dragStoppedListeners.forEach((curr) => {
             curr(componentView);
@@ -553,22 +614,47 @@ export class DragAndDrop {
         new ComponentViewDragCanceledEvent(componentView).fire();
     }
 
-    private updateHelperAndPlaceholder(regionView: RegionView, enter: boolean = true) {
+    onStateChanged(listener: (state: LegacyDragState | undefined) => void) {
+        this.stateListeners.push(listener);
+    }
+
+    unStateChanged(listener: (state: LegacyDragState | undefined) => void) {
+        this.stateListeners = this.stateListeners.filter((current) => {
+            return current !== listener;
+        });
+    }
+
+    private updateHelperAndPlaceholder(
+        regionView: RegionView,
+        enter: boolean = true,
+        placeholderElement?: HTMLElement,
+    ) {
+        const itemLabel = this.draggedComponentView
+            ? this.draggedComponentView.getName()
+            : StringHelper.capitalize(i18n('field.' + this.getItemType().getShortName()));
         const helper = DragHelper.get();
         const placeholder = DragPlaceholder.get().setRegionView(enter ? regionView : null);
+        const nestedLayout = enter && this.isDraggingLayoutOverLayout(regionView, this.getItemType());
 
-        helper.setItemName(this.draggedComponentView ? this.draggedComponentView.getName() : StringHelper.capitalize(
-            i18n('field.' + this.getItemType().getShortName())));
+        this.activeRegionView = enter ? regionView : null;
+        this.activePlaceholderElement = enter ? placeholderElement || null : null;
+        this.dropAllowed = enter && !nestedLayout;
+        this.dropMessage = nestedLayout ? i18n('notify.nestedLayouts') : null;
+        helper.setItemName(itemLabel);
+        helper.setDropAllowed(this.dropAllowed);
 
-        if (!enter) {
-            helper.setDropAllowed(false);
-        } else if (this.isDraggingLayoutOverLayout(regionView, this.getItemType())) {
-            helper.setDropAllowed(false);
-            placeholder.setText(i18n('notify.nestedLayouts'));
-            placeholder.setDropAllowed(false);
-        } else {
-            helper.setDropAllowed(true);
+        if (!isOwnedByNewUI('drag-drop')) {
+            if (!enter) {
+                placeholder.setDropAllowed(false);
+            } else if (nestedLayout) {
+                placeholder.setText(i18n('notify.nestedLayouts'));
+                placeholder.setDropAllowed(false);
+            } else {
+                placeholder.setDropAllowed(true);
+            }
         }
+
+        this.emitState();
     }
 
     private getItemType(): ItemType {
@@ -633,6 +719,38 @@ export class DragAndDrop {
         let scrollSensitivity = Math.round(height / 8);
         scrollSensitivity = Math.max(20, Math.min(scrollSensitivity, 100));
         return scrollSensitivity;
+    }
+
+    private createState(): LegacyDragState | undefined {
+        if (!this.dragging) {
+            return undefined;
+        }
+
+        const itemType = this.getItemType();
+
+        return {
+            itemType: itemType.getShortName(),
+            itemLabel: this.draggedComponentView
+                ? this.draggedComponentView.getName()
+                : StringHelper.capitalize(i18n('field.' + itemType.getShortName())),
+            sourcePath: this.draggedComponentView?.getPath()?.toString(),
+            targetPath: this.activeRegionView?.getPath().toString(),
+            dropAllowed: this.dropAllowed,
+            message: this.dropMessage || undefined,
+            placeholderElement: this.activePlaceholderElement || undefined,
+        };
+    }
+
+    private emitState(): void {
+        const state = this.createState();
+        this.stateListeners.forEach((listener) => listener(state));
+    }
+
+    private resetState(): void {
+        this.activeRegionView = null;
+        this.activePlaceholderElement = null;
+        this.dropAllowed = false;
+        this.dropMessage = null;
     }
 
 }

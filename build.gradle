@@ -51,7 +51,7 @@ app {
     vendorUrl = 'https://enonic.com'
     systemVersion = "${xpVersion}"
     devSourcePaths += file( "$rootDir/../lib-admin-ui/src/main/resources" )
-    devSourcePaths += file( "$rootDir/../app-contentstudio/modules/lib/src/main/resources" )
+    devSourcePaths += file( "$rootDir/../app-contentstudio2/modules/lib/src/main/resources" )
 }
 
 dependencies {

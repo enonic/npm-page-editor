@@ -3,7 +3,7 @@ rootProject.name = projectName
 if ( hasProperty( 'env' ) )
 {
     addBuild( '../lib-admin-ui' )
-    addBuild( '../app-contentstudio' )
+    addBuild( '../app-contentstudio2' )
 }
 
 def addBuild( name )

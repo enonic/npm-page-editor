@@ -55,6 +55,7 @@ import {EditorEvents, type EditorEvent} from './event/EditorEvent';
 import {RenderingMode} from '@enonic/lib-contentstudio/app/rendering/RenderingMode';
 import {UriHelper} from '@enonic/lib-admin-ui/util/UriHelper';
 import {ContentPreviewPathChangedEvent} from '@enonic/lib-contentstudio/app/view/ContentPreviewPathChangedEvent';
+import {isOwnedByNewUI} from './editor/coexistence/ownership';
 
 // ============================================================================
 // Event Handlers
@@ -125,6 +126,10 @@ function stopBrowserShortcuts(event: JQuery.TriggeredEvent): void {
 
 function createDocumentKeyListener(): (event: JQuery.TriggeredEvent) => void {
     return (event: JQuery.TriggeredEvent) => {
+        if (isOwnedByNewUI('keyboard')) {
+            return;
+        }
+
         if (shouldBubbleEvent(event)) {
             stopBrowserShortcuts(event);
 

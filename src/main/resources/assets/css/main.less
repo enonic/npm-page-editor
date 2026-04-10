@@ -28,3 +28,10 @@
 @import "partials/page-view";
 @import "drag-helper";
 
+body.pe-overlay-active {
+  svg.@{_CLS_PREFIX}highlighter,
+  .@{_CLS_PREFIX}shader,
+  .item-view-context-menu {
+    display: none !important;
+  }
+}
