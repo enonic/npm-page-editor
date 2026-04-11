@@ -60,6 +60,7 @@ import {ProjectContext} from '@enonic/lib-contentstudio/app/project/ProjectConte
 import {SessionStorageHelper} from '@enonic/lib-contentstudio/app/util/SessionStorageHelper';
 import {EditorEvent, EditorEvents} from './event/EditorEvent';
 import type {ContentSummaryAndCompareStatus} from '@enonic/lib-contentstudio/app/content/ContentSummaryAndCompareStatus';
+import {initNewUi} from '../new-ui/init';
 
 
 export class LiveEditPage {
@@ -115,6 +116,8 @@ export class LiveEditPage {
     private static debug: boolean = false;
 
     private content: ContentSummaryAndCompareStatus;
+
+    private destroyNewUi?: () => void;
 
     constructor() {
         this.skipConfirmationListener = (event: SkipLiveEditReloadConfirmationEvent) => {
@@ -175,6 +178,7 @@ export class LiveEditPage {
         Tooltip.allowMultipleInstances(false);
 
         this.registerGlobalListeners();
+        this.destroyNewUi = initNewUi(this.pageView);
 
         this.restoreSelection(event.getParams().contentId);
 
@@ -210,6 +214,8 @@ export class LiveEditPage {
         InitializeLiveEditEvent.un(this.initializeListener, win);
 
         this.unregisterGlobalListeners();
+        this.destroyNewUi?.();
+        this.destroyNewUi = undefined;
     }
 
     private registerGlobalListeners(): void {

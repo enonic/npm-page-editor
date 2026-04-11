@@ -28,7 +28,8 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "jsx": "preserve"
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact"
   },
   "include": [
     "./src/main/resources/assets/js/types.d.ts",
@@ -41,6 +42,9 @@
     "dist",
     "build",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "src/main/resources/assets/js/test/**/*"
   ]
 }
