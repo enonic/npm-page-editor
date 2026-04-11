@@ -33,6 +33,10 @@ export function selectLegacyItemView(path: string): void {
     }
 }
 
+export function scrollLegacyItemViewIntoView(path: string): void {
+    resolveItemView(path)?.scrollComponentIntoView();
+}
+
 export function deselectLegacyItemView(path?: string): void {
     if (path) {
         resolveItemView(path)?.deselect(true);

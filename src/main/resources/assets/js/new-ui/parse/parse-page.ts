@@ -4,15 +4,15 @@ import {COMPONENT_SELECTOR, ERROR_ATTR, REGION_SELECTOR} from '../constants';
 import type {ComponentRecord, ComponentRecordType} from '../types';
 import {isNodeEmpty} from './emptiness';
 
-function isRegionElement(element: Element): element is HTMLElement {
+export function isRegionElement(element: Element): element is HTMLElement {
     return element instanceof HTMLElement && element.matches(REGION_SELECTOR);
 }
 
-function isComponentElement(element: Element): element is HTMLElement {
+export function isComponentElement(element: Element): element is HTMLElement {
     return element instanceof HTMLElement && element.matches(COMPONENT_SELECTOR);
 }
 
-function collectTrackedDescendants(
+export function collectTrackedDescendants(
     container: HTMLElement,
     predicate: (element: Element) => boolean,
 ): HTMLElement[] {
@@ -74,10 +74,10 @@ function makeRecord(
     };
 }
 
-function parseComponent(
+export function parseComponentSubtree(
     element: HTMLElement,
     parentPath: ComponentPath,
-    index: number,
+    index: string | number,
     records: Record<string, ComponentRecord>,
 ): ComponentRecord {
     const type = element.dataset.portalComponentType as ComponentRecordType;
@@ -88,7 +88,7 @@ function parseComponent(
     if (type === 'layout') {
         const regions = collectTrackedDescendants(element, isRegionElement);
         regions.forEach((regionEl) => {
-            const regionRecord = parseRegion(regionEl, path, records);
+            const regionRecord = parseRegionSubtree(regionEl, path, records);
             children.push(regionRecord.path.toString());
         });
     }
@@ -99,7 +99,7 @@ function parseComponent(
     return record;
 }
 
-function parseRegion(
+export function parseRegionSubtree(
     element: HTMLElement,
     parentPath: ComponentPath,
     records: Record<string, ComponentRecord>,
@@ -111,7 +111,7 @@ function parseRegion(
     const children: string[] = [];
 
     componentElements.forEach((componentEl, index) => {
-        const componentRecord = parseComponent(componentEl, path, index, records);
+        const componentRecord = parseComponentSubtree(componentEl, path, index, records);
         children.push(componentRecord.path.toString());
     });
 
@@ -129,7 +129,7 @@ export function parsePage(body: HTMLElement): Record<string, ComponentRecord> {
     const children: string[] = [];
 
     rootRegions.forEach((regionEl) => {
-        const regionRecord = parseRegion(regionEl, rootPath, records);
+        const regionRecord = parseRegionSubtree(regionEl, rootPath, records);
         children.push(regionRecord.path.toString());
     });
 

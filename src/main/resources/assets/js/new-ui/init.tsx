@@ -7,6 +7,7 @@ import {initGeometryTriggers} from './geometry/scheduler';
 import {initHoverDetection} from './interaction/hover-handler';
 import {initKeyboardHandling} from './interaction/keyboard-handler';
 import {initSelectionDetection} from './interaction/selection-handler';
+import {restoreStoredSelection, syncSelectionStorage} from './persistence/selection-storage';
 import {OverlayApp} from './components/OverlayApp';
 import {createOverlayHost} from './rendering/overlay-host';
 import {setLocked, setModifyAllowed, setSelectedPath} from './stores/registry';
@@ -56,13 +57,16 @@ export function initNewUi(pageView: PageView): () => void {
     const stopKeyboard = initKeyboardHandling();
     const stopBus = registerBusHandlers(pageView);
     const stopObserver = startDomObserver(pageView);
+    const stopSelectionStorage = syncSelectionStorage(pageView.getLiveEditParams().contentId);
 
     reconcilePage(pageView);
     setLocked(pageView.isLocked());
     setModifyAllowed(pageView.getLiveEditParams().modifyPermissions !== false);
     setSelectedPath(pageView.getSelectedView()?.getPath().toString());
+    restoreStoredSelection(pageView.getLiveEditParams().contentId);
 
     return () => {
+        stopSelectionStorage();
         stopObserver();
         stopBus();
         stopKeyboard();

@@ -1,6 +1,8 @@
 import type {PageView} from '../../page-editor/PageView';
+import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
 import {markDirty} from '../geometry/scheduler';
 import {parsePage} from '../parse/parse-page';
+import {parseSubtree} from '../parse/parse-subtree';
 import {rebuildIndex} from '../stores/element-index';
 import {
     $hoveredPath,
@@ -18,6 +20,7 @@ import {ComponentPlaceholder} from '../components/placeholders/ComponentPlacehol
 import {RegionPlaceholder} from '../components/placeholders/RegionPlaceholder';
 
 const placeholderIslands = new Map<string, PlaceholderIsland>();
+const ROOT_PATH = ComponentPath.root().toString();
 
 function shouldShowPlaceholder(record: ComponentRecord): boolean {
     return record.type !== 'page' && (record.empty || record.error);
@@ -31,6 +34,10 @@ function destroyPlaceholder(path: string): void {
 
     island.unmount();
     placeholderIslands.delete(path);
+}
+
+function isInSubtree(path: string, rootPath: string): boolean {
+    return path === rootPath || path.startsWith(`${rootPath}/`);
 }
 
 function syncPlaceholders(records: Record<string, ComponentRecord>): void {
@@ -65,10 +72,7 @@ function syncPlaceholders(records: Record<string, ComponentRecord>): void {
     });
 }
 
-export function reconcilePage(pageView: PageView): void {
-    const records = parsePage(pageView.getHTMLElement());
-    const current = getRegistry();
-
+function finalizeReconcile(current: Record<string, ComponentRecord>, records: Record<string, ComponentRecord>): void {
     Object.entries(records).forEach(([path, record]) => {
         const previous = current[path];
         if (previous?.loading) {
@@ -90,6 +94,39 @@ export function reconcilePage(pageView: PageView): void {
     }
 
     markDirty();
+}
+
+export function reconcilePage(pageView: PageView): void {
+    const records = parsePage(pageView.getHTMLElement());
+    const current = getRegistry();
+    finalizeReconcile(current, records);
+}
+
+export function reconcileSubtree(pageView: PageView, rootPath: string | undefined): void {
+    if (!rootPath || rootPath === ROOT_PATH) {
+        reconcilePage(pageView);
+        return;
+    }
+
+    const current = getRegistry();
+    const rootRecord = current[rootPath];
+    if (!rootRecord?.element || !rootRecord.element.isConnected) {
+        reconcilePage(pageView);
+        return;
+    }
+
+    const freshRecords = parseSubtree(rootRecord.element, rootRecord.path);
+    const nextRecords: Record<string, ComponentRecord> = {};
+
+    Object.entries(current).forEach(([path, record]) => {
+        if (!isInSubtree(path, rootPath)) {
+            nextRecords[path] = record;
+        }
+    });
+
+    Object.assign(nextRecords, freshRecords);
+
+    finalizeReconcile(current, nextRecords);
 }
 
 export function markLoading(path: string, loading: boolean): void {

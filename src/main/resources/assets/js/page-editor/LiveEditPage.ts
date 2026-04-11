@@ -179,8 +179,9 @@ export class LiveEditPage {
 
         this.registerGlobalListeners();
         this.destroyNewUi = initNewUi(this.pageView);
-
-        this.restoreSelection(event.getParams().contentId);
+        if (event.getParams().isFragment) {
+            this.restoreSelection(event.getParams().contentId);
+        }
 
         if (LiveEditPage.debug) {
             console.debug('LiveEditPage: done live edit initializing in ' + (Date.now() - startTime) + 'ms');

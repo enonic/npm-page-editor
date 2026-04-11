@@ -14,13 +14,25 @@ import {SetComponentStateEvent} from '@enonic/lib-contentstudio/page-editor/even
 import {SetModifyAllowedEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetModifyAllowedEvent';
 import {SetPageLockStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetPageLockStateEvent';
 import {UpdateTextComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/UpdateTextComponentViewEvent';
+import type {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
 import type {PageView} from '../../page-editor/PageView';
 import {closeContextMenu, setLocked, setModifyAllowed, setSelectedPath} from '../stores/registry';
-import {markLoading, reconcilePage, remapInteractionPath} from './reconcile';
+import {markLoading, reconcilePage, reconcileSubtree, remapInteractionPath} from './reconcile';
 
 export function registerBusHandlers(pageView: PageView): () => void {
     const cleanup: Array<() => void> = [];
     const reconcile = () => reconcilePage(pageView);
+    const reconcilePath = (path: ComponentPath | string | undefined) => {
+        if (!path) {
+            reconcile();
+            return;
+        }
+
+        reconcileSubtree(pageView, typeof path === 'string' ? path : path.toString());
+    };
+    const reconcileParentPath = (path: ComponentPath | undefined) => {
+        reconcilePath(path?.getParentPath());
+    };
 
     const onSelect = (event: SelectComponentViewEvent) => {
         const path = event.getPath();
@@ -40,17 +52,26 @@ export function registerBusHandlers(pageView: PageView): () => void {
     DeselectComponentViewEvent.on(onDeselect);
     cleanup.push(() => DeselectComponentViewEvent.un(onDeselect));
 
-    const onAdd = (_event: AddComponentViewEvent) => reconcile();
+    const onAdd = (event: AddComponentViewEvent) => reconcileParentPath(event.getComponentPath());
     AddComponentViewEvent.on(onAdd);
     cleanup.push(() => AddComponentViewEvent.un(onAdd));
 
-    const onRemove = (_event: RemoveComponentViewEvent) => reconcile();
+    const onRemove = (event: RemoveComponentViewEvent) => reconcileParentPath(event.getComponentPath());
     RemoveComponentViewEvent.on(onRemove);
     cleanup.push(() => RemoveComponentViewEvent.un(onRemove));
 
     const onMove = (event: MoveComponentViewEvent) => {
         remapInteractionPath(event.getFrom().toString(), event.getTo().toString());
-        reconcile();
+
+        const fromParent = event.getFrom().getParentPath()?.toString();
+        const toParent = event.getTo().getParentPath()?.toString();
+        if (!fromParent || fromParent === toParent) {
+            reconcilePath(fromParent);
+            return;
+        }
+
+        reconcilePath(fromParent);
+        reconcilePath(toParent);
     };
     MoveComponentViewEvent.on(onMove);
     cleanup.push(() => MoveComponentViewEvent.un(onMove));
@@ -63,16 +84,16 @@ export function registerBusHandlers(pageView: PageView): () => void {
 
     const onLoaded = (event: ComponentLoadedEvent) => {
         markLoading(event.getPath().toString(), false);
-        reconcile();
+        reconcilePath(event.getPath());
     };
     ComponentLoadedEvent.on(onLoaded);
     cleanup.push(() => ComponentLoadedEvent.un(onLoaded));
 
-    const onDuplicate = (_event: DuplicateComponentViewEvent) => reconcile();
+    const onDuplicate = (event: DuplicateComponentViewEvent) => reconcileParentPath(event.getComponentPath());
     DuplicateComponentViewEvent.on(onDuplicate);
     cleanup.push(() => DuplicateComponentViewEvent.un(onDuplicate));
 
-    const onReset = (_event: ResetComponentViewEvent) => reconcile();
+    const onReset = (event: ResetComponentViewEvent) => reconcilePath(event.getComponentPath());
     ResetComponentViewEvent.on(onReset);
     cleanup.push(() => ResetComponentViewEvent.un(onReset));
 
@@ -100,7 +121,7 @@ export function registerBusHandlers(pageView: PageView): () => void {
     cleanup.push(() => PageStateEvent.un(onPageState));
 
     const onTextUpdate = (_event: UpdateTextComponentViewEvent) => {
-        window.queueMicrotask(reconcile);
+        window.queueMicrotask(() => reconcilePath(_event.getComponentPath()));
     };
     UpdateTextComponentViewEvent.on(onTextUpdate);
     cleanup.push(() => UpdateTextComponentViewEvent.un(onTextUpdate));

@@ -917,12 +917,12 @@ Using `capture: true` ensures the editor intercepts clicks before customer page 
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| **Phase 0: Runtime Primitives** | Done | `new-ui/` runtime bootstrapped in the live editor: shared overlay host, placeholder islands, shared style injection, path registry, DOM parsing, geometry scheduler, bus adapter wiring, reconciliation, and mutation-observer safety net are all active on this branch. |
+| **Phase 0: Runtime Primitives** | Done | `new-ui/` runtime bootstrapped in the live editor: shared overlay host, placeholder islands, shared style injection, path registry, DOM parsing, geometry scheduler, bus adapter wiring, path-scoped subtree reconciliation, and mutation-observer safety net are all active on this branch. |
 | **Phase 1: In-Flow Placeholders** | Done | Empty region and non-page component placeholders now render through per-node shadow islands, including error-state cards. The legacy placeholder DOM is suppressed for surfaces owned by the new runtime. |
 | **Phase 2: Overlay Surfaces** | Done | Hover highlighter, selection crosshair, shader, and context menu now render inside the shared overlay shadow root, with legacy overlay chrome suppressed via `body.pe-overlay-active`. |
 | **Phase 3: Interaction Systems** | Done | Hover detection, click selection, deselection, right-click context menu, keyboard forwarding, and bus-driven reconciliation are owned by the new runtime for page mode. |
 | **Phase 4: Drag and Drop** | Deferred | Still intentionally left in the legacy implementation, exactly as scoped below. |
-| **Phase 5: Text Editing & Advanced Features** | Deferred | Still intentionally left for a follow-up design and implementation pass, exactly as scoped below. |
+| **Phase 5: Text Editing & Advanced Features** | Deferred | Still mostly deferred for a follow-up design and implementation pass. Session-storage selection persistence is now implemented on this branch; text editing, page placeholder, and fragment mode remain outstanding. |
 
 ### Phase 0: Runtime Primitives
 
@@ -1499,14 +1499,14 @@ This stays in legacy code until Phases 1-3 are proven stable. When ready, the re
 
 ### Phase 5: Text Editing & Advanced Features (Future)
 
-**Explicitly out of scope for Phases 0-3.** These are active runtime features today but require dedicated design work that should not block the core migration path.
+**Mostly out of scope for Phases 0-3.** These features either required dedicated design work or were intentionally postponed so they would not block the core migration path.
 
 | Feature | Why Deferred | Dependency |
 |---------|-------------|------------|
 | **Text editing** | Inline editing requires integration with a rich-text editor (currently CKEditor via legacy). Double-click detection, cursor save/restore, and `textMode` flag suppress region highlighting. Needs its own design pass. | Phase 3 (selection) must be stable first |
 | **Page placeholder** | Carries async behavior: `GetContentTypeByNameRequest` + `PageDescriptorDropdown` via legacy `q` promise. Requires migrating to `async/await` and designing a Preact async component or data-fetching hook. | Phase 1 (simple placeholders) must be stable first |
 | **Fragment mode** | Fragments have a fundamentally different DOM structure (no regions, single root component). `parsePage` needs a conditional branch, context menu actions change, and drag validation differs. | Phase 0 (parse) works for pages first |
-| **Session storage persistence** | Saves/restores selected component path across page reloads via `SessionStorageHelper`. Minor feature, easy to add once Phase 3 selection is stable. | Phase 3 (selection) |
+| **Session storage persistence** | Implemented on this branch. The new runtime now syncs `$selectedPath` to `SessionStorageHelper` and restores it during boot so selection survives live-editor reloads. | Done |
 
 Each of these should get its own design section added to this document when ready for implementation. They do not affect the architectural decisions for Phases 0-3.
 
@@ -1516,7 +1516,7 @@ Each of these should get its own design section added to this document when read
 
 ### Current Coverage On This Branch
 
-- Unit tests cover DOM parsing, empty-state detection, placeholder/overlay shadow mounting, reconciliation, hover handling, click selection, context-menu opening, and keyboard forwarding.
+- Unit tests cover DOM parsing, subtree parsing, empty-state detection, placeholder/overlay shadow mounting, reconciliation, selection persistence, hover handling, click selection, context-menu opening, and keyboard forwarding.
 - Storybook now includes runtime stories for the actual migrated surfaces:
   - `InFlowPlaceholderInFlex`
   - `PlaceholderStyleIsolation`
