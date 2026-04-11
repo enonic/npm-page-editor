@@ -57,6 +57,20 @@ describe('selection storage persistence', () => {
         stop();
     });
 
+    it('allows fragment root selections to persist when explicitly enabled', () => {
+        const stop = syncSelectionStorage('content-id', true);
+
+        setSelectedPath(ComponentPath.root().toString());
+
+        expect(persistenceMocks.updateSelectedPathInStorage).toHaveBeenCalledWith(
+            'content-id',
+            expect.objectContaining({toString: expect.any(Function)}),
+        );
+        expect(persistenceMocks.updateSelectedPathInStorage.mock.calls[0][1].toString()).toBe('/');
+
+        stop();
+    });
+
     it('restores an existing stored selection into both the legacy item view and the new store', () => {
         persistenceMocks.getSelectedPathFromStorage.mockReturnValue(ComponentPath.fromString('/main/1'));
         persistenceMocks.resolveItemView.mockReturnValue({scrollComponentIntoView: vi.fn()});
@@ -77,5 +91,16 @@ describe('selection storage persistence', () => {
         expect(persistenceMocks.removeSelectedPathInStorage).toHaveBeenCalledWith('content-id');
         expect(persistenceMocks.selectLegacyItemView).not.toHaveBeenCalled();
         expect($selectedPath.get()).toBeUndefined();
+    });
+
+    it('restores fragment root selections when root persistence is enabled', () => {
+        persistenceMocks.getSelectedPathFromStorage.mockReturnValue(ComponentPath.root());
+        persistenceMocks.resolveItemView.mockReturnValue({scrollComponentIntoView: vi.fn()});
+
+        restoreStoredSelection('content-id', true);
+
+        expect(persistenceMocks.selectLegacyItemView).toHaveBeenCalledWith('/');
+        expect(persistenceMocks.scrollLegacyItemViewIntoView).toHaveBeenCalledWith('/');
+        expect($selectedPath.get()).toBe('/');
     });
 });

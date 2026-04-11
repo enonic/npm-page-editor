@@ -3,6 +3,7 @@ import {IframeEventBus} from '@enonic/lib-admin-ui/event/IframeEventBus';
 import {Store} from '@enonic/lib-admin-ui/store/Store';
 import {KEY_BINDINGS_KEY} from '@enonic/lib-admin-ui/ui/KeyBindings';
 import type {KeyBinding} from '@enonic/lib-admin-ui/ui/KeyBinding';
+import {$dragState, $textEditing} from '../stores/registry';
 
 function shouldBubble(event: KeyboardEvent): boolean {
     return (event.metaKey || event.ctrlKey || event.altKey) && !!event.keyCode;
@@ -39,6 +40,10 @@ function hasMatchingBinding(keys: KeyBinding[], event: KeyboardEvent): boolean {
 
 export function initKeyboardHandling(): () => void {
     const handleKeyEvent = (event: KeyboardEvent) => {
+        if ($textEditing.get() || $dragState.get()) {
+            return;
+        }
+
         if (!shouldBubbleEvent(event)) {
             return;
         }

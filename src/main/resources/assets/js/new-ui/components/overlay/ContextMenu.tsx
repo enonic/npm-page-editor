@@ -1,7 +1,7 @@
 import type {JSX} from 'preact';
 import type {Action} from '@enonic/lib-admin-ui/ui/Action';
 import {useStoreValue} from '../../hooks/use-store-value';
-import {$contextMenuState, closeContextMenu} from '../../stores/registry';
+import {$contextMenuState, $dragState, closeContextMenu} from '../../stores/registry';
 import {getActionsForPath, getLockedPageActions} from '../../bridge';
 
 interface ActionListProps {
@@ -50,8 +50,9 @@ function ActionList({actions, level = 0}: ActionListProps) {
 
 export function ContextMenu(): JSX.Element | null {
     const state = useStoreValue($contextMenuState);
+    const dragState = useStoreValue($dragState);
 
-    if (!state) {
+    if (dragState || !state) {
         return null;
     }
 

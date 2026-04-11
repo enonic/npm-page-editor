@@ -41,6 +41,7 @@ vi.mock('@enonic/lib-admin-ui/store/Store', () => ({
     },
 }));
 
+import {setDragState, setTextEditing} from '../stores/registry';
 import {initKeyboardHandling} from './keyboard-handler';
 
 function createKeyboardEvent(type: string, options: {keyCode: number; ctrlKey?: boolean; altKey?: boolean}): KeyboardEvent {
@@ -63,6 +64,8 @@ describe('initKeyboardHandling', () => {
         keyboardMocks.fireEvent.mockReset();
         keyboardMocks.parentStore.has.mockReset();
         keyboardMocks.parentStore.get.mockReset();
+        setTextEditing(false);
+        setDragState(undefined);
     });
 
     it('forwards matching modifier shortcuts to the parent frame', () => {
@@ -105,6 +108,56 @@ describe('initKeyboardHandling', () => {
         const stop = initKeyboardHandling();
         document.dispatchEvent(createKeyboardEvent('keydown', {keyCode: 83, ctrlKey: true}));
 
+        expect(keyboardMocks.fireEvent).not.toHaveBeenCalled();
+
+        stop();
+    });
+
+    it('leaves keyboard shortcuts alone while text editing is active', () => {
+        keyboardMocks.parentStore.has.mockReturnValue(true);
+        keyboardMocks.parentStore.get.mockReturnValue({
+            getActiveBindings: () => [
+                {getCombination: () => 'mod+s'},
+            ],
+        });
+        setTextEditing(true);
+
+        const stop = initKeyboardHandling();
+        const event = createKeyboardEvent('keydown', {keyCode: 83, ctrlKey: true});
+
+        document.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(false);
+        expect(keyboardMocks.fireEvent).not.toHaveBeenCalled();
+
+        stop();
+    });
+
+    it('leaves keyboard shortcuts alone while drag feedback is active', () => {
+        keyboardMocks.parentStore.has.mockReturnValue(true);
+        keyboardMocks.parentStore.get.mockReturnValue({
+            getActiveBindings: () => [
+                {getCombination: () => 'mod+s'},
+            ],
+        });
+        setDragState({
+            itemType: 'part',
+            itemLabel: 'Hero',
+            sourcePath: '/main/0',
+            targetPath: '/main',
+            dropAllowed: true,
+            message: undefined,
+            placeholderElement: undefined,
+            x: 24,
+            y: 48,
+        });
+
+        const stop = initKeyboardHandling();
+        const event = createKeyboardEvent('keydown', {keyCode: 83, ctrlKey: true});
+
+        document.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(false);
         expect(keyboardMocks.fireEvent).not.toHaveBeenCalled();
 
         stop();

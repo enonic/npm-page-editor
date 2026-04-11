@@ -97,7 +97,9 @@ function finalizeReconcile(current: Record<string, ComponentRecord>, records: Re
 }
 
 export function reconcilePage(pageView: PageView): void {
-    const records = parsePage(pageView.getHTMLElement());
+    const records = parsePage(pageView.getHTMLElement(), {
+        isFragment: pageView.getLiveEditParams().isFragment,
+    });
     const current = getRegistry();
     finalizeReconcile(current, records);
 }
@@ -115,7 +117,9 @@ export function reconcileSubtree(pageView: PageView, rootPath: string | undefine
         return;
     }
 
-    const freshRecords = parseSubtree(rootRecord.element, rootRecord.path);
+    const freshRecords = parseSubtree(rootRecord.element, rootRecord.path, {
+        isFragment: pageView.getLiveEditParams().isFragment,
+    });
     const nextRecords: Record<string, ComponentRecord> = {};
 
     Object.entries(current).forEach(([path, record]) => {

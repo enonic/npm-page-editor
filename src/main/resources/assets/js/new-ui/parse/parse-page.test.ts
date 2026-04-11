@@ -57,4 +57,35 @@ describe('parsePage', () => {
             empty: false,
         });
     });
+
+    it('treats the fragment root component as the registry root path', () => {
+        document.body.innerHTML = `
+            <main>
+                <div class="wrapper">
+                    <section data-portal-component-type="layout">
+                        <div data-portal-region="content">
+                            <article data-portal-component-type="part"></article>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        `;
+
+        const records = parsePage(document.body, {isFragment: true});
+
+        expect(records[ComponentPath.root().toString()]).toMatchObject({
+            type: 'layout',
+            parentPath: undefined,
+            children: ['/content'],
+        });
+        expect(records['/content']).toMatchObject({
+            type: 'region',
+            parentPath: '/',
+            children: ['/content/0'],
+        });
+        expect(records['/content/0']).toMatchObject({
+            type: 'part',
+            parentPath: '/content',
+        });
+    });
 });

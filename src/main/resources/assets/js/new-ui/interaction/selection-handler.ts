@@ -1,9 +1,13 @@
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
+import {PageViewController} from '@enonic/lib-contentstudio/page-editor/PageViewController';
 import {DeselectComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/DeselectComponentEvent';
 import {SelectComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/SelectComponentEvent';
+import {DragAndDrop} from '../../page-editor/DragAndDrop';
 import {elementIndex} from '../stores/element-index';
 import {
+    $dragState,
     $selectedPath,
+    $textEditing,
     closeContextMenu,
     openContextMenu,
     setSelectedPath,
@@ -32,8 +36,33 @@ function fireSelect(path: string, x: number, y: number, rightClicked: boolean): 
     }).fire();
 }
 
+function shouldIgnoreSelectionEvent(event: MouseEvent): boolean {
+    if ($textEditing.get() || $dragState.get()) {
+        return true;
+    }
+
+    if (typeof PointerEvent !== 'undefined' && event instanceof PointerEvent && event.pointerType === 'touch') {
+        return true;
+    }
+
+    if (DragAndDrop.get().isNewlyDropped()) {
+        return true;
+    }
+
+    if (PageViewController.get().isNextClickDisabled()) {
+        PageViewController.get().setNextClickDisabled(false);
+        return true;
+    }
+
+    return false;
+}
+
 export function initSelectionDetection(): () => void {
     const handleClick = (event: MouseEvent) => {
+        if (shouldIgnoreSelectionEvent(event)) {
+            return;
+        }
+
         if (isOverlayChromeEvent(event)) {
             return;
         }
@@ -65,6 +94,10 @@ export function initSelectionDetection(): () => void {
     };
 
     const handleContextMenu = (event: MouseEvent) => {
+        if ($textEditing.get() || $dragState.get()) {
+            return;
+        }
+
         if (isOverlayChromeEvent(event)) {
             return;
         }

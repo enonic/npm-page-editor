@@ -8,6 +8,13 @@ import {destroyPlaceholders, reconcilePage, reconcileSubtree} from './reconcile'
 import {PLACEHOLDER_HOST_ATTR} from '../constants';
 import {getRegistry, setRegistry} from '../stores/registry';
 
+function createPageView(isFragment = false) {
+    return {
+        getHTMLElement: () => document.body,
+        getLiveEditParams: () => ({isFragment}),
+    };
+}
+
 describe('reconcilePage', () => {
     afterEach(() => {
         destroyPlaceholders();
@@ -23,11 +30,7 @@ describe('reconcilePage', () => {
             <section data-portal-region="aside"></section>
         `;
 
-        const pageView = {
-            getHTMLElement: () => document.body,
-        };
-
-        reconcilePage(pageView as never);
+        reconcilePage(createPageView() as never);
 
         expect(document.body.querySelectorAll(`[${PLACEHOLDER_HOST_ATTR}]`)).toHaveLength(2);
     });
@@ -40,9 +43,7 @@ describe('reconcilePage', () => {
             <section data-portal-region="aside"></section>
         `;
 
-        const pageView = {
-            getHTMLElement: () => document.body,
-        };
+        const pageView = createPageView();
 
         reconcilePage(pageView as never);
 
@@ -59,5 +60,22 @@ describe('reconcilePage', () => {
         expect(getRegistry()['/aside/0']).toMatchObject({
             type: 'part',
         });
+    });
+
+    it('reconciles fragment pages against the root component path', () => {
+        document.body.innerHTML = `
+            <div class="outer">
+                <article data-portal-component-type="text"></article>
+            </div>
+        `;
+
+        reconcilePage(createPageView(true) as never);
+
+        expect(getRegistry()['/']).toMatchObject({
+            type: 'text',
+            parentPath: undefined,
+            empty: true,
+        });
+        expect(document.body.querySelectorAll(`[${PLACEHOLDER_HOST_ATTR}]`)).toHaveLength(1);
     });
 });

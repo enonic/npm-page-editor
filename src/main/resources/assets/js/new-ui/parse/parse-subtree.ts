@@ -7,9 +7,17 @@ import {
     parseRegionSubtree,
 } from './parse-page';
 
-export function parseSubtree(rootElement: HTMLElement, rootPath: ComponentPath): Record<string, ComponentRecord> {
+interface ParseSubtreeOptions {
+    isFragment?: boolean;
+}
+
+export function parseSubtree(
+    rootElement: HTMLElement,
+    rootPath: ComponentPath,
+    options: ParseSubtreeOptions = {},
+): Record<string, ComponentRecord> {
     if (rootPath.isRoot()) {
-        return parsePage(rootElement.ownerDocument.body);
+        return parsePage(rootElement.ownerDocument.body, options);
     }
 
     const parentPath = rootPath.getParentPath();

@@ -14,6 +14,7 @@ import {rebuildIndex} from '../../src/main/resources/assets/js/new-ui/stores/ele
 import {
     closeContextMenu,
     openContextMenu,
+    setDragState,
     setHoveredPath,
     setLocked,
     setModifyAllowed,
@@ -47,6 +48,7 @@ function resetRuntimeState(): void {
     setHoveredPath(undefined);
     setLocked(false);
     setModifyAllowed(true);
+    setDragState(undefined);
     setRegistry({});
     setCurrentPageView(undefined);
 }
@@ -295,6 +297,138 @@ function OverlayCanvas({title, description, mode}: OverlayCanvasProps) {
     );
 }
 
+function DragCanvas() {
+    const frameRef = useRef<HTMLDivElement | null>(null);
+    const sourceRegionRef = useRef<HTMLElement | null>(null);
+    const sourceRef = useRef<HTMLElement | null>(null);
+    const targetRegionRef = useRef<HTMLElement | null>(null);
+    const placeholderRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (!frameRef.current || !sourceRegionRef.current || !sourceRef.current || !targetRegionRef.current || !placeholderRef.current) {
+            return undefined;
+        }
+
+        const overlay = createOverlayHost(<OverlayApp />);
+
+        setCurrentPageView({
+            getComponentViewByPath: () => ({
+                getContextMenuActions: () => createComponentActions(),
+            }),
+            getLockedMenuActions: () => [new Action('Page settings').setSortOrder(10)],
+        } as never);
+
+        const records = {
+            '/': createRecord('/', 'page', frameRef.current, undefined, ['/main', '/aside']),
+            '/main': createRecord('/main', 'region', sourceRegionRef.current, '/', ['/main/0']),
+            '/main/0': createRecord('/main/0', 'part', sourceRef.current, '/main', [], 'site:hero'),
+            '/aside': createRecord('/aside', 'region', targetRegionRef.current, '/', []),
+        };
+
+        setRegistry(records);
+        rebuildIndex(records);
+        setSelectedPath('/main/0');
+        setDragState({
+            itemType: 'part',
+            itemLabel: 'Hero banner',
+            sourcePath: '/main/0',
+            targetPath: '/aside',
+            dropAllowed: true,
+            message: undefined,
+            placeholderElement: placeholderRef.current,
+            x: 280,
+            y: 170,
+        });
+
+        const frame = window.requestAnimationFrame(() => {
+            markDirty();
+        });
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+            overlay.unmount();
+            resetRuntimeState();
+        };
+    }, []);
+
+    return (
+        <section style={{display: 'grid', gap: '16px'}}>
+            <header style={{display: 'grid', gap: '6px'}}>
+                <p style={{fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.7}}>
+                    Runtime drag story
+                </p>
+                <div>
+                    <h2 style={{margin: 0, fontSize: '24px'}}>Drag session feedback</h2>
+                    <p style={{margin: '6px 0 0', maxWidth: '72ch', opacity: 0.78}}>
+                        The migrated runtime renders a fixed drag preview, a region target highlighter, and a shadow-root drop placeholder while the legacy sortable engine still owns the physical move.
+                    </p>
+                </div>
+            </header>
+            <div
+                style={{
+                    border: '1px solid rgba(33, 52, 75, 0.14)',
+                    borderRadius: '24px',
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.96), rgba(241,246,250,0.98))',
+                    boxShadow: '0 24px 48px -28px rgba(15,23,42,0.28)',
+                    padding: '24px',
+                }}
+            >
+                <div
+                    ref={frameRef}
+                    style={{
+                        display: 'grid',
+                        gap: '20px',
+                        gridTemplateColumns: 'minmax(0, 1.1fr) minmax(260px, 0.8fr)',
+                        alignItems: 'start',
+                    }}
+                >
+                    <section
+                        ref={sourceRegionRef}
+                        data-portal-region='main'
+                        style={{display: 'grid', gap: '16px'}}
+                    >
+                        <article
+                            ref={sourceRef}
+                            data-portal-component-type='part'
+                            style={{
+                                minHeight: '180px',
+                                borderRadius: '24px',
+                                background: 'linear-gradient(140deg, rgba(66, 153, 225, 0.18), rgba(15, 23, 42, 0.04))',
+                                border: '1px solid rgba(66, 153, 225, 0.22)',
+                                padding: '24px',
+                            }}
+                        >
+                            <p style={{margin: 0, fontSize: '12px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.7}}>
+                                Drag source
+                            </p>
+                            <h3 style={{margin: '12px 0 8px', fontSize: '28px'}}>Hero banner</h3>
+                            <p style={{margin: 0, maxWidth: '48ch', opacity: 0.8}}>
+                                The source component keeps its DOM in light mode while the drag preview and target feedback render through the migrated runtime.
+                            </p>
+                        </article>
+                    </section>
+                    <aside
+                        ref={targetRegionRef}
+                        data-portal-region='aside'
+                        style={{
+                            minHeight: '260px',
+                            borderRadius: '24px',
+                            border: '1px dashed rgba(33, 52, 75, 0.2)',
+                            background: 'rgba(15,23,42,0.03)',
+                            padding: '20px',
+                        }}
+                    >
+                        <p style={{margin: 0, fontSize: '12px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.7}}>
+                            Drop target region
+                        </p>
+                        <div ref={placeholderRef} style={{marginTop: '18px'}} />
+                    </aside>
+                </div>
+            </div>
+        </section>
+    );
+}
+
 const meta = {
     title: 'Page Editor/Runtime Components',
     parameters: {
@@ -392,4 +526,8 @@ export const MultipleOverlays: Story = {
             mode='stacked-overlays'
         />
     ),
+};
+
+export const DragSessionFeedback: Story = {
+    render: () => <DragCanvas />,
 };

@@ -5,6 +5,12 @@ const selectionMocks = vi.hoisted(() => ({
     deselectLegacyItemView: vi.fn(),
 }));
 
+const selectionGuards = vi.hoisted(() => ({
+    isNewlyDropped: vi.fn(),
+    isNextClickDisabled: vi.fn(),
+    setNextClickDisabled: vi.fn(),
+}));
+
 vi.mock('@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/SelectComponentEvent', () => ({
     SelectComponentEvent: class {
         private readonly config: {path: {toString(): string}; rightClicked: boolean};
@@ -38,6 +44,23 @@ vi.mock('../bridge', () => ({
     deselectLegacyItemView: selectionMocks.deselectLegacyItemView,
 }));
 
+vi.mock('../../page-editor/DragAndDrop', () => ({
+    DragAndDrop: {
+        get: () => ({
+            isNewlyDropped: selectionGuards.isNewlyDropped,
+        }),
+    },
+}));
+
+vi.mock('@enonic/lib-contentstudio/page-editor/PageViewController', () => ({
+    PageViewController: {
+        get: () => ({
+            isNextClickDisabled: selectionGuards.isNextClickDisabled,
+            setNextClickDisabled: selectionGuards.setNextClickDisabled,
+        }),
+    },
+}));
+
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
 import type {ComponentRecord} from '../types';
 import {rebuildIndex} from '../stores/element-index';
@@ -45,8 +68,10 @@ import {
     $contextMenuState,
     $selectedPath,
     closeContextMenu,
+    setDragState,
     setRegistry,
     setSelectedPath,
+    setTextEditing,
 } from '../stores/registry';
 import {initSelectionDetection} from './selection-handler';
 
@@ -69,12 +94,19 @@ describe('initSelectionDetection', () => {
         document.body.innerHTML = '';
         setRegistry({});
         setSelectedPath(undefined);
+        setTextEditing(false);
+        setDragState(undefined);
         closeContextMenu();
 
         selectionMocks.selectEvents.length = 0;
         selectionMocks.deselectEvents.length = 0;
         selectionMocks.selectLegacyItemView.mockReset();
         selectionMocks.deselectLegacyItemView.mockReset();
+        selectionGuards.isNewlyDropped.mockReset();
+        selectionGuards.isNextClickDisabled.mockReset();
+        selectionGuards.setNextClickDisabled.mockReset();
+        selectionGuards.isNewlyDropped.mockReturnValue(false);
+        selectionGuards.isNextClickDisabled.mockReturnValue(false);
     });
 
     it('selects tracked components on click', () => {
@@ -151,6 +183,113 @@ describe('initSelectionDetection', () => {
         });
         expect(selectionMocks.selectEvents).toHaveLength(1);
         expect(selectionMocks.selectEvents[0].rightClicked).toBe(true);
+
+        stop();
+    });
+
+    it('does not hijack clicks while legacy text editing is active', () => {
+        const element = document.createElement('article');
+        element.dataset.portalComponentType = 'part';
+        document.body.appendChild(element);
+
+        const records = {
+            '/main/0': createRecord('/main/0', element),
+        };
+
+        setRegistry(records);
+        rebuildIndex(records);
+        setTextEditing(true);
+
+        const stop = initSelectionDetection();
+        const event = new MouseEvent('click', {bubbles: true, cancelable: true});
+        element.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(false);
+        expect($selectedPath.get()).toBeUndefined();
+        expect(selectionMocks.selectEvents).toHaveLength(0);
+        expect(selectionMocks.selectLegacyItemView).not.toHaveBeenCalled();
+
+        stop();
+    });
+
+    it('does not hijack clicks while drag feedback is active', () => {
+        const element = document.createElement('article');
+        element.dataset.portalComponentType = 'part';
+        document.body.appendChild(element);
+
+        const records = {
+            '/main/0': createRecord('/main/0', element),
+        };
+
+        setRegistry(records);
+        rebuildIndex(records);
+        setDragState({
+            itemType: 'part',
+            itemLabel: 'Hero',
+            sourcePath: '/main/0',
+            targetPath: '/main',
+            dropAllowed: true,
+            message: undefined,
+            placeholderElement: undefined,
+            x: 12,
+            y: 16,
+        });
+
+        const stop = initSelectionDetection();
+        const event = new MouseEvent('click', {bubbles: true, cancelable: true});
+        element.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(false);
+        expect($selectedPath.get()).toBeUndefined();
+        expect(selectionMocks.selectEvents).toHaveLength(0);
+
+        stop();
+    });
+
+    it('suppresses the redundant click immediately after a drag drop', () => {
+        const element = document.createElement('article');
+        element.dataset.portalComponentType = 'part';
+        document.body.appendChild(element);
+
+        const records = {
+            '/main/0': createRecord('/main/0', element),
+        };
+
+        setRegistry(records);
+        rebuildIndex(records);
+        selectionGuards.isNewlyDropped.mockReturnValue(true);
+
+        const stop = initSelectionDetection();
+        const event = new MouseEvent('click', {bubbles: true, cancelable: true});
+        element.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(false);
+        expect($selectedPath.get()).toBeUndefined();
+        expect(selectionMocks.selectEvents).toHaveLength(0);
+
+        stop();
+    });
+
+    it('consumes the legacy next-click-disabled guard', () => {
+        const element = document.createElement('article');
+        element.dataset.portalComponentType = 'part';
+        document.body.appendChild(element);
+
+        const records = {
+            '/main/0': createRecord('/main/0', element),
+        };
+
+        setRegistry(records);
+        rebuildIndex(records);
+        selectionGuards.isNextClickDisabled.mockReturnValue(true);
+
+        const stop = initSelectionDetection();
+        const event = new MouseEvent('click', {bubbles: true, cancelable: true});
+        element.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(false);
+        expect(selectionGuards.setNextClickDisabled).toHaveBeenCalledWith(false);
+        expect(selectionMocks.selectEvents).toHaveLength(0);
 
         stop();
     });

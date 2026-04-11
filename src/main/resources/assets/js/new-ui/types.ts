@@ -21,6 +21,18 @@ export interface ContextMenuState {
     y: number;
 }
 
+export interface DragState {
+    itemType: string;
+    itemLabel: string;
+    sourcePath: string | undefined;
+    targetPath: string | undefined;
+    dropAllowed: boolean;
+    message: string | undefined;
+    placeholderElement: HTMLElement | undefined;
+    x: number | undefined;
+    y: number | undefined;
+}
+
 export interface PlaceholderIsland {
     container: HTMLElement;
     host: HTMLElement;

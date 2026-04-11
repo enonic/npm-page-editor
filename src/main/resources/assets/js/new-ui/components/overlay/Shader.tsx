@@ -5,6 +5,7 @@ import {SelectComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/
 import {useStoreValue} from '../../hooks/use-store-value';
 import {
     $contextMenuState,
+    $dragState,
     $locked,
     $modifyAllowed,
     $selectedPath,
@@ -16,11 +17,12 @@ import {deselectLegacyItemView, selectLegacyItemView} from '../../bridge';
 
 export function Shader(): JSX.Element | null {
     const locked = useStoreValue($locked);
+    const dragState = useStoreValue($dragState);
     const modifyAllowed = useStoreValue($modifyAllowed);
     const selectedPath = useStoreValue($selectedPath);
     const contextMenuState = useStoreValue($contextMenuState);
 
-    if (!locked) {
+    if (dragState || !locked) {
         return null;
     }
 

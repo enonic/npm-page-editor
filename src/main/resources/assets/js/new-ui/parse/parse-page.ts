@@ -4,6 +4,10 @@ import {COMPONENT_SELECTOR, ERROR_ATTR, REGION_SELECTOR} from '../constants';
 import type {ComponentRecord, ComponentRecordType} from '../types';
 import {isNodeEmpty} from './emptiness';
 
+interface ParsePageOptions {
+    isFragment?: boolean;
+}
+
 export function isRegionElement(element: Element): element is HTMLElement {
     return element instanceof HTMLElement && element.matches(REGION_SELECTOR);
 }
@@ -32,6 +36,28 @@ export function collectTrackedDescendants(
     });
 
     return result;
+}
+
+function findFirstTrackedDescendant(
+    container: HTMLElement,
+    predicate: (element: Element) => boolean,
+): HTMLElement | undefined {
+    for (const child of Array.from(container.children)) {
+        if (!(child instanceof HTMLElement)) {
+            continue;
+        }
+
+        if (predicate(child)) {
+            return child;
+        }
+
+        const nested = findFirstTrackedDescendant(child, predicate);
+        if (nested) {
+            return nested;
+        }
+    }
+
+    return undefined;
 }
 
 function resolveDescriptor(path: ComponentPath, type: ComponentRecordType): string | undefined {
@@ -99,6 +125,29 @@ export function parseComponentSubtree(
     return record;
 }
 
+export function parseRootComponent(
+    element: HTMLElement,
+    records: Record<string, ComponentRecord>,
+): ComponentRecord {
+    const type = element.dataset.portalComponentType as ComponentRecordType;
+    const path = ComponentPath.root();
+    const key = path.toString();
+    const children: string[] = [];
+
+    if (type === 'layout') {
+        const regions = collectTrackedDescendants(element, isRegionElement);
+        regions.forEach((regionEl) => {
+            const regionRecord = parseRegionSubtree(regionEl, path, records);
+            children.push(regionRecord.path.toString());
+        });
+    }
+
+    const record = makeRecord(path, type, element, undefined, children);
+    records[key] = record;
+
+    return record;
+}
+
 export function parseRegionSubtree(
     element: HTMLElement,
     parentPath: ComponentPath,
@@ -121,7 +170,7 @@ export function parseRegionSubtree(
     return record;
 }
 
-export function parsePage(body: HTMLElement): Record<string, ComponentRecord> {
+function parseStandardPage(body: HTMLElement): Record<string, ComponentRecord> {
     const records: Record<string, ComponentRecord> = {};
     const rootPath = ComponentPath.root();
     const rootKey = rootPath.toString();
@@ -146,4 +195,36 @@ export function parsePage(body: HTMLElement): Record<string, ComponentRecord> {
     };
 
     return records;
+}
+
+function parseFragmentPage(body: HTMLElement): Record<string, ComponentRecord> {
+    const records: Record<string, ComponentRecord> = {};
+    const rootComponent = findFirstTrackedDescendant(body, isComponentElement);
+
+    if (!rootComponent) {
+        records[ComponentPath.root().toString()] = {
+            path: ComponentPath.root(),
+            type: 'page',
+            element: body,
+            parentPath: undefined,
+            children: [],
+            empty: true,
+            error: false,
+            descriptor: undefined,
+            loading: false,
+        };
+
+        return records;
+    }
+
+    parseRootComponent(rootComponent, records);
+    return records;
+}
+
+export function parsePage(body: HTMLElement, options: ParsePageOptions = {}): Record<string, ComponentRecord> {
+    if (options.isFragment) {
+        return parseFragmentPage(body);
+    }
+
+    return parseStandardPage(body);
 }

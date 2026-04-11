@@ -1,21 +1,23 @@
 import type {JSX} from 'preact';
 import {useStoreValue} from '../../hooks/use-store-value';
 import {useTrackedRect} from '../../hooks/use-tracked-rect';
-import {$dragState, $hoveredPath, $textEditing} from '../../stores/registry';
+import {$dragState} from '../../stores/registry';
 
-export function Highlighter(): JSX.Element | null {
-    const hoveredPath = useStoreValue($hoveredPath);
+export function DragTargetHighlighter(): JSX.Element | null {
     const dragState = useStoreValue($dragState);
-    const textEditing = useStoreValue($textEditing);
-    const rect = useTrackedRect(hoveredPath);
+    const rect = useTrackedRect(dragState?.targetPath);
 
-    if (textEditing || dragState || !hoveredPath || !rect) {
+    if (!dragState?.targetPath || !rect) {
         return null;
     }
 
+    const tone = dragState.dropAllowed
+        ? 'border-info/80 bg-info/8'
+        : 'border-error/80 bg-error/8';
+
     return (
         <div
-            className='pointer-events-none fixed rounded-[4px] border-2 border-black/75 transition-all duration-75'
+            className={`pointer-events-none fixed rounded-[12px] border-2 border-dashed transition-all duration-75 ${tone}`}
             style={{
                 top: `${rect.top}px`,
                 left: `${rect.left}px`,

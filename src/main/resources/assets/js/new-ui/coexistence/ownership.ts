@@ -5,7 +5,8 @@ export type Surface =
     | 'shader'
     | 'hover-detection'
     | 'click-selection'
-    | 'keyboard';
+    | 'keyboard'
+    | 'drag-drop';
 
 const ownedByNewUi = new Set<Surface>();
 

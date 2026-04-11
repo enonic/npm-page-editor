@@ -1,5 +1,5 @@
 import {atom, map} from 'nanostores';
-import type {ComponentRecord, ContextMenuState} from '../types';
+import type {ComponentRecord, ContextMenuState, DragState} from '../types';
 
 export const $registry = map<Record<string, ComponentRecord>>({});
 export const $selectedPath = atom<string | undefined>(undefined);
@@ -7,6 +7,7 @@ export const $hoveredPath = atom<string | undefined>(undefined);
 export const $locked = atom(false);
 export const $modifyAllowed = atom(true);
 export const $textEditing = atom(false);
+export const $dragState = atom<DragState | undefined>(undefined);
 export const $contextMenuState = atom<ContextMenuState | undefined>(undefined);
 
 export function getRegistry(): Record<string, ComponentRecord> {
@@ -43,6 +44,14 @@ export function setLocked(value: boolean): void {
 
 export function setModifyAllowed(value: boolean): void {
     $modifyAllowed.set(value);
+}
+
+export function setTextEditing(value: boolean): void {
+    $textEditing.set(value);
+}
+
+export function setDragState(value: DragState | undefined): void {
+    $dragState.set(value);
 }
 
 export function openContextMenu(state: ContextMenuState): void {

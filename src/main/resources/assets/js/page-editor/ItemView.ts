@@ -640,7 +640,7 @@ export abstract class ItemView
     }
 
     protected togglePlaceholder(): void {
-        if (isOwnedByNewUI('placeholder') && !PageItemType.get().equals(this.getType())) {
+        if (isOwnedByNewUI('placeholder')) {
             this.removePlaceholder();
             return;
         }

@@ -917,12 +917,12 @@ Using `capture: true` ensures the editor intercepts clicks before customer page 
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| **Phase 0: Runtime Primitives** | Done | `new-ui/` runtime bootstrapped in the live editor: shared overlay host, placeholder islands, shared style injection, path registry, DOM parsing, geometry scheduler, bus adapter wiring, path-scoped subtree reconciliation, and mutation-observer safety net are all active on this branch. |
+| **Phase 0: Runtime Primitives** | Done | `new-ui/` runtime bootstrapped in the live editor: shared overlay host, placeholder islands, shared style injection, path registry, DOM parsing for both page and fragment shells, geometry scheduler, bus adapter wiring, path-scoped subtree reconciliation, and mutation-observer safety net are all active on this branch. |
 | **Phase 1: In-Flow Placeholders** | Done | Empty region and non-page component placeholders now render through per-node shadow islands, including error-state cards. The legacy placeholder DOM is suppressed for surfaces owned by the new runtime. |
 | **Phase 2: Overlay Surfaces** | Done | Hover highlighter, selection crosshair, shader, and context menu now render inside the shared overlay shadow root, with legacy overlay chrome suppressed via `body.pe-overlay-active`. |
-| **Phase 3: Interaction Systems** | Done | Hover detection, click selection, deselection, right-click context menu, keyboard forwarding, and bus-driven reconciliation are owned by the new runtime for page mode. |
-| **Phase 4: Drag and Drop** | Deferred | Still intentionally left in the legacy implementation, exactly as scoped below. |
-| **Phase 5: Text Editing & Advanced Features** | Deferred | Still mostly deferred for a follow-up design and implementation pass. Session-storage selection persistence is now implemented on this branch; text editing, page placeholder, and fragment mode remain outstanding. |
+| **Phase 3: Interaction Systems** | Done | Hover detection, click selection, deselection, right-click context menu, keyboard forwarding, selection persistence, and bus-driven reconciliation are owned by the new runtime for both page and fragment mode. |
+| **Phase 4: Drag and Drop** | Partial | The legacy jQuery UI sortable/draggable engine still performs physical moves and context-window inserts, but the new runtime now owns drag-session feedback state: it renders the fixed drag preview, target-region highlighter, shadow-root drop placeholder, suppresses conflicting overlay chrome during drag, and preserves the legacy post-drop click guard. |
+| **Phase 5: Text Editing & Advanced Features** | Partial | Session-storage selection persistence, fragment mode, the async page placeholder, and legacy text-mode synchronization are now implemented on this branch. Inline rich-text editing itself still needs its own design and migration pass. |
 
 ### Phase 0: Runtime Primitives
 
@@ -1483,17 +1483,24 @@ function initKeyboardHandling(): () => void {
 
 ---
 
-### Phase 4: Drag and Drop (Future)
+### Phase 4: Drag and Drop
 
-**Deferred.** The drag-and-drop system ([`DragAndDrop.ts`](../src/main/resources/assets/js/page-editor/DragAndDrop.ts) — 638 lines) is the most complex and interaction-heavy subsystem. It:
-- Manages sortable regions (jQuery UI sortable)
-- Handles cross-region moves
-- Creates draggable items from the context window
-- Validates drop targets (no nested layouts, fragment containment rules)
-- Fires start/stop/dropped/canceled events to parent
-- Manages the 100ms "newly dropped" click suppression
+**Partially implemented on this branch.** The drag-and-drop system ([`DragAndDrop.ts`](../src/main/resources/assets/js/page-editor/DragAndDrop.ts) — 638 lines) still relies on the legacy jQuery UI engine to:
+- Manage sortable regions (jQuery UI sortable)
+- Handle cross-region moves
+- Create draggable items from the context window
+- Validate drop targets (no nested layouts, fragment containment rules)
+- Fire start/stop/dropped/canceled events to parent
+- Maintain the 100ms "newly dropped" click suppression contract used by click handling
 
-This stays in legacy code until Phases 1-3 are proven stable. When ready, the replacement should use a modern drag library or the native Drag and Drop API with manual hit testing.
+The new runtime now consumes an explicit drag-session seam from that engine and owns the drag feedback surfaces:
+- Fixed drag preview in the shared overlay shadow root
+- Target-region highlighter in the shared overlay shadow root
+- Shadow-root drop placeholder mounted into the sortable placeholder container
+- Hover/context-menu/highlighter suppression while dragging
+- Click-selection parity with the legacy `isNewlyDropped()` / `nextClickDisabled` guards
+
+This leaves the physical drag engine itself in legacy code for now. A future pass can replace the jQuery UI move/add mechanics entirely once the new drag visuals and interaction guards are proven stable.
 
 ---
 
@@ -1503,9 +1510,9 @@ This stays in legacy code until Phases 1-3 are proven stable. When ready, the re
 
 | Feature | Why Deferred | Dependency |
 |---------|-------------|------------|
-| **Text editing** | Inline editing requires integration with a rich-text editor (currently CKEditor via legacy). Double-click detection, cursor save/restore, and `textMode` flag suppress region highlighting. Needs its own design pass. | Phase 3 (selection) must be stable first |
-| **Page placeholder** | Carries async behavior: `GetContentTypeByNameRequest` + `PageDescriptorDropdown` via legacy `q` promise. Requires migrating to `async/await` and designing a Preact async component or data-fetching hook. | Phase 1 (simple placeholders) must be stable first |
-| **Fragment mode** | Fragments have a fundamentally different DOM structure (no regions, single root component). `parsePage` needs a conditional branch, context menu actions change, and drag validation differs. | Phase 0 (parse) works for pages first |
+| **Text editing** | The new runtime now mirrors the legacy `textMode` flag so hover, selection chrome, keyboard forwarding, and context-menu behavior back off correctly while CKEditor is active. Inline editing itself still requires a dedicated rich-text integration design pass. | Phase 3 (selection) must be stable first |
+| **Page placeholder** | Implemented on this branch as a shadow-root overlay surface that loads page controllers with native async request handling and fires `SelectPageDescriptorEvent` from the new runtime. | Done |
+| **Fragment mode** | Implemented on this branch. The new runtime now boots in fragment mode, parses the single root-component DOM shape, and preserves root-path selection semantics in session storage and reconciliation. | Done |
 | **Session storage persistence** | Implemented on this branch. The new runtime now syncs `$selectedPath` to `SessionStorageHelper` and restores it during boot so selection survives live-editor reloads. | Done |
 
 Each of these should get its own design section added to this document when ready for implementation. They do not affect the architectural decisions for Phases 0-3.
@@ -1516,12 +1523,13 @@ Each of these should get its own design section added to this document when read
 
 ### Current Coverage On This Branch
 
-- Unit tests cover DOM parsing, subtree parsing, empty-state detection, placeholder/overlay shadow mounting, reconciliation, selection persistence, hover handling, click selection, context-menu opening, and keyboard forwarding.
+- Unit tests cover DOM parsing, subtree parsing, empty-state detection, placeholder/overlay shadow mounting, page-placeholder async loading and UI selection flow, reconciliation, selection persistence, drag-session syncing, hover handling, click selection, post-drop click suppression, context-menu opening, and keyboard forwarding.
 - Storybook now includes runtime stories for the actual migrated surfaces:
   - `InFlowPlaceholderInFlex`
   - `PlaceholderStyleIsolation`
   - `OverlayOnScrolledPage`
   - `MultipleOverlays`
+  - `DragSessionFeedback`
 - `pnpm build:dev` exercises the Vite bundle for the migrated runtime, and `pnpm build-storybook` verifies the new Storybook stories compile against the real runtime components.
 
 ### Per-Phase Validation
@@ -1532,6 +1540,7 @@ Each of these should get its own design section added to this document when read
 | 1 | Placeholder variants match design | Empty detection excludes editor nodes | Placeholder appears/disappears on add/remove |
 | 2 | Overlay positions track scroll | Geometry scheduler coalesces updates | Highlight follows component through page scroll |
 | 3 | - | Click/hover handlers dispatch correct events | Full selection flow end-to-end in live editor |
+| 4 | Drag feedback surfaces layer correctly during an active session | Drag state sync, hover suppression, keyboard suppression, and post-drop click suppression stay aligned with legacy drag semantics | Cross-region drag keeps placeholder/highlighter feedback aligned with the active target |
 
 ### Storybook Stories (Extending Existing)
 

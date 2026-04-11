@@ -179,26 +179,12 @@ export class LiveEditPage {
 
         this.registerGlobalListeners();
         this.destroyNewUi = initNewUi(this.pageView);
-        if (event.getParams().isFragment) {
-            this.restoreSelection(event.getParams().contentId);
-        }
 
         if (LiveEditPage.debug) {
             console.debug('LiveEditPage: done live edit initializing in ' + (Date.now() - startTime) + 'ms');
         }
 
         new LiveEditPageViewReadyEvent().fire();
-    }
-
-    private restoreSelection(contentId: string): void {
-        const selectedItemViewPath: ComponentPath = SessionStorageHelper.getSelectedPathFromStorage(contentId);
-
-        const selected: ItemView = selectedItemViewPath && this.pageView.getComponentViewByPath(selectedItemViewPath);
-
-        if (selected) {
-            selected.selectWithoutMenu();
-            selected.scrollComponentIntoView();
-        }
     }
 
     public getContent(): ContentSummaryAndCompareStatus | undefined {

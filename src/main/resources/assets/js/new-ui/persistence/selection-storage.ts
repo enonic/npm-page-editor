@@ -7,17 +7,17 @@ import {
 } from '../bridge';
 import {$selectedPath, setSelectedPath} from '../stores/registry';
 
-function isPersistablePath(path: string | undefined): path is string {
-    return !!path && path !== ComponentPath.root().toString();
+function isPersistablePath(path: string | undefined, allowRootSelection: boolean): path is string {
+    return !!path && (allowRootSelection || path !== ComponentPath.root().toString());
 }
 
-export function syncSelectionStorage(contentId: string | undefined): () => void {
+export function syncSelectionStorage(contentId: string | undefined, allowRootSelection = false): () => void {
     if (!contentId) {
         return () => undefined;
     }
 
     return $selectedPath.listen((path) => {
-        if (!isPersistablePath(path)) {
+        if (!isPersistablePath(path, allowRootSelection)) {
             SessionStorageHelper.removeSelectedPathInStorage(contentId);
             return;
         }
@@ -26,9 +26,9 @@ export function syncSelectionStorage(contentId: string | undefined): () => void 
     });
 }
 
-export function restoreStoredSelection(contentId: string | undefined): void {
+export function restoreStoredSelection(contentId: string | undefined, allowRootSelection = false): void {
     const storedPath = SessionStorageHelper.getSelectedPathFromStorage(contentId)?.toString();
-    if (!isPersistablePath(storedPath)) {
+    if (!isPersistablePath(storedPath, allowRootSelection)) {
         return;
     }
 

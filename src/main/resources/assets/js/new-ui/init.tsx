@@ -7,6 +7,8 @@ import {initGeometryTriggers} from './geometry/scheduler';
 import {initHoverDetection} from './interaction/hover-handler';
 import {initKeyboardHandling} from './interaction/keyboard-handler';
 import {initSelectionDetection} from './interaction/selection-handler';
+import {initDragSync} from './interaction/drag-sync';
+import {initTextEditingSync} from './interaction/text-editing-sync';
 import {restoreStoredSelection, syncSelectionStorage} from './persistence/selection-storage';
 import {OverlayApp} from './components/OverlayApp';
 import {createOverlayHost} from './rendering/overlay-host';
@@ -34,10 +36,6 @@ function startDomObserver(pageView: PageView): () => void {
 }
 
 export function initNewUi(pageView: PageView): () => void {
-    if (pageView.getLiveEditParams().isFragment) {
-        return () => undefined;
-    }
-
     setCurrentPageView(pageView);
 
     transferOwnership('placeholder');
@@ -47,6 +45,7 @@ export function initNewUi(pageView: PageView): () => void {
     transferOwnership('hover-detection');
     transferOwnership('click-selection');
     transferOwnership('keyboard');
+    transferOwnership('drag-drop');
 
     document.body.classList.add('pe-overlay-active');
 
@@ -55,20 +54,30 @@ export function initNewUi(pageView: PageView): () => void {
     const stopHover = initHoverDetection();
     const stopSelection = initSelectionDetection();
     const stopKeyboard = initKeyboardHandling();
+    const stopDrag = initDragSync();
+    const stopTextEditing = initTextEditingSync();
     const stopBus = registerBusHandlers(pageView);
     const stopObserver = startDomObserver(pageView);
-    const stopSelectionStorage = syncSelectionStorage(pageView.getLiveEditParams().contentId);
+    const stopSelectionStorage = syncSelectionStorage(
+        pageView.getLiveEditParams().contentId,
+        pageView.getLiveEditParams().isFragment,
+    );
 
     reconcilePage(pageView);
     setLocked(pageView.isLocked());
     setModifyAllowed(pageView.getLiveEditParams().modifyPermissions !== false);
     setSelectedPath(pageView.getSelectedView()?.getPath().toString());
-    restoreStoredSelection(pageView.getLiveEditParams().contentId);
+    restoreStoredSelection(
+        pageView.getLiveEditParams().contentId,
+        pageView.getLiveEditParams().isFragment,
+    );
 
     return () => {
         stopSelectionStorage();
         stopObserver();
         stopBus();
+        stopTextEditing();
+        stopDrag();
         stopKeyboard();
         stopSelection();
         stopHover();
