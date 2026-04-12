@@ -922,7 +922,7 @@ Using `capture: true` ensures the editor intercepts clicks before customer page 
 | **Phase 2: Overlay Surfaces** | Done | Hover highlighter, selection crosshair, shader, and context menu now render inside the shared overlay shadow root, with legacy overlay chrome suppressed via `body.pe-overlay-active`. |
 | **Phase 3: Interaction Systems** | Done | Hover detection, click selection, deselection, right-click context menu, keyboard forwarding, selection persistence, and bus-driven reconciliation are owned by the new runtime for both page and fragment mode. |
 | **Phase 4: Drag and Drop** | Partial | The legacy jQuery UI sortable/draggable engine still performs physical moves and context-window inserts, but the new runtime now owns drag-session feedback state: it renders the fixed drag preview, target-region highlighter, shadow-root drop placeholder, suppresses conflicting overlay chrome during drag, and preserves the legacy post-drop click guard. |
-| **Phase 5: Text Editing & Advanced Features** | Partial | Session-storage selection persistence, fragment mode, the async page placeholder, and legacy text-mode synchronization are now implemented on this branch. Inline rich-text editing itself still needs its own design and migration pass. |
+| **Phase 5: Text Editing & Advanced Features** | Partial | Session-storage selection persistence, fragment mode, the async page placeholder, legacy text-mode synchronization, and text-component single-click/double-click edit-entry parity are now implemented on this branch. Inline rich-text editing itself still needs its own design and migration pass. |
 
 ### Phase 0: Runtime Primitives
 
@@ -1510,7 +1510,7 @@ This leaves the physical drag engine itself in legacy code for now. A future pas
 
 | Feature | Why Deferred | Dependency |
 |---------|-------------|------------|
-| **Text editing** | The new runtime now mirrors the legacy `textMode` flag so hover, selection chrome, keyboard forwarding, and context-menu behavior back off correctly while CKEditor is active. Inline editing itself still requires a dedicated rich-text integration design pass. | Phase 3 (selection) must be stable first |
+| **Text editing** | The new runtime now mirrors the legacy `textMode` flag so hover, selection chrome, keyboard forwarding, and context-menu behavior back off correctly while CKEditor is active. Text components also preserve the legacy single-click-select / double-click-edit contract by firing `EditTextComponentViewEvent` directly from the new selection runtime. Inline editing itself still requires a dedicated rich-text integration design pass. | Phase 3 (selection) must be stable first |
 | **Page placeholder** | Implemented on this branch as a shadow-root overlay surface that loads page controllers with native async request handling and fires `SelectPageDescriptorEvent` from the new runtime. | Done |
 | **Fragment mode** | Implemented on this branch. The new runtime now boots in fragment mode, parses the single root-component DOM shape, and preserves root-path selection semantics in session storage and reconciliation. | Done |
 | **Session storage persistence** | Implemented on this branch. The new runtime now syncs `$selectedPath` to `SessionStorageHelper` and restores it during boot so selection survives live-editor reloads. | Done |
@@ -1523,7 +1523,7 @@ Each of these should get its own design section added to this document when read
 
 ### Current Coverage On This Branch
 
-- Unit tests cover DOM parsing, subtree parsing, empty-state detection, placeholder/overlay shadow mounting, page-placeholder async loading and UI selection flow, reconciliation, selection persistence, drag-session syncing, hover handling, click selection, post-drop click suppression, context-menu opening, and keyboard forwarding.
+- Unit tests cover DOM parsing, subtree parsing, empty-state detection, placeholder/overlay shadow mounting, page-placeholder async loading and UI selection flow, reconciliation, selection persistence, drag-session syncing, hover handling, click selection, text-component edit-entry timing, post-drop click suppression, context-menu opening, and keyboard forwarding.
 - Storybook now includes runtime stories for the actual migrated surfaces:
   - `InFlowPlaceholderInFlex`
   - `PlaceholderStyleIsolation`

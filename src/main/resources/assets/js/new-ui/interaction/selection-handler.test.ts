@@ -1,6 +1,7 @@
 const selectionMocks = vi.hoisted(() => ({
     selectEvents: [] as Array<{path: {toString(): string}; rightClicked: boolean}>,
     deselectEvents: [] as Array<{toString(): string}>,
+    editEvents: [] as Array<{toString(): string}>,
     selectLegacyItemView: vi.fn(),
     deselectLegacyItemView: vi.fn(),
 }));
@@ -39,6 +40,20 @@ vi.mock('@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/Deselec
     },
 }));
 
+vi.mock('@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/EditTextComponentViewEvent', () => ({
+    EditTextComponentViewEvent: class {
+        private readonly path: {toString(): string};
+
+        constructor(path: {toString(): string}) {
+            this.path = path;
+        }
+
+        fire(): void {
+            selectionMocks.editEvents.push(this.path);
+        }
+    },
+}));
+
 vi.mock('../bridge', () => ({
     selectLegacyItemView: selectionMocks.selectLegacyItemView,
     deselectLegacyItemView: selectionMocks.deselectLegacyItemView,
@@ -62,6 +77,7 @@ vi.mock('@enonic/lib-contentstudio/page-editor/PageViewController', () => ({
 }));
 
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
+import {TEXT_COMPONENT_DBL_CLICK_TIMEOUT} from '../../page-editor/text/constants';
 import type {ComponentRecord} from '../types';
 import {rebuildIndex} from '../stores/element-index';
 import {
@@ -75,10 +91,10 @@ import {
 } from '../stores/registry';
 import {initSelectionDetection} from './selection-handler';
 
-function createRecord(path: string, element: HTMLElement): ComponentRecord {
+function createRecord(path: string, element: HTMLElement, type: ComponentRecord['type'] = 'part'): ComponentRecord {
     return {
         path: ComponentPath.fromString(path),
-        type: 'part',
+        type,
         element,
         parentPath: '/main',
         children: [],
@@ -100,6 +116,7 @@ describe('initSelectionDetection', () => {
 
         selectionMocks.selectEvents.length = 0;
         selectionMocks.deselectEvents.length = 0;
+        selectionMocks.editEvents.length = 0;
         selectionMocks.selectLegacyItemView.mockReset();
         selectionMocks.deselectLegacyItemView.mockReset();
         selectionGuards.isNewlyDropped.mockReset();
@@ -107,6 +124,7 @@ describe('initSelectionDetection', () => {
         selectionGuards.setNextClickDisabled.mockReset();
         selectionGuards.isNewlyDropped.mockReturnValue(false);
         selectionGuards.isNextClickDisabled.mockReturnValue(false);
+        vi.useRealTimers();
     });
 
     it('selects tracked components on click', () => {
@@ -290,6 +308,69 @@ describe('initSelectionDetection', () => {
         expect(event.defaultPrevented).toBe(false);
         expect(selectionGuards.setNextClickDisabled).toHaveBeenCalledWith(false);
         expect(selectionMocks.selectEvents).toHaveLength(0);
+
+        stop();
+    });
+
+    it('delays single-click selection for text components to preserve double-click editing', () => {
+        vi.useFakeTimers();
+
+        const element = document.createElement('article');
+        element.dataset.portalComponentType = 'text';
+        document.body.appendChild(element);
+
+        const records = {
+            '/main/0': createRecord('/main/0', element, 'text'),
+        };
+
+        setRegistry(records);
+        rebuildIndex(records);
+
+        const stop = initSelectionDetection();
+        const event = new MouseEvent('click', {bubbles: true, cancelable: true});
+        element.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect($selectedPath.get()).toBeUndefined();
+        expect(selectionMocks.selectEvents).toHaveLength(0);
+
+        vi.advanceTimersByTime(TEXT_COMPONENT_DBL_CLICK_TIMEOUT);
+
+        expect($selectedPath.get()).toBe('/main/0');
+        expect(selectionMocks.selectEvents).toHaveLength(1);
+        expect(selectionMocks.editEvents).toHaveLength(0);
+
+        stop();
+    });
+
+    it('enters text edit mode on double click without toggling selection off', () => {
+        vi.useFakeTimers();
+
+        const element = document.createElement('article');
+        element.dataset.portalComponentType = 'text';
+        document.body.appendChild(element);
+
+        const records = {
+            '/main/0': createRecord('/main/0', element, 'text'),
+        };
+
+        setRegistry(records);
+        rebuildIndex(records);
+
+        const stop = initSelectionDetection();
+        element.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
+
+        vi.advanceTimersByTime(TEXT_COMPONENT_DBL_CLICK_TIMEOUT - 1);
+        element.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
+
+        expect($selectedPath.get()).toBe('/main/0');
+        expect(selectionMocks.selectEvents).toHaveLength(1);
+        expect(selectionMocks.editEvents).toHaveLength(1);
+        expect(selectionMocks.editEvents[0].toString()).toBe('/main/0');
+        expect(selectionMocks.deselectEvents).toHaveLength(0);
+
+        vi.advanceTimersByTime(TEXT_COMPONENT_DBL_CLICK_TIMEOUT);
+        expect(selectionMocks.selectEvents).toHaveLength(1);
 
         stop();
     });
