@@ -7,7 +7,6 @@ import {initGeometryTriggers} from './geometry/scheduler';
 import {initHoverDetection} from './interaction/hover-handler';
 import {initKeyboardHandling} from './interaction/keyboard-handler';
 import {initSelectionDetection} from './interaction/selection-handler';
-import {initDragSync} from './interaction/drag-sync';
 import {initComponentDrag} from './interaction/component-drag';
 import {initContextWindowDrag} from './interaction/context-window-drag';
 import {initTextEditingSync} from './interaction/text-editing-sync';
@@ -63,7 +62,6 @@ export function initNewUi(pageView: PageView): () => void {
     const stopHover = initHoverDetection();
     const stopSelection = initSelectionDetection();
     const stopKeyboard = initKeyboardHandling();
-    const stopDrag = initDragSync();
     const stopComponentDrag = initComponentDrag();
     const stopContextWindowDrag = initContextWindowDrag();
     const stopTextEditing = initTextEditingSync();
@@ -90,7 +88,6 @@ export function initNewUi(pageView: PageView): () => void {
         stopTextEditing();
         stopContextWindowDrag();
         stopComponentDrag();
-        stopDrag();
         stopKeyboard();
         stopSelection();
         stopHover();

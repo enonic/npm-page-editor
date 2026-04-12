@@ -9,7 +9,6 @@ const initMocks = vi.hoisted(() => ({
     initHoverDetection: vi.fn(() => vi.fn()),
     initKeyboardHandling: vi.fn(() => vi.fn()),
     initSelectionDetection: vi.fn(() => vi.fn()),
-    initDragSync: vi.fn(() => vi.fn()),
     initComponentDrag: vi.fn(() => vi.fn()),
     initContextWindowDrag: vi.fn(() => vi.fn()),
     initTextEditingSync: vi.fn(() => vi.fn()),
@@ -50,10 +49,6 @@ vi.mock('./interaction/keyboard-handler', () => ({
 
 vi.mock('./interaction/selection-handler', () => ({
     initSelectionDetection: initMocks.initSelectionDetection,
-}));
-
-vi.mock('./interaction/drag-sync', () => ({
-    initDragSync: initMocks.initDragSync,
 }));
 
 vi.mock('./interaction/component-drag', () => ({
@@ -98,7 +93,6 @@ describe('initNewUi', () => {
         initMocks.initHoverDetection.mockClear();
         initMocks.initKeyboardHandling.mockClear();
         initMocks.initSelectionDetection.mockClear();
-        initMocks.initDragSync.mockClear();
         initMocks.initComponentDrag.mockClear();
         initMocks.initContextWindowDrag.mockClear();
         initMocks.initTextEditingSync.mockClear();
@@ -126,7 +120,6 @@ describe('initNewUi', () => {
         expect(initMocks.createOverlayHost).toHaveBeenCalledTimes(1);
         expect(initMocks.registerBusHandlers).toHaveBeenCalledWith(pageView);
         expect(initMocks.reconcilePage).toHaveBeenCalledWith(pageView);
-        expect(initMocks.initDragSync).toHaveBeenCalledTimes(1);
         expect(initMocks.initComponentDrag).toHaveBeenCalledTimes(1);
         expect(initMocks.initContextWindowDrag).toHaveBeenCalledTimes(1);
         expect(initMocks.initTextEditingSync).toHaveBeenCalledTimes(1);

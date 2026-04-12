@@ -921,8 +921,8 @@ Using `capture: true` ensures the editor intercepts clicks before customer page 
 | **Phase 1: In-Flow Placeholders** | Done | Empty region and non-page component placeholders now render through per-node shadow islands, including error-state cards. The legacy placeholder DOM is suppressed for surfaces owned by the new runtime. |
 | **Phase 2: Overlay Surfaces** | Done | Hover highlighter, selection crosshair, shader, and context menu now render inside the shared overlay shadow root, with legacy overlay chrome suppressed via `body.pe-overlay-active`. |
 | **Phase 3: Interaction Systems** | Done | Hover detection, click selection, deselection, right-click context menu, keyboard forwarding, selection persistence, and bus-driven reconciliation are owned by the new runtime for both page and fragment mode. |
-| **Phase 4: Drag and Drop** | Partial | The legacy jQuery UI sortable engine still performs intra-page reordering, but the new runtime now owns drag-session feedback plus the context-window drag contract: it renders the fixed drag preview, target-region highlighter, shadow-root drop placeholder, handles palette inserts, suppresses conflicting overlay chrome during drag, and preserves the legacy post-drop click guard. |
-| **Phase 5: Text Editing & Advanced Features** | Partial | Session-storage selection persistence, fragment mode, the async page placeholder, legacy text-mode synchronization, and text-component single-click/double-click edit-entry parity are now implemented on this branch. Inline rich-text editing itself still needs its own design and migration pass. |
+| **Phase 4: Drag and Drop** | Done | jQuery UI sortables are disabled on init. The new runtime owns both context-window inserts (`context-window-drag.ts`) and intra-page component reordering (`component-drag.ts`) with pointer-based hit testing, axis-aware insertion index, nested-layout/fragment validation, and all legacy event contracts (`MoveComponentEvent`, `DragStarted/Stopped/Dropped/Canceled`, `setNextClickDisabled`). The legacy `drag-sync` bridge has been removed. |
+| **Phase 5: Text Editing & Advanced Features** | Partial | Session-storage selection persistence, fragment mode, the async page placeholder, legacy text-mode synchronization, and text-component single-click/double-click edit-entry parity are implemented. Inline rich-text editing is out of scope for the new runtime — CKEditor integration remains in legacy code with no migration planned. |
 
 ### Phase 0: Runtime Primitives
 
@@ -1485,22 +1485,14 @@ function initKeyboardHandling(): () => void {
 
 ### Phase 4: Drag and Drop
 
-**Partially implemented on this branch.** The drag-and-drop system ([`DragAndDrop.ts`](../src/main/resources/assets/js/page-editor/DragAndDrop.ts) — 638 lines) still relies on the legacy jQuery UI engine to:
-- Manage sortable regions (jQuery UI sortable)
-- Handle cross-region moves
-- Validate drop targets (no nested layouts, fragment containment rules)
-- Fire start/stop/dropped/canceled events to parent
-- Maintain the 100ms "newly dropped" click suppression contract used by click handling
+**Done.** The legacy jQuery UI sortable engine has been fully replaced. The new runtime owns all drag paths:
 
-The new runtime now consumes an explicit drag-session seam from that engine and owns the drag feedback surfaces, and it has replaced the context-window insert path:
-- Fixed drag preview in the shared overlay shadow root
-- Target-region highlighter in the shared overlay shadow root
-- Shadow-root drop placeholder mounted into the sortable placeholder container
-- `CreateOrDestroyDraggableEvent` / `SetDraggableVisibleEvent` now drive a native context-window drag session that computes region targets, fires `AddComponentEvent`, and preserves the post-drop click guard via `PageViewController.setNextClickDisabled(true)`
-- Hover/context-menu/highlighter suppression while dragging
-- Click-selection parity with the legacy `isNewlyDropped()` / `nextClickDisabled` guards
-
-This leaves the physical sortable move engine itself in legacy code for now. A future pass can replace the jQuery UI intra-page reordering mechanics entirely once the new drag visuals, context-window inserts, and interaction guards are proven stable.
+- **Context-window inserts** ([`context-window-drag.ts`](../src/main/resources/assets/js/new-ui/interaction/context-window-drag.ts)): `CreateOrDestroyDraggableEvent` / `SetDraggableVisibleEvent` drive a pointer-based drag session that computes region targets, fires `AddComponentEvent`, and preserves the post-drop click guard via `PageViewController.setNextClickDisabled(true)`.
+- **Intra-page component reordering** ([`component-drag.ts`](../src/main/resources/assets/js/new-ui/interaction/component-drag.ts)): Pointer-based drag with 8px threshold, axis-aware insertion index (excluding the source element), nested-layout and fragment-layout containment validation. Fires `MoveComponentEvent`, `ComponentViewDragDroppedEvent`, and all legacy lifecycle events.
+- **Legacy sortables disabled**: `DragAndDrop.disableLegacySortables()` destroys existing jQuery UI sortables on init and guards all creation paths.
+- **Drag feedback**: Fixed drag preview, target-region highlighter, and shadow-root drop placeholder render in the shared overlay root.
+- **Interaction guards**: Hover, context menu, and highlighter are suppressed during drag. Click-selection parity with legacy `nextClickDisabled` guards preserved.
+- **Legacy bridge removed**: The `drag-sync.ts` module that bridged legacy `DragAndDrop` state to `$dragState` has been deleted — the new drag modules write store state directly.
 
 ---
 
@@ -1510,7 +1502,7 @@ This leaves the physical sortable move engine itself in legacy code for now. A f
 
 | Feature | Why Deferred | Dependency |
 |---------|-------------|------------|
-| **Text editing** | The new runtime now mirrors the legacy `textMode` flag so hover, selection chrome, keyboard forwarding, and context-menu behavior back off correctly while CKEditor is active. Text components also preserve the legacy single-click-select / double-click-edit contract by firing `EditTextComponentViewEvent` directly from the new selection runtime. Inline editing itself still requires a dedicated rich-text integration design pass. | Phase 3 (selection) must be stable first |
+| **Text editing** | The new runtime mirrors the legacy `textMode` flag so hover, selection chrome, keyboard forwarding, and context-menu behavior back off correctly while CKEditor is active. Text components preserve the legacy single-click-select / double-click-edit contract by firing `EditTextComponentViewEvent` directly from the new selection runtime. Inline rich-text editing remains in legacy code — no migration planned. | N/A |
 | **Page placeholder** | Implemented on this branch as a shadow-root overlay surface that loads page controllers with native async request handling and fires `SelectPageDescriptorEvent` from the new runtime. | Done |
 | **Fragment mode** | Implemented on this branch. The new runtime now boots in fragment mode, parses the single root-component DOM shape, and preserves root-path selection semantics in session storage and reconciliation. | Done |
 | **Session storage persistence** | Implemented on this branch. The new runtime now syncs `$selectedPath` to `SessionStorageHelper` and restores it during boot so selection survives live-editor reloads. | Done |
@@ -1523,7 +1515,7 @@ Each of these should get its own design section added to this document when read
 
 ### Current Coverage On This Branch
 
-- Unit tests cover DOM parsing, subtree parsing, empty-state detection, placeholder/overlay shadow mounting, page-placeholder async loading and UI selection flow, reconciliation, selection persistence, legacy drag-session syncing, context-window drag sessions, hover handling, click selection, text-component edit-entry timing, post-drop click suppression, context-menu opening, and keyboard forwarding.
+- Unit tests cover DOM parsing, subtree parsing, empty-state detection, placeholder/overlay shadow mounting, page-placeholder async loading and UI selection flow, reconciliation, selection persistence, context-window drag sessions, intra-page component drag (move, cancel, nested-layout rejection, fragment containment, window blur, text-editing guard, threshold, cleanup), hover handling, click selection, text-component edit-entry timing, post-drop click suppression, context-menu opening, and keyboard forwarding.
 - Storybook now includes runtime stories for the actual migrated surfaces:
   - `InFlowPlaceholderInFlex`
   - `PlaceholderStyleIsolation`
