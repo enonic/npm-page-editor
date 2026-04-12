@@ -1,8 +1,12 @@
+import jQuery from 'jquery';
 import {withThemeByClassName} from '@storybook/addon-themes';
 import type {Preview} from '@storybook/preact-vite';
 import {themes} from 'storybook/theming';
 
 import './storybook.css';
+
+globalThis.$ = jQuery;
+globalThis.jQuery = jQuery;
 
 const isDark = globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches;
 
