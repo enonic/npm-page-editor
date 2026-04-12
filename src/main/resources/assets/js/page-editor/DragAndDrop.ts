@@ -86,6 +86,8 @@ export class DragAndDrop {
 
     private dropMessage: string | null = null;
 
+    private legacySortablesEnabled: boolean = true;
+
     public static init(pageView: PageView) {
         DragAndDrop.instance = new DragAndDrop(pageView);
     }
@@ -112,13 +114,37 @@ export class DragAndDrop {
     }
 
     createSortableLayout(component: ItemView) {
+        if (!this.legacySortablesEnabled) {
+            return;
+        }
+
         $(component.getHTMLElement()).find(this.REGION_SELECTOR).each((_index, element) => {
             this.createSortable($(element));
         });
     }
 
     refreshSortable(): void {
+        if (!this.legacySortablesEnabled) {
+            return;
+        }
+
         $(this.REGION_SELECTOR).sortable('refresh');
+    }
+
+    disableLegacySortables(): void {
+        if (!this.legacySortablesEnabled) {
+            return;
+        }
+
+        $(this.REGION_SELECTOR).each((_index, element) => {
+            const sortable = $(element);
+
+            if (sortable.data('ui-sortable')) {
+                sortable.sortable('destroy');
+            }
+        });
+
+        this.legacySortablesEnabled = false;
     }
 
     private processMouseOverRegionView(regionView: RegionView) {
@@ -141,6 +167,9 @@ export class DragAndDrop {
     }
 
     createSortable(selector: JQuery<HTMLElement>): void {
+        if (!this.legacySortablesEnabled) {
+            return;
+        }
 
         $(selector).sortable({
             // append helper to pageView so it doesn't jump when sortable jumps

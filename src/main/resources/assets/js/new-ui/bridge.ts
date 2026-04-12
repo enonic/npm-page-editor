@@ -22,6 +22,10 @@ export function getActionsForPath(path: string): Action[] {
     return resolveItemView(path)?.getContextMenuActions() ?? [];
 }
 
+export function getLegacyItemViewLabel(path: string): string | undefined {
+    return resolveItemView(path)?.getName();
+}
+
 export function getLockedPageActions(): Action[] {
     return currentPageView?.getLockedMenuActions() ?? [];
 }
@@ -44,4 +48,16 @@ export function deselectLegacyItemView(path?: string): void {
     }
 
     currentPageView?.getSelectedView()?.deselect(true);
+}
+
+export function setLegacyItemViewMoving(path: string, value: boolean): void {
+    const itemView = resolveItemView(path) as ItemView & {setMoving?: (moving: boolean) => void} | undefined;
+
+    itemView?.setMoving?.(value);
+}
+
+export function legacyFragmentContainsLayout(path: string): boolean {
+    const itemView = resolveItemView(path) as ItemView & {containsLayout?: () => boolean} | undefined;
+
+    return itemView?.containsLayout?.() ?? false;
 }
