@@ -2,7 +2,7 @@
 
 This document defines the target architecture for migrating `@enonic/page-editor` from its legacy jQuery/class-based implementation to a modern Preact + nanostores reactive model. It incorporates findings from architectural review and defines a concrete, phased implementation plan.
 
-For background on why this migration is needed, see [`page-editor-preact-migration.md`](./page-editor-preact-migration.md).
+For product scope and motivation, see [`prd.md`](./prd.md).
 
 ---
 

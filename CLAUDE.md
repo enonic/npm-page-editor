@@ -27,7 +27,11 @@ Only run `./gradlew build -Penv=dev` when the task specifically requires testing
 - **New UI** (migration target): Preact/TSX, `@enonic/ui`, Tailwind — isolated inside Shadow DOM
 - **Styles**: `src/main/resources/assets/css/` — LESS, global stylesheet
 
-New Preact surfaces must be rendered inside a Shadow DOM boundary to prevent style leakage between editor chrome and the edited page. See `docs/page-editor-preact-migration.md` for migration strategy.
+New Preact surfaces must be rendered inside a Shadow DOM boundary to prevent style leakage between editor chrome and the edited page. See `docs/architecture.md` for the target architecture and `docs/prd.md` for migration scope.
+
+## Documentation
+
+All docs live in `docs/`, flat structure. Lowercase kebab-case filenames, no date or number prefixes. Add subdirectories (`design/`, `decisions/`) only when file count makes flat navigation painful. `prd.md` is the product requirements document; other files are technical specs named by topic (e.g., `parser.md`, `persistence.md`).
 
 ## Git & GitHub
 
