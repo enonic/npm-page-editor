@@ -15,7 +15,7 @@ export function DragPlaceholder({dropAllowed, message}: DragPlaceholderProps): J
     const textClass = dropAllowed ? 'text-info' : 'text-error';
 
     return (
-        <div className={`pe-shell pe-dash ${dashClass} ${bgClass} rounded-lg px-6 py-10 text-center`}>
+        <div className={`pe-shell pe-dash ${dashClass} ${bgClass} flex min-h-full items-center justify-center rounded-lg px-6 py-10`}>
             <p className={`text-base italic ${textClass}`}>{text}</p>
         </div>
     );

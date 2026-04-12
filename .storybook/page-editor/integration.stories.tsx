@@ -4,7 +4,7 @@ import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/Component
 import type {CSSProperties} from 'preact';
 import {useEffect, useRef} from 'preact/hooks';
 import {OverlayApp} from '../../src/main/resources/assets/js/new-ui/components/OverlayApp';
-import {DragPlaceholder} from '../../src/main/resources/assets/js/new-ui/components/placeholders/DragPlaceholder';
+import {RegionPlaceholder} from '../../src/main/resources/assets/js/new-ui/components/placeholders/RegionPlaceholder';
 import {setCurrentPageView} from '../../src/main/resources/assets/js/new-ui/bridge';
 import {transferOwnership, resetOwnership} from '../../src/main/resources/assets/js/new-ui/coexistence/ownership';
 import {initGeometryTriggers, markDirty} from '../../src/main/resources/assets/js/new-ui/geometry/scheduler';
@@ -16,6 +16,7 @@ import {elementIndex, rebuildIndex} from '../../src/main/resources/assets/js/new
 import {
     $selectedPath,
     closeContextMenu,
+    getRecord,
     openContextMenu,
     setDragState,
     setHoveredPath,
@@ -49,12 +50,13 @@ function createMockPageView(element: HTMLElement) {
     } as never;
 }
 
-function record(
+function makeRecord(
     path: string,
     type: ComponentRecordType,
     element: HTMLElement,
     parentPath: string | undefined,
     children: string[],
+    empty = false,
 ): ComponentRecord {
     return {
         path: path === '/' ? ComponentPath.root() : ComponentPath.fromString(path),
@@ -62,7 +64,7 @@ function record(
         element,
         parentPath,
         children,
-        empty: false,
+        empty,
         error: false,
         descriptor: undefined,
         loading: false,
@@ -87,16 +89,256 @@ function setupOwnership(): void {
     transferOwnership('shader');
     transferOwnership('hover-detection');
     transferOwnership('click-selection');
+    transferOwnership('drag-drop');
 }
 
-function initSimpleSelection(): () => void {
-    const handleClick = (event: MouseEvent) => {
-        if (isOverlayChromeEvent(event)) return;
+//
+// * Interaction handler
+//
+
+function initInteraction(): () => void {
+    const DRAG_THRESHOLD = 5;
+
+    let dragPending = false;
+    let dragActive = false;
+    let startX = 0;
+    let startY = 0;
+    let sourcePath: string | undefined;
+    let sourceParentPath: string | undefined;
+    let sourceElement: HTMLElement | undefined;
+    let sourceHeight = 0;
+    let originalDisplay = '';
+    let placeholderEl: HTMLDivElement | undefined;
+    let activeEmptyRegion: HTMLElement | undefined;
+
+    // Hide/restore RegionPlaceholder island hosts in empty regions
+    // so the drag placeholder is the sole flex child and fills the space
+    const showRegionHosts = () => {
+        if (activeEmptyRegion) {
+            activeEmptyRegion.querySelectorAll('[data-pe-placeholder-host]').forEach(
+                (h) => { (h as HTMLElement).style.display = ''; },
+            );
+            activeEmptyRegion = undefined;
+        }
+    };
+
+    const hideRegionHosts = (regionEl: HTMLElement) => {
+        showRegionHosts();
+        regionEl.querySelectorAll('[data-pe-placeholder-host]').forEach(
+            (h) => { (h as HTMLElement).style.display = 'none'; },
+        );
+        activeEmptyRegion = regionEl;
+    };
+
+    const getPlaceholder = (): HTMLDivElement => {
+        if (!placeholderEl) {
+            placeholderEl = document.createElement('div');
+            placeholderEl.style.pointerEvents = 'none';
+            placeholderEl.style.flex = '1';
+            placeholderEl.style.display = 'flex';
+            placeholderEl.style.flexDirection = 'column';
+        }
+        return placeholderEl;
+    };
+
+    const endDrag = () => {
+        showRegionHosts();
+        if (sourceElement) {
+            sourceElement.style.display = originalDisplay;
+            sourceElement = undefined;
+        }
+        if (placeholderEl) {
+            placeholderEl.style.minHeight = '';
+            placeholderEl.remove();
+            placeholderEl = undefined;
+        }
+        document.body.style.cursor = '';
+        setDragState(undefined);
+        dragActive = false;
+        dragPending = false;
+        sourcePath = undefined;
+        sourceParentPath = undefined;
+        sourceHeight = 0;
+    };
+
+    // Check if a region is nested inside a layout
+    const isInsideLayout = (regionPath: string): boolean => {
+        const rec = getRecord(regionPath);
+        if (!rec?.parentPath) return false;
+        const parent = getRecord(rec.parentPath);
+        return parent?.type === 'layout';
+    };
+
+    // Find the child element to insert placeholder before, or null to append
+    const findInsertionRef = (regionPath: string, mouseY: number): Element | null => {
+        const rec = getRecord(regionPath);
+        if (!rec) return null;
+
+        for (const childPath of rec.children) {
+            if (childPath === sourcePath) continue;
+            const child = getRecord(childPath);
+            if (!child?.element) continue;
+
+            const rect = child.element.getBoundingClientRect();
+            if (mouseY < rect.top + rect.height / 2) return child.element;
+        }
+        return null;
+    };
+
+    const handleMouseDown = (event: MouseEvent) => {
+        if (event.button !== 0 || isOverlayChromeEvent(event)) return;
+
         const target = getTrackedTarget(event.target);
         const path = target ? elementIndex.get(target) : undefined;
-        if (path) {
+        const rec = path ? getRecord(path) : undefined;
+
+        if (rec && rec.type !== 'region' && rec.type !== 'page') {
             event.preventDefault();
-            event.stopPropagation();
+            dragPending = true;
+            startX = event.clientX;
+            startY = event.clientY;
+            sourcePath = path;
+            sourceElement = target ?? undefined;
+        }
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+        if (!dragPending && !dragActive) return;
+
+        if (dragPending) {
+            const dx = event.clientX - startX;
+            const dy = event.clientY - startY;
+            if (dx * dx + dy * dy < DRAG_THRESHOLD * DRAG_THRESHOLD) return;
+
+            dragPending = false;
+            dragActive = true;
+
+            document.body.style.cursor = 'grabbing';
+            closeContextMenu();
+            setSelectedPath(undefined);
+            setHoveredPath(undefined);
+
+            // Hide source and show placeholder at its position to avoid layout shift
+            if (sourcePath && sourceElement) {
+                const sourceRec = getRecord(sourcePath);
+                const parentPath = sourceRec?.parentPath;
+                const parentRec = parentPath ? getRecord(parentPath) : undefined;
+
+                if (parentRec?.element) {
+                    sourceHeight = sourceElement.offsetHeight;
+                    sourceParentPath = parentPath;
+                    originalDisplay = sourceElement.style.display;
+
+                    const ph = getPlaceholder();
+                    ph.style.minHeight = `${sourceHeight}px`;
+                    parentRec.element.insertBefore(ph, sourceElement);
+                    sourceElement.style.display = 'none';
+
+                    const typeLabel = sourceRec?.type
+                        ? `${sourceRec.type.charAt(0).toUpperCase()}${sourceRec.type.slice(1)}`
+                        : 'Component';
+
+                    setDragState({
+                        itemType: sourceRec?.type || 'part',
+                        itemLabel: typeLabel,
+                        sourcePath,
+                        targetPath: parentPath,
+                        dropAllowed: true,
+                        message: undefined,
+                        placeholderElement: ph,
+                        x: event.clientX,
+                        y: event.clientY,
+                    });
+                }
+            }
+
+            return;
+        }
+
+        if (!dragActive || !sourcePath) return;
+
+        const el = document.elementFromPoint(event.clientX, event.clientY);
+        const regionEl = el?.closest('[data-portal-region]') as HTMLElement | null;
+        const targetPath = regionEl ? elementIndex.get(regionEl) : undefined;
+
+        const sourceRec = getRecord(sourcePath);
+        const typeLabel = sourceRec?.type
+            ? `${sourceRec.type.charAt(0).toUpperCase()}${sourceRec.type.slice(1)}`
+            : 'Component';
+
+        if (targetPath && regionEl) {
+            const targetRec = getRecord(targetPath);
+            const dropAllowed = !(sourceRec?.type === 'layout' && isInsideLayout(targetPath));
+            const message = dropAllowed ? undefined : 'Layouts cannot be nested';
+
+            const ph = getPlaceholder();
+
+            const isEmpty = !targetRec?.children.length ||
+                (targetRec.children.length === 1 && targetRec.children[0] === sourcePath);
+
+            if (isEmpty) {
+                // Empty region — hide island hosts so placeholder fills the space
+                if (ph.parentElement !== regionEl) {
+                    hideRegionHosts(regionEl);
+                    ph.style.minHeight = `${Math.max(sourceHeight, regionEl.offsetHeight)}px`;
+                    regionEl.appendChild(ph);
+                }
+            } else {
+                // Region has children — position at insertion point
+                showRegionHosts();
+                ph.style.minHeight = targetPath === sourceParentPath ? `${sourceHeight}px` : '';
+                const ref = findInsertionRef(targetPath, event.clientY);
+                if (ref) {
+                    regionEl.insertBefore(ph, ref);
+                } else {
+                    regionEl.appendChild(ph);
+                }
+            }
+
+            setDragState({
+                itemType: sourceRec?.type || 'part',
+                itemLabel: typeLabel,
+                sourcePath,
+                targetPath,
+                dropAllowed,
+                message,
+                placeholderElement: ph,
+                x: event.clientX,
+                y: event.clientY,
+            });
+        } else {
+            showRegionHosts();
+            if (placeholderEl?.parentElement) {
+                placeholderEl.remove();
+            }
+            setDragState({
+                itemType: sourceRec?.type || 'part',
+                itemLabel: typeLabel,
+                sourcePath,
+                targetPath: undefined,
+                dropAllowed: false,
+                message: undefined,
+                placeholderElement: undefined,
+                x: event.clientX,
+                y: event.clientY,
+            });
+        }
+    };
+
+    const handleMouseUp = (event: MouseEvent) => {
+        if (dragActive) {
+            endDrag();
+            return;
+        }
+
+        dragPending = false;
+
+        if (isOverlayChromeEvent(event)) return;
+
+        const target = getTrackedTarget(event.target);
+        const path = target ? elementIndex.get(target) : undefined;
+
+        if (path) {
             closeContextMenu();
             setSelectedPath($selectedPath.get() === path ? undefined : path);
         } else {
@@ -106,9 +348,12 @@ function initSimpleSelection(): () => void {
     };
 
     const handleContextMenu = (event: MouseEvent) => {
+        if (dragActive) return;
         if (isOverlayChromeEvent(event)) return;
+
         const target = getTrackedTarget(event.target);
         const path = target ? elementIndex.get(target) : undefined;
+
         if (path) {
             event.preventDefault();
             event.stopPropagation();
@@ -117,10 +362,16 @@ function initSimpleSelection(): () => void {
         }
     };
 
-    document.addEventListener('click', handleClick, {capture: true});
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
     document.addEventListener('contextmenu', handleContextMenu, {capture: true});
+
     return () => {
-        document.removeEventListener('click', handleClick, {capture: true});
+        endDrag();
+        document.removeEventListener('mousedown', handleMouseDown);
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
         document.removeEventListener('contextmenu', handleContextMenu, {capture: true});
     };
 }
@@ -143,39 +394,65 @@ const blockStyle = (bg: string, border: string): CSSProperties => ({
     background: bg,
     border: `1px solid ${border}`,
     padding: '16px',
-    cursor: 'default',
+    cursor: 'grab',
+    userSelect: 'none',
 });
 
+const regionStyle: CSSProperties = {
+    borderRadius: '6px',
+    border: '1px dashed rgba(33, 52, 75, 0.12)',
+    padding: '12px',
+    minHeight: '60px',
+    cursor: 'default',
+};
+
+const emptyRegionStyle: CSSProperties = {
+    minHeight: '60px',
+    cursor: 'default',
+    display: 'flex',
+    flexDirection: 'column',
+};
+
 //
-// * Overlay Test
+// * Story component
 //
 
 function OverlayTest() {
     const containerRef = useRef<HTMLDivElement>(null);
-    const regionRef = useRef<HTMLElement>(null);
+    const mainRegionRef = useRef<HTMLElement>(null);
     const partARef = useRef<HTMLElement>(null);
-    const layoutBRef = useRef<HTMLElement>(null);
-    const innerRegionRef = useRef<HTMLElement>(null);
-    const textCRef = useRef<HTMLElement>(null);
+    const layoutBRef = useRef<HTMLDivElement>(null);
+    const leftRegionRef = useRef<HTMLElement>(null);
+    const textCRef = useRef<HTMLDivElement>(null);
+    const rightRegionRef = useRef<HTMLElement>(null);
+    const layoutDRef = useRef<HTMLDivElement>(null);
+    const centerRegionRef = useRef<HTMLElement>(null);
 
     useEffect(() => {
         const container = containerRef.current;
-        const region = regionRef.current;
+        const mainRegion = mainRegionRef.current;
         const partA = partARef.current;
         const layoutB = layoutBRef.current;
-        const innerRegion = innerRegionRef.current;
+        const leftRegion = leftRegionRef.current;
         const textC = textCRef.current;
+        const rightRegion = rightRegionRef.current;
+        const layoutD = layoutDRef.current;
+        const centerRegion = centerRegionRef.current;
 
-        if (!container || !region || !partA || !layoutB || !innerRegion || !textC) return undefined;
+        if (!container || !mainRegion || !partA || !layoutB || !leftRegion || !textC || !rightRegion || !layoutD || !centerRegion) {
+            return undefined;
+        }
 
-        // Manual registry — no reconcilePage, no PageState dependency
         const records: Record<string, ComponentRecord> = {
-            '/': record('/', 'page', container, undefined, ['/main']),
-            '/main': record('/main', 'region', region, '/', ['/main/0', '/main/1']),
-            '/main/0': record('/main/0', 'part', partA, '/main', []),
-            '/main/1': record('/main/1', 'layout', layoutB, '/main', ['/main/1/left']),
-            '/main/1/left': record('/main/1/left', 'region', innerRegion, '/main/1', ['/main/1/left/0']),
-            '/main/1/left/0': record('/main/1/left/0', 'text', textC, '/main/1/left', []),
+            '/': makeRecord('/', 'page', container, undefined, ['/main']),
+            '/main': makeRecord('/main', 'region', mainRegion, '/', ['/main/0', '/main/1', '/main/2']),
+            '/main/0': makeRecord('/main/0', 'part', partA, '/main', []),
+            '/main/1': makeRecord('/main/1', 'layout', layoutB, '/main', ['/main/1/left', '/main/1/right']),
+            '/main/1/left': makeRecord('/main/1/left', 'region', leftRegion, '/main/1', ['/main/1/left/0']),
+            '/main/1/left/0': makeRecord('/main/1/left/0', 'text', textC, '/main/1/left', []),
+            '/main/1/right': makeRecord('/main/1/right', 'region', rightRegion, '/main/1', [], true),
+            '/main/2': makeRecord('/main/2', 'layout', layoutD, '/main', ['/main/2/center']),
+            '/main/2/center': makeRecord('/main/2/center', 'region', centerRegion, '/main/2', [], true),
         };
 
         setCurrentPageView(createMockPageView(container));
@@ -186,17 +463,27 @@ function OverlayTest() {
         rebuildIndex(records);
         setModifyAllowed(true);
 
+        const rightIsland = createPlaceholderIsland(
+            rightRegion,
+            <RegionPlaceholder path='/main/1/right' regionName='right' />,
+        );
+        const centerIsland = createPlaceholderIsland(
+            centerRegion,
+            <RegionPlaceholder path='/main/2/center' regionName='center' />,
+        );
+
         const stopGeometry = initGeometryTriggers();
         const stopHover = initHoverDetection();
-        const stopSelection = initSimpleSelection();
+        const stopInteraction = initInteraction();
 
-        // Initial geometry pass
         markDirty();
 
         return () => {
-            stopSelection();
+            stopInteraction();
             stopHover();
             stopGeometry();
+            rightIsland.unmount();
+            centerIsland.unmount();
             overlay.unmount();
             resetOwnership();
             resetState();
@@ -205,7 +492,7 @@ function OverlayTest() {
 
     return (
         <div ref={containerRef} data-testid='overlay-canvas' style={canvasStyle}>
-            <section ref={regionRef} data-portal-region='main' style={{display: 'grid', gap: '12px'}}>
+            <section ref={mainRegionRef} data-portal-region='main' style={{display: 'grid', gap: '12px'}}>
                 <article
                     ref={partARef}
                     data-portal-component-type='part'
@@ -213,7 +500,7 @@ function OverlayTest() {
                     style={blockStyle('rgba(66, 153, 225, 0.06)', 'rgba(66, 153, 225, 0.2)')}
                 >
                     <h3 style={{margin: '0 0 4px', fontSize: '16px'}}>Part A — Hero Banner</h3>
-                    <p style={{margin: 0, opacity: 0.6, fontSize: '13px'}}>Hover to highlight, click to select, right-click for menu.</p>
+                    <p style={{margin: 0, opacity: 0.6, fontSize: '13px'}}>Hover, click to select, drag to move.</p>
                 </article>
 
                 <div
@@ -222,123 +509,39 @@ function OverlayTest() {
                     data-testid='layout-b'
                     style={{
                         ...blockStyle('rgba(15, 23, 42, 0.02)', 'rgba(33, 52, 75, 0.12)'),
-                        display: 'grid',
-                        gap: '10px',
                     }}
                 >
-                    <p style={{margin: 0, fontSize: '13px', fontWeight: 600}}>Layout B — Two Column</p>
-                    <section
-                        ref={innerRegionRef}
-                        data-portal-region='left'
-                        style={{borderRadius: '6px', border: '1px dashed rgba(33, 52, 75, 0.12)', padding: '12px'}}
-                    >
-                        <div
-                            ref={textCRef}
-                            data-portal-component-type='text'
-                            data-testid='text-c'
-                            style={blockStyle('rgba(34, 197, 94, 0.05)', 'rgba(34, 197, 94, 0.2)')}
-                        >
-                            <p style={{margin: 0, fontSize: '13px', fontWeight: 600}}>Text C — Inside Layout</p>
-                            <p style={{margin: '4px 0 0', opacity: 0.6, fontSize: '13px'}}>Nested component. Hover/click targets this, not the parent layout.</p>
-                        </div>
-                    </section>
+                    <p style={{margin: '0 0 10px', fontSize: '13px', fontWeight: 600}}>Layout B — Two Column</p>
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                        <section ref={leftRegionRef} data-portal-region='left' style={regionStyle}>
+                            <div
+                                ref={textCRef}
+                                data-portal-component-type='text'
+                                data-testid='text-c'
+                                style={blockStyle('rgba(34, 197, 94, 0.05)', 'rgba(34, 197, 94, 0.2)')}
+                            >
+                                <p style={{margin: 0, fontSize: '13px', fontWeight: 600}}>Text C</p>
+                                <p style={{margin: '4px 0 0', opacity: 0.6, fontSize: '13px'}}>
+                                    Drag into other regions.
+                                </p>
+                            </div>
+                        </section>
+                        <section ref={rightRegionRef} data-portal-region='right' style={emptyRegionStyle} />
+                    </div>
+                </div>
+
+                <div
+                    ref={layoutDRef}
+                    data-portal-component-type='layout'
+                    data-testid='layout-d'
+                    style={{
+                        ...blockStyle('rgba(15, 23, 42, 0.02)', 'rgba(33, 52, 75, 0.12)'),
+                    }}
+                >
+                    <p style={{margin: '0 0 10px', fontSize: '13px', fontWeight: 600}}>Layout D — Single Column</p>
+                    <section ref={centerRegionRef} data-portal-region='center' style={emptyRegionStyle} />
                 </div>
             </section>
-        </div>
-    );
-}
-
-//
-// * Drag Test
-//
-
-function DragTest() {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const sourceRegionRef = useRef<HTMLElement>(null);
-    const sourceRef = useRef<HTMLElement>(null);
-    const targetRegionRef = useRef<HTMLElement>(null);
-    const placeholderRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const container = containerRef.current;
-        const sourceRegion = sourceRegionRef.current;
-        const source = sourceRef.current;
-        const targetRegion = targetRegionRef.current;
-        const placeholder = placeholderRef.current;
-
-        if (!container || !sourceRegion || !source || !targetRegion || !placeholder) return undefined;
-
-        const records: Record<string, ComponentRecord> = {
-            '/': record('/', 'page', container, undefined, ['/main', '/aside']),
-            '/main': record('/main', 'region', sourceRegion, '/', ['/main/0']),
-            '/main/0': record('/main/0', 'part', source, '/main', []),
-            '/aside': record('/aside', 'region', targetRegion, '/', []),
-        };
-
-        setCurrentPageView(createMockPageView(container));
-        setupOwnership();
-
-        const overlay = createOverlayHost(<OverlayApp />);
-        setRegistry(records);
-        rebuildIndex(records);
-        setModifyAllowed(true);
-
-        // Manual drag placeholder — bypass DragPlaceholderPortal
-        const dragIsland = createPlaceholderIsland(
-            placeholder,
-            <DragPlaceholder itemLabel='Hero banner' dropAllowed={true} />,
-        );
-
-        // placeholderElement: undefined prevents DragPlaceholderPortal from duplicating
-        setDragState({
-            itemType: 'part',
-            itemLabel: 'Hero banner',
-            sourcePath: '/main/0',
-            targetPath: '/aside',
-            dropAllowed: true,
-            message: undefined,
-            placeholderElement: undefined,
-            x: 480,
-            y: 180,
-        });
-
-        const stopGeometry = initGeometryTriggers();
-        markDirty();
-
-        return () => {
-            stopGeometry();
-            dragIsland.unmount();
-            overlay.unmount();
-            resetOwnership();
-            resetState();
-        };
-    }, []);
-
-    return (
-        <div
-            ref={containerRef}
-            style={{...canvasStyle, display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '16px', alignItems: 'start'}}
-        >
-            <section ref={sourceRegionRef} data-portal-region='main' style={{display: 'grid', gap: '12px'}}>
-                <article
-                    ref={sourceRef}
-                    data-portal-component-type='part'
-                    style={{...blockStyle('rgba(66, 153, 225, 0.06)', 'rgba(66, 153, 225, 0.2)'), opacity: 0.5, cursor: 'grabbing'}}
-                >
-                    <p style={{margin: '0 0 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', opacity: 0.5}}>Drag source</p>
-                    <h3 style={{margin: '0 0 4px', fontSize: '16px'}}>Hero Banner</h3>
-                    <p style={{margin: 0, opacity: 0.6, fontSize: '13px'}}>Being dragged to the aside region.</p>
-                </article>
-            </section>
-
-            <aside
-                ref={targetRegionRef}
-                data-portal-region='aside'
-                style={{minHeight: '160px', borderRadius: '8px', border: '1px dashed rgba(33, 52, 75, 0.15)', background: 'rgba(15, 23, 42, 0.02)', padding: '14px'}}
-            >
-                <p style={{margin: '0 0 10px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', opacity: 0.5}}>Drop target</p>
-                <div ref={placeholderRef} />
-            </aside>
         </div>
     );
 }
@@ -358,9 +561,4 @@ type Story = StoryObj<typeof meta>;
 export const Overlay: Story = {
     name: 'Integration / Overlay',
     render: () => <OverlayTest />,
-};
-
-export const Drag: Story = {
-    name: 'Integration / Drag',
-    render: () => <DragTest />,
 };

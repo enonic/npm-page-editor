@@ -15,7 +15,7 @@ export function RegionPlaceholder({path}: RegionPlaceholderProps): JSX.Element |
     }
 
     return (
-        <div className='pe-shell pe-dash rounded-lg px-6 py-10 text-center'>
+        <div className='pe-shell pe-dash flex min-h-full items-center justify-center rounded-lg px-6 py-10'>
             <p className='text-base italic text-subtle'>Drop components here..</p>
         </div>
     );
