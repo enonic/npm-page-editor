@@ -61,6 +61,7 @@ import {SessionStorageHelper} from '@enonic/lib-contentstudio/app/util/SessionSt
 import {EditorEvent, EditorEvents} from './event/EditorEvent';
 import type {ContentSummaryAndCompareStatus} from '@enonic/lib-contentstudio/app/content/ContentSummaryAndCompareStatus';
 import {initNewUi} from '../new-ui/init';
+import {isOwnedByNewUI} from '../new-ui/coexistence/ownership';
 
 
 export class LiveEditPage {
@@ -405,6 +406,9 @@ export class LiveEditPage {
         SetModifyAllowedEvent.on(this.setModifyAllowedListener);
 
         this.createOrDestroyDraggableListener = (event: CreateOrDestroyDraggableEvent): void => {
+            if (isOwnedByNewUI('context-window-drag')) {
+                return;
+            }
 
             const idAttr = `drag-helper-${event.getType()}`;
             const dataAttr = `data-${ItemType.ATTRIBUTE_TYPE}="${event.getType()}"`;
@@ -426,6 +430,9 @@ export class LiveEditPage {
         CreateOrDestroyDraggableEvent.on(this.createOrDestroyDraggableListener);
 
         this.setDraggableVisibleEventListener = (event: SetDraggableVisibleEvent): void => {
+            if (isOwnedByNewUI('context-window-drag')) {
+                return;
+            }
 
             const idAttr = `drag-helper-${event.getType()}`;
             const dataAttr = `data-${ItemType.ATTRIBUTE_TYPE}="${event.getType()}"`;

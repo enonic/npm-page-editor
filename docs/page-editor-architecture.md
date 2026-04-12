@@ -450,8 +450,8 @@ Complete mapping of incoming events to adapter behavior:
 | `PageStateEvent` | `.getPageJson(): object \| null` | Update `PageState` singleton |
 | `UpdateTextComponentViewEvent` | `.getComponentPath(): ComponentPath`, `.getText(): string`, `.getOrigin()` | Update text content (skip if origin=live) |
 | `SetComponentStateEvent` | `.getPath(): string`, `.isProcessing(): boolean` | Toggle loading spinner state |
-| `CreateOrDestroyDraggableEvent` | `.getType(): string`, `.isCreate(): boolean` | **Legacy-only** (Phase 4) |
-| `SetDraggableVisibleEvent` | `.getType(): string`, `.isVisible(): boolean` | **Legacy-only** (Phase 4) |
+| `CreateOrDestroyDraggableEvent` | `.getType(): string`, `.isCreate(): boolean` | Start/stop the new runtime's context-window drag session |
+| `SetDraggableVisibleEvent` | `.getType(): string`, `.isVisible(): boolean` | Show/hide the new runtime's context-window drag chrome |
 
 ### Reconciliation: Re-resolving Element References
 
@@ -921,7 +921,7 @@ Using `capture: true` ensures the editor intercepts clicks before customer page 
 | **Phase 1: In-Flow Placeholders** | Done | Empty region and non-page component placeholders now render through per-node shadow islands, including error-state cards. The legacy placeholder DOM is suppressed for surfaces owned by the new runtime. |
 | **Phase 2: Overlay Surfaces** | Done | Hover highlighter, selection crosshair, shader, and context menu now render inside the shared overlay shadow root, with legacy overlay chrome suppressed via `body.pe-overlay-active`. |
 | **Phase 3: Interaction Systems** | Done | Hover detection, click selection, deselection, right-click context menu, keyboard forwarding, selection persistence, and bus-driven reconciliation are owned by the new runtime for both page and fragment mode. |
-| **Phase 4: Drag and Drop** | Partial | The legacy jQuery UI sortable/draggable engine still performs physical moves and context-window inserts, but the new runtime now owns drag-session feedback state: it renders the fixed drag preview, target-region highlighter, shadow-root drop placeholder, suppresses conflicting overlay chrome during drag, and preserves the legacy post-drop click guard. |
+| **Phase 4: Drag and Drop** | Partial | The legacy jQuery UI sortable engine still performs intra-page reordering, but the new runtime now owns drag-session feedback plus the context-window drag contract: it renders the fixed drag preview, target-region highlighter, shadow-root drop placeholder, handles palette inserts, suppresses conflicting overlay chrome during drag, and preserves the legacy post-drop click guard. |
 | **Phase 5: Text Editing & Advanced Features** | Partial | Session-storage selection persistence, fragment mode, the async page placeholder, legacy text-mode synchronization, and text-component single-click/double-click edit-entry parity are now implemented on this branch. Inline rich-text editing itself still needs its own design and migration pass. |
 
 ### Phase 0: Runtime Primitives
@@ -1488,19 +1488,19 @@ function initKeyboardHandling(): () => void {
 **Partially implemented on this branch.** The drag-and-drop system ([`DragAndDrop.ts`](../src/main/resources/assets/js/page-editor/DragAndDrop.ts) — 638 lines) still relies on the legacy jQuery UI engine to:
 - Manage sortable regions (jQuery UI sortable)
 - Handle cross-region moves
-- Create draggable items from the context window
 - Validate drop targets (no nested layouts, fragment containment rules)
 - Fire start/stop/dropped/canceled events to parent
 - Maintain the 100ms "newly dropped" click suppression contract used by click handling
 
-The new runtime now consumes an explicit drag-session seam from that engine and owns the drag feedback surfaces:
+The new runtime now consumes an explicit drag-session seam from that engine and owns the drag feedback surfaces, and it has replaced the context-window insert path:
 - Fixed drag preview in the shared overlay shadow root
 - Target-region highlighter in the shared overlay shadow root
 - Shadow-root drop placeholder mounted into the sortable placeholder container
+- `CreateOrDestroyDraggableEvent` / `SetDraggableVisibleEvent` now drive a native context-window drag session that computes region targets, fires `AddComponentEvent`, and preserves the post-drop click guard via `PageViewController.setNextClickDisabled(true)`
 - Hover/context-menu/highlighter suppression while dragging
 - Click-selection parity with the legacy `isNewlyDropped()` / `nextClickDisabled` guards
 
-This leaves the physical drag engine itself in legacy code for now. A future pass can replace the jQuery UI move/add mechanics entirely once the new drag visuals and interaction guards are proven stable.
+This leaves the physical sortable move engine itself in legacy code for now. A future pass can replace the jQuery UI intra-page reordering mechanics entirely once the new drag visuals, context-window inserts, and interaction guards are proven stable.
 
 ---
 
@@ -1523,7 +1523,7 @@ Each of these should get its own design section added to this document when read
 
 ### Current Coverage On This Branch
 
-- Unit tests cover DOM parsing, subtree parsing, empty-state detection, placeholder/overlay shadow mounting, page-placeholder async loading and UI selection flow, reconciliation, selection persistence, drag-session syncing, hover handling, click selection, text-component edit-entry timing, post-drop click suppression, context-menu opening, and keyboard forwarding.
+- Unit tests cover DOM parsing, subtree parsing, empty-state detection, placeholder/overlay shadow mounting, page-placeholder async loading and UI selection flow, reconciliation, selection persistence, legacy drag-session syncing, context-window drag sessions, hover handling, click selection, text-component edit-entry timing, post-drop click suppression, context-menu opening, and keyboard forwarding.
 - Storybook now includes runtime stories for the actual migrated surfaces:
   - `InFlowPlaceholderInFlex`
   - `PlaceholderStyleIsolation`
@@ -1540,7 +1540,7 @@ Each of these should get its own design section added to this document when read
 | 1 | Placeholder variants match design | Empty detection excludes editor nodes | Placeholder appears/disappears on add/remove |
 | 2 | Overlay positions track scroll | Geometry scheduler coalesces updates | Highlight follows component through page scroll |
 | 3 | - | Click/hover handlers dispatch correct events | Full selection flow end-to-end in live editor |
-| 4 | Drag feedback surfaces layer correctly during an active session | Drag state sync, hover suppression, keyboard suppression, and post-drop click suppression stay aligned with legacy drag semantics | Cross-region drag keeps placeholder/highlighter feedback aligned with the active target |
+| 4 | Drag feedback surfaces layer correctly during an active session | Drag state sync, context-window insert targeting, hover suppression, keyboard suppression, and post-drop click suppression stay aligned with legacy drag semantics | Cross-region drag keeps placeholder/highlighter feedback aligned with the active target |
 
 ### Storybook Stories (Extending Existing)
 

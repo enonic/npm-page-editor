@@ -6,7 +6,8 @@ export type Surface =
     | 'hover-detection'
     | 'click-selection'
     | 'keyboard'
-    | 'drag-drop';
+    | 'drag-drop'
+    | 'context-window-drag';
 
 const ownedByNewUi = new Set<Surface>();
 

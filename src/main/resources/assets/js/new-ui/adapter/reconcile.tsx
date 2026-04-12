@@ -59,7 +59,7 @@ function syncPlaceholders(records: Record<string, ComponentRecord>): void {
         destroyPlaceholder(path);
 
         const content = record.type === 'region'
-            ? <RegionPlaceholder regionName={String(record.path.getPath())} />
+            ? <RegionPlaceholder path={path} regionName={String(record.path.getPath())} />
             : <ComponentPlaceholder type={record.type} descriptor={record.descriptor} error={record.error} />;
 
         placeholderIslands.set(path, createPlaceholderIsland(record.element, content));

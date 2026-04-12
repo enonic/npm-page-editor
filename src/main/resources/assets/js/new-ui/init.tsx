@@ -8,11 +8,18 @@ import {initHoverDetection} from './interaction/hover-handler';
 import {initKeyboardHandling} from './interaction/keyboard-handler';
 import {initSelectionDetection} from './interaction/selection-handler';
 import {initDragSync} from './interaction/drag-sync';
+import {initContextWindowDrag} from './interaction/context-window-drag';
 import {initTextEditingSync} from './interaction/text-editing-sync';
 import {restoreStoredSelection, syncSelectionStorage} from './persistence/selection-storage';
 import {OverlayApp} from './components/OverlayApp';
 import {createOverlayHost} from './rendering/overlay-host';
 import {setLocked, setModifyAllowed, setSelectedPath} from './stores/registry';
+import {isEditorInjectedElement} from './parse/emptiness';
+
+function hasMeaningfulMutation(mutation: MutationRecord): boolean {
+    return [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)]
+        .some((node) => !(node instanceof Element) || !isEditorInjectedElement(node));
+}
 
 function startDomObserver(pageView: PageView): () => void {
     if (typeof MutationObserver === 'undefined') {
@@ -20,7 +27,7 @@ function startDomObserver(pageView: PageView): () => void {
     }
 
     const observer = new MutationObserver((mutations) => {
-        if (mutations.some((mutation) => mutation.type === 'childList')) {
+        if (mutations.some((mutation) => mutation.type === 'childList' && hasMeaningfulMutation(mutation))) {
             window.queueMicrotask(() => reconcilePage(pageView));
         }
     });
@@ -46,6 +53,7 @@ export function initNewUi(pageView: PageView): () => void {
     transferOwnership('click-selection');
     transferOwnership('keyboard');
     transferOwnership('drag-drop');
+    transferOwnership('context-window-drag');
 
     document.body.classList.add('pe-overlay-active');
 
@@ -55,6 +63,7 @@ export function initNewUi(pageView: PageView): () => void {
     const stopSelection = initSelectionDetection();
     const stopKeyboard = initKeyboardHandling();
     const stopDrag = initDragSync();
+    const stopContextWindowDrag = initContextWindowDrag();
     const stopTextEditing = initTextEditingSync();
     const stopBus = registerBusHandlers(pageView);
     const stopObserver = startDomObserver(pageView);
@@ -77,6 +86,7 @@ export function initNewUi(pageView: PageView): () => void {
         stopObserver();
         stopBus();
         stopTextEditing();
+        stopContextWindowDrag();
         stopDrag();
         stopKeyboard();
         stopSelection();

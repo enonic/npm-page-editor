@@ -10,6 +10,7 @@ const initMocks = vi.hoisted(() => ({
     initKeyboardHandling: vi.fn(() => vi.fn()),
     initSelectionDetection: vi.fn(() => vi.fn()),
     initDragSync: vi.fn(() => vi.fn()),
+    initContextWindowDrag: vi.fn(() => vi.fn()),
     initTextEditingSync: vi.fn(() => vi.fn()),
     syncSelectionStorage: vi.fn(() => vi.fn()),
     restoreStoredSelection: vi.fn(),
@@ -54,6 +55,10 @@ vi.mock('./interaction/drag-sync', () => ({
     initDragSync: initMocks.initDragSync,
 }));
 
+vi.mock('./interaction/context-window-drag', () => ({
+    initContextWindowDrag: initMocks.initContextWindowDrag,
+}));
+
 vi.mock('./interaction/text-editing-sync', () => ({
     initTextEditingSync: initMocks.initTextEditingSync,
 }));
@@ -89,6 +94,7 @@ describe('initNewUi', () => {
         initMocks.initKeyboardHandling.mockClear();
         initMocks.initSelectionDetection.mockClear();
         initMocks.initDragSync.mockClear();
+        initMocks.initContextWindowDrag.mockClear();
         initMocks.initTextEditingSync.mockClear();
         initMocks.syncSelectionStorage.mockClear();
         initMocks.restoreStoredSelection.mockClear();
@@ -115,6 +121,7 @@ describe('initNewUi', () => {
         expect(initMocks.registerBusHandlers).toHaveBeenCalledWith(pageView);
         expect(initMocks.reconcilePage).toHaveBeenCalledWith(pageView);
         expect(initMocks.initDragSync).toHaveBeenCalledTimes(1);
+        expect(initMocks.initContextWindowDrag).toHaveBeenCalledTimes(1);
         expect(initMocks.initTextEditingSync).toHaveBeenCalledTimes(1);
         expect(initMocks.syncSelectionStorage).toHaveBeenCalledWith('fragment-content', true);
         expect(initMocks.restoreStoredSelection).toHaveBeenCalledWith('fragment-content', true);
