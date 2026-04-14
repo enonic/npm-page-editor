@@ -1,4 +1,5 @@
 ignoredBuiltDependencies:
   - less
+  - simple-git-hooks
 onlyBuiltDependencies:
   - esbuild

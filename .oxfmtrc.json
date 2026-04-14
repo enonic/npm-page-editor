@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 120,
+  "semi": true,
+  "trailingComma": "all",
+  "singleQuote": true,
+  "arrowParens": "avoid",
+  "bracketSpacing": false,
+  "jsxSingleQuote": true,
+  "sortImports": {
+    "newlinesBetween": true,
+    "customGroups": [{ "groupName": "css", "elementNamePattern": ["*.css", "*.scss", "*.less"] }],
+    "groups": [
+      ["value-builtin", "value-external"],
+      "value-internal",
+      "type-import",
+      ["value-parent", "value-sibling", "value-index"],
+      "css",
+      "unknown"
+    ]
+  }
+}

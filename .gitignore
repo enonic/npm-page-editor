@@ -20,8 +20,9 @@ build/
 # Logs
 *.log
 
-# ESLint
-.eslintcache
-
 # Enonic XP dev dependencies
 .xp/
+
+.eslintcache
+*.tsbuildinfo
+.pnpm-store/

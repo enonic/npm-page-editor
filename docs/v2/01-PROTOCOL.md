@@ -24,7 +24,7 @@ Functions to implement:
 | Function | Signature | Notes |
 |----------|-----------|-------|
 | `root` | `() => ComponentPath` | Returns `"/"` |
-| `fromString` | `(raw: string) => ComponentPath` | Validates and brands; throws on malformed input |
+| `fromString` | `(raw: string) => Result<ComponentPath>` | Validates and brands; returns `err` on malformed input |
 | `parent` | `(path: ComponentPath) => ComponentPath \| undefined` | `undefined` for root |
 | `regionName` | `(path: ComponentPath) => string \| undefined` | Last name segment |
 | `componentIndex` | `(path: ComponentPath) => number \| undefined` | Last numeric segment |

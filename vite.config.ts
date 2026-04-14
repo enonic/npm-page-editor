@@ -51,6 +51,10 @@ export default defineConfig(({mode}) => {
                 }),
                 rollupOptions: {
                     treeshake: true,
+                    onwarn(warning, warn) {
+                        if (warning.code === 'INVALID_ANNOTATION' && warning.message.includes('node_modules')) return;
+                        warn(warning);
+                    },
                     plugins: [
                         inject({
                             $: 'jquery',
@@ -74,6 +78,7 @@ export default defineConfig(({mode}) => {
                 tailwindcss(),
                 dts({
                     root: OUT_PATH,
+                    tsconfigPath: path.join(__dirname, 'tsconfig.app.json'),
                     rollupTypes: true,
                     aliasesExclude: ['@enonic/lib-admin-ui', '@enonic/lib-contentstudio'],
                     bundledPackages: ['@enonic/lib-admin-ui', '@enonic/lib-contentstudio'],

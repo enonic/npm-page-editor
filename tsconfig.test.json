@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "types": [
+      "jquery",
+      "jqueryui",
+      "q",
+      "ckeditor",
+      "mousetrap",
+      "vitest/globals"
+    ],
+    "composite": true,
+    "removeComments": false
+  },
+  "include": [
+    "src/**/*",
+    ".xp/dev/lib-admin-ui/**/*.ts",
+    ".xp/dev/lib-contentstudio/**/*.ts",
+    "src/main/resources/assets/js/test/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build"
+  ]
+}

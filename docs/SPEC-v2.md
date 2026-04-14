@@ -24,6 +24,7 @@ v2 is a clean reimplementation of the page editor UI layer. It replaces both the
 
 ```
 src/main/resources/assets/js/v2/
+├── result.ts                ← Result<T, E> type + ok/err constructors
 ├── protocol/                ← PUBLIC: exported for Content Studio
 │   ├── messages.ts          ← incoming/outgoing message types
 │   ├── path.ts              ← ComponentPath type + pure functions
@@ -91,6 +92,18 @@ src/main/resources/assets/js/v2/
 
 ---
 
+## Conventions
+
+### Error Handling
+
+Use the `Result<T, E>` pattern (`v2/result.ts`) instead of throwing exceptions for operations that can fail with expected/recoverable errors (validation, parsing, lookups). Reserve `throw` for programmer errors and truly exceptional conditions.
+
+```ts
+type Result<T, E = string> = { ok: true; value: T } | { ok: false; error: E };
+```
+
+---
+
 ## Module Designs
 
 ### protocol/
@@ -120,7 +133,7 @@ Region paths always end with a name segment. Component paths always end with a n
 Functions:
 
 - `root()` — returns root path `"/"`
-- `fromString(raw)` — validates and brands a string; throws on malformed input (empty segments, negative indices, mismatched alternation)
+- `fromString(raw)` — validates and brands a string; returns `Result<ComponentPath>` with an error string on malformed input (empty segments, negative indices, mismatched alternation)
 - `parent(path)` — returns parent path or `undefined` for root
 - `regionName(path)` — last region segment (valid on region paths and component paths — for components, returns the parent region name)
 - `componentIndex(path)` — last numeric segment (valid on component paths; `undefined` for region paths and root)
