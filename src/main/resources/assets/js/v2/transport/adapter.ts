@@ -1,0 +1,107 @@
+import type {ComponentPath, IncomingMessage, PageDescriptor} from '../protocol';
+import type {Channel} from './channel';
+
+import {
+  setSelectedPath,
+  setLocked,
+  setModifyAllowed,
+  setPageConfig,
+  setPageControllers,
+  updateRecord,
+  closeContextMenu,
+} from '../state';
+
+export type AdapterCallbacks = {
+  onPageState?: (page: PageDescriptor) => void;
+  onComponentLoadRequest?: (path: ComponentPath) => void;
+};
+
+export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): () => void {
+  let initialized = false;
+  const queue: IncomingMessage[] = [];
+
+  function dispatch(message: IncomingMessage): void {
+    switch (message.type) {
+      case 'init':
+        setPageConfig(message.config);
+        setLocked(message.config.locked);
+        setModifyAllowed(message.config.modifyPermissions);
+        break;
+
+      case 'select':
+        setSelectedPath(message.path);
+        break;
+
+      case 'deselect':
+        setSelectedPath(undefined);
+        closeContextMenu();
+        break;
+
+      case 'add':
+      case 'remove':
+      case 'move':
+      case 'duplicate':
+      case 'reset':
+        break;
+
+      case 'load':
+        updateRecord(message.path, {loading: true});
+        callbacks?.onComponentLoadRequest?.(message.path);
+        break;
+
+      case 'set-component-state':
+        updateRecord(message.path, {loading: message.processing});
+        break;
+
+      case 'page-state':
+        callbacks?.onPageState?.(message.page);
+        break;
+
+      case 'set-lock':
+        setLocked(message.locked);
+        break;
+
+      case 'set-modify-allowed':
+        setModifyAllowed(message.allowed);
+        if (!message.allowed) {
+          setLocked(true);
+        }
+        break;
+
+      case 'create-draggable':
+      case 'destroy-draggable':
+      case 'set-draggable-visible':
+        // TODO: Wire to context window drag system
+        break;
+
+      case 'page-controllers':
+        setPageControllers(message.controllers);
+        break;
+
+      default: {
+        const _exhaustive: never = message;
+        void _exhaustive;
+      }
+    }
+  }
+
+  function handleMessage(message: IncomingMessage): void {
+    if (!initialized) {
+      if (message.type === 'init') {
+        dispatch(message);
+        initialized = true;
+        for (const queued of queue) {
+          dispatch(queued);
+        }
+        queue.length = 0;
+      } else {
+        queue.push(message);
+      }
+      return;
+    }
+
+    dispatch(message);
+  }
+
+  return channel.subscribe(handleMessage);
+}

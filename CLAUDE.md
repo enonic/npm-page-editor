@@ -2,13 +2,13 @@
 
 ## Commands
 
-After making changes, run `pnpm check` to verify nothing is broken. If linting fails, run `pnpm fix` to auto-fix before re-checking.
+After making changes, run `pnpm fix:v2` to auto-fix lint/format, then `pnpm check` to verify.
 
 ```bash
-pnpm check            # typecheck + lint (default verification)
+pnpm check            # typecheck + lint + test (default verification)
 pnpm check:types      # typecheck only
 pnpm check:lint       # lint only
-pnpm fix              # autofix lint issues
+pnpm fix:v2           # autofix v2 lint + format (oxlint + oxfmt)
 pnpm build:dev        # dev build (JS + CSS)
 pnpm build:prod       # production build (JS + CSS)
 pnpm build-storybook  # build Storybook
