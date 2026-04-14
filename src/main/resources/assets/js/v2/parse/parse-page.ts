@@ -14,6 +14,11 @@ type ParsePageOptions = {
 const COMPONENT_SELECTOR = '[data-portal-component-type]';
 const REGION_SELECTOR = '[data-portal-region]';
 const ERROR_ATTR = 'data-portal-placeholder-error';
+const COMPONENT_TYPES = new Set<string>(['page', 'region', 'text', 'part', 'layout', 'fragment']);
+
+function isComponentType(value: string | undefined): value is ComponentType {
+  return value != null && COMPONENT_TYPES.has(value);
+}
 
 export function isRegionElement(element: Element): element is HTMLElement {
   return element instanceof HTMLElement && element.matches(REGION_SELECTOR);
@@ -89,15 +94,15 @@ function makeRecord(
   };
 }
 
-export function parseComponentSubtree(
+function parseComponent(
   element: HTMLElement,
-  parentPath: ComponentPath,
-  index: number,
+  path: ComponentPath,
+  parentPath: ComponentPath | undefined,
   records: Record<string, ComponentRecord>,
   descriptors: DescriptorMap,
 ): ComponentRecord {
-  const type = element.dataset.portalComponentType as ComponentType;
-  const path = insertAt(parentPath, index);
+  const raw = element.dataset.portalComponentType;
+  const type: ComponentType = isComponentType(raw) ? raw : 'part';
   const children: ComponentPath[] = [];
 
   if (type === 'layout') {
@@ -114,27 +119,22 @@ export function parseComponentSubtree(
   return record;
 }
 
+export function parseComponentSubtree(
+  element: HTMLElement,
+  parentPath: ComponentPath,
+  index: number,
+  records: Record<string, ComponentRecord>,
+  descriptors: DescriptorMap,
+): ComponentRecord {
+  return parseComponent(element, insertAt(parentPath, index), parentPath, records, descriptors);
+}
+
 function parseRootComponent(
   element: HTMLElement,
   records: Record<string, ComponentRecord>,
   descriptors: DescriptorMap,
 ): ComponentRecord {
-  const type = element.dataset.portalComponentType as ComponentType;
-  const path = root();
-  const children: ComponentPath[] = [];
-
-  if (type === 'layout') {
-    const regions = collectTrackedDescendants(element, isRegionElement);
-    for (const regionEl of regions) {
-      const regionRecord = parseRegionSubtree(regionEl, path, records, descriptors);
-      children.push(regionRecord.path);
-    }
-  }
-
-  const record = makeRecord(path, type, element, undefined, children, descriptors);
-  records[path] = record;
-
-  return record;
+  return parseComponent(element, root(), undefined, records, descriptors);
 }
 
 export function parseRegionSubtree(

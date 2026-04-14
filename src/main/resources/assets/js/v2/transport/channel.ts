@@ -74,6 +74,10 @@ export function getChannel(): Channel {
   return channel;
 }
 
+export function tryGetChannel(): Channel | undefined {
+  return channel;
+}
+
 export function resetChannel(): void {
   if (channel != null) {
     channel.destroy();

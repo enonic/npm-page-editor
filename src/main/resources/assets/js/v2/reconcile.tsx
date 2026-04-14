@@ -20,7 +20,7 @@ import {
   isDragging,
   rebuildIndex,
 } from './state';
-import {getChannel} from './transport';
+import {tryGetChannel} from './transport';
 
 const placeholderIslands = new Map<string, PlaceholderIsland>();
 
@@ -87,14 +87,15 @@ function syncPlaceholders(records: Record<string, ComponentRecord>): void {
 }
 
 function finalizeReconcile(records: Record<string, ComponentRecord>): void {
-  setRegistry(records);
+  // ? Rebuild index before setting registry so subscribers see consistent state
   rebuildIndex(records);
+  setRegistry(records);
 
   const selectedPath = $selectedPath.get();
   if (selectedPath != null && getRecord(selectedPath) == null) {
     setSelectedPath(undefined);
     closeContextMenu();
-    getChannel().send({type: 'deselect', path: selectedPath});
+    tryGetChannel()?.send({type: 'deselect', path: selectedPath});
   }
 
   const hoveredPath = $hoveredPath.get();

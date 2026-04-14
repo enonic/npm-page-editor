@@ -18,16 +18,19 @@ src/main/resources/assets/js/v2/geometry/
 ### scheduler.ts
 
 ```ts
-function initGeometryScheduler(): () => void;
+type ElementResolver = (path: ComponentPath) => HTMLElement | undefined;
+
+function initGeometryScheduler(elementResolver: ElementResolver): () => void;
 function registerConsumer(path: ComponentPath, callback: (rect: DOMRect) => void): () => void;
 function markDirty(): void;
 ```
 
-- Listens to `scroll` (capture phase, for nested scroll containers) and `resize` (passive) on `window`
+- `initGeometryScheduler` accepts an `ElementResolver` callback that maps paths to DOM elements (decouples the scheduler from the registry via dependency injection)
+- Listens to `scroll` (capture phase on `document`, for nested scroll containers) and `resize` (passive) on `window`
 - On dirty: batches all measurements into a single `requestAnimationFrame` pass
-- Calls each registered consumer's callback with the element's `getBoundingClientRect()`
-- Consumers register with a `ComponentPath`; the scheduler looks up the element from the registry
-- `initGeometryScheduler()` returns a cleanup function that removes listeners and cancels pending rAF
+- Calls each registered consumer's callback with a cloned `getBoundingClientRect()` result
+- Consumer callbacks must be pure reads — writing to the DOM inside a callback causes layout thrashing and invalidates later measurements in the same frame
+- `initGeometryScheduler()` returns a cleanup function that removes listeners, cancels pending rAF, and clears all consumers
 - `markDirty()` is called externally by reconcile (after registry update) and by resize-tracker
 
 ### resize-tracker.ts
@@ -47,16 +50,16 @@ The existing `geometry/` directory maps directly:
 
 | Existing | v2 | Change |
 |----------|-----|--------|
-| `scheduler.ts` — `initGeometryTriggers`, `markDirty` | `scheduler.ts` — `initGeometryScheduler`, `registerConsumer`, `markDirty` | Rename + add consumer registration API |
+| `scheduler.ts` — `initGeometryTriggers`, `markDirty` | `scheduler.ts` — `initGeometryScheduler`, `registerConsumer`, `markDirty` | Rename + add consumer registration API + `ElementResolver` injection |
 | `resize-tracker.ts` — `trackElementResize` | Same API | Minimal changes |
 
 The main addition in v2 is the `registerConsumer` function — the existing scheduler uses a different pattern for notifying consumers. The v2 version formalizes the consumer registration so `useTrackedRect` (step 08) can subscribe.
 
 ## Dependencies
 
-None. Geometry is a standalone utility module. It reads DOM measurements but doesn't import from any other v2 module.
+- `protocol/` — `ComponentPath` type (type-only import, no runtime dependency)
 
-Note: the scheduler needs to look up elements, which requires access to the registry. This is resolved at the hook level (`useTrackedRect` reads from `$registry`), not in the scheduler itself. The scheduler only operates on the callbacks it receives.
+Geometry is a standalone utility module at runtime. Element lookup is decoupled via the `ElementResolver` callback injected at initialization, so the scheduler has no direct import of state or registry modules.
 
 ## Verification
 

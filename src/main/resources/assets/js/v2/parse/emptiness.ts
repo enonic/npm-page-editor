@@ -12,6 +12,7 @@ export function isEditorInjectedElement(element: Element): boolean {
 }
 
 export function isNodeEmpty(element: HTMLElement): boolean {
+  // ? Two-phase check: element.children skips text nodes, textContent catches text-only content
   for (const child of Array.from(element.children)) {
     if (isEditorInjectedElement(child)) continue;
     return false;

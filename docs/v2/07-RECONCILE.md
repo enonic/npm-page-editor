@@ -12,7 +12,7 @@ Pulled into its own step (rather than bundling with init) because both transport
 
 ```
 src/main/resources/assets/js/v2/
-└── reconcile.ts    ← coordinator: parse -> state -> placeholders -> geometry
+└── reconcile.tsx   ← coordinator: parse -> state -> placeholders -> geometry
 ```
 
 ### reconcile.ts
@@ -25,11 +25,12 @@ function destroyPlaceholders(): void;
 
 **`reconcilePage` flow:**
 
-1. Call `parsePage(root, descriptors)` to get component records
-2. Inside `batch()` (nanostores): `setRegistry(records)`, `rebuildIndex(records)`
-3. Validate `$selectedPath` still exists — if the selected path's record is gone, clear `$selectedPath`, close `$contextMenu`, and send `{ type: 'deselect', path }` via `getChannel()` so Content Studio's inspect panel updates
-4. Diff against previous registry to create/destroy placeholder islands for empty components/regions
-5. Call `markDirty()` to trigger geometry remeasurement
+1. Call `parsePage(root, {descriptors, fragment})` to get component records
+2. `rebuildIndex(records)` then `setRegistry(records)` — index first so subscribers see consistent state when the store notification fires
+3. Validate `$selectedPath` still exists — if the selected path's record is gone, clear `$selectedPath`, close `$contextMenu`, and send `{ type: 'deselect', path }` via `tryGetChannel()` (no-op if channel not yet initialized)
+4. Validate `$hoveredPath` still exists — if the hovered path's record is gone, clear `$hoveredPath`
+5. Diff against previous registry to create/destroy placeholder islands for empty or errored components/regions
+6. Call `markDirty()` to trigger geometry remeasurement
 
 **`reconcileSubtree`:** Same logic scoped to a subtree, merges result into existing registry.
 
@@ -38,13 +39,16 @@ function destroyPlaceholders(): void;
 **Placeholder diffing:**
 
 The reconciler maintains an internal `Map<string, PlaceholderIsland>` tracking active placeholder islands. On each reconcile:
-- For each record where `empty === true` and no island exists: create a placeholder island (ComponentPlaceholder or RegionPlaceholder depending on type)
-- For each existing island whose record is no longer empty or no longer exists: unmount and remove
+- For each record where `empty === true` or `error === true` (non-page types) and no island exists: create a placeholder island (ComponentPlaceholder or RegionPlaceholder depending on type)
+- For each existing island whose record is no longer empty/errored, no longer exists, or whose container element changed: unmount and remove
+- Existing islands whose container element is unchanged and still connected are kept as-is
 - This is a simple add/remove diff, not a full virtual DOM reconciliation
 
 **Reconciliation guard (for drag):**
 
 During an active drag (`isDragging() === true`), `reconcilePage` and `reconcileSubtree` skip registry updates and placeholder diffing. The MutationObserver still fires, but reconciliation is deferred. On drag end, a full `reconcilePage()` is triggered by the drag handler (step 10).
+
+Note: the guard checks `isDragging()` only, not `isPostDragCooldown()`. During the post-drag cooldown window, reconciliation proceeds normally — the cooldown only affects user interaction, not registry updates.
 
 This prevents path renumbering from invalidating `sourcePath`/`targetRegion` mid-drag.
 
@@ -62,7 +66,7 @@ The existing `adapter/reconcile.tsx` contains reconciliation logic but it's coup
 - Becomes a standalone module
 - Uses v2 protocol types
 - Adds the drag guard
-- Adds nanostores `batch()` for atomic updates
+- Uses index-before-store ordering for consistent subscriber state
 - Adds automatic deselection when selected path disappears
 - Manages placeholder islands internally (previously spread across bridge + reconcile)
 
@@ -73,7 +77,7 @@ The existing `adapter/reconcile.tsx` contains reconciliation logic but it's coup
 - `parse/` — `parsePage`, `parseSubtree`
 - `rendering/` — `createPlaceholderIsland` (for placeholder island management)
 - `geometry/` — `markDirty`
-- `transport/` — `getChannel` (for sending deselect message when selected path disappears)
+- `transport/` — `tryGetChannel` (for sending deselect message when selected path disappears; no-op if channel not yet initialized)
 
 ## Verification
 

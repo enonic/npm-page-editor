@@ -38,7 +38,7 @@ function measure(): void {
 }
 
 export function markDirty(): void {
-  if (dirty) return;
+  if (dirty || resolver == null) return;
 
   dirty = true;
   frameId = window.requestAnimationFrame(measure);

@@ -128,6 +128,19 @@ import { type IncomingMessage, type OutgoingMessage, type ComponentPath, initPag
 **Build config:**
 - `vite.config.ts` — remove `@rollup/plugin-inject` (jQuery injection), remove lib-admin-ui/lib-contentstudio resolve aliases if dependencies are fully removed, potentially simplify to single build target if LESS is dropped
 
+**TypeScript import aliases:**
+- Add `paths` to `tsconfig.app.json` and `tsconfig.test.json` so `react` resolves to `preact/compat` at the type level (matching the existing Vite `resolve.alias`):
+  ```json
+  "paths": {
+    "react": ["./node_modules/preact/compat"],
+    "react-dom": ["./node_modules/preact/compat"],
+    "react/jsx-runtime": ["./node_modules/preact/jsx-runtime"],
+    "react/jsx-dev-runtime": ["./node_modules/preact/jsx-dev-runtime"]
+  }
+  ```
+- Switch all `from 'preact/compat'` imports to `from 'react'` across v2 (aligns with `@enonic/ui` convention)
+- Evaluate changing `jsxImportSource` from `"preact"` to `"react"` — the alias makes them equivalent, and `"react"` gives standard `ReactNode`/`ReactElement` types without the compat layer
+
 **Storybook:**
 - `.storybook/preview.tsx` — remove jQuery global setup (`globalThis.$ = jQuery`)
 - Update stories to use only v2 imports

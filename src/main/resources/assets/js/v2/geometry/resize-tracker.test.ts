@@ -116,7 +116,7 @@ describe('resize-tracker', () => {
     expect(disconnected).toBe(true);
   });
 
-  it('ignores duplicate tracking of the same element', () => {
+  it('replaces callback when tracking the same element twice', () => {
     const el = document.createElement('div');
     const cb1 = vi.fn<() => void>();
     const cb2 = vi.fn<() => void>();
@@ -125,13 +125,10 @@ describe('resize-tracker', () => {
     const cleanup2 = trackElementResize(el, cb2);
 
     triggerResize(el);
-    expect(cb1).toHaveBeenCalledOnce();
-    expect(cb2).not.toHaveBeenCalled();
+    expect(cb1).not.toHaveBeenCalled();
+    expect(cb2).toHaveBeenCalledOnce();
 
     cleanup2();
-    triggerResize(el);
-    expect(cb1).toHaveBeenCalledTimes(2);
-
     cleanup1();
   });
 

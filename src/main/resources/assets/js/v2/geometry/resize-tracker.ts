@@ -17,10 +17,10 @@ export function trackElementResize(element: HTMLElement, onResize: () => void): 
   const obs = getObserver();
   if (obs == null) return () => undefined;
 
-  if (callbacks.has(element)) return () => undefined;
-
+  const isNew = !callbacks.has(element);
   callbacks.set(element, onResize);
-  obs.observe(element);
+
+  if (isNew) obs.observe(element);
 
   return () => {
     obs.unobserve(element);

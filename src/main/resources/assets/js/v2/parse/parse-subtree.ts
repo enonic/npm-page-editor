@@ -17,6 +17,7 @@ export function parseSubtree(
 ): Record<string, ComponentRecord> {
   if (rootPath === '/') return parsePage(rootElement.ownerDocument.body, options);
 
+  // ? parent() returns null for malformed paths — silently skip rather than crash
   const parentPath = parent(rootPath);
   if (parentPath == null) return {};
 
