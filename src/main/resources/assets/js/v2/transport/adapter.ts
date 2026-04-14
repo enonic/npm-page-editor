@@ -90,10 +90,16 @@ export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): (
       if (message.type === 'init') {
         dispatch(message);
         initialized = true;
+        let firstError: Error | undefined;
         for (const queued of queue) {
-          dispatch(queued);
+          try {
+            dispatch(queued);
+          } catch (error) {
+            firstError ??= error instanceof Error ? error : new Error(String(error));
+          }
         }
         queue.length = 0;
+        if (firstError != null) throw firstError;
       } else {
         queue.push(message);
       }

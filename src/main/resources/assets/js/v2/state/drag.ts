@@ -57,3 +57,12 @@ export function isDragging(): boolean {
 export function isPostDragCooldown(): boolean {
   return postDragCooldown;
 }
+
+export function resetDragState(): void {
+  $dragState.set(undefined);
+  postDragCooldown = false;
+  if (cooldownTimer != null) {
+    clearTimeout(cooldownTimer);
+    cooldownTimer = undefined;
+  }
+}

@@ -54,12 +54,20 @@ export function componentIndex(path: ComponentPath): number | undefined {
 
 export function append(path: ComponentPath, region?: string, index?: number): ComponentPath {
   let result = path as string;
+  let lastIsIndex = path !== '/' && isComponent(path);
 
   if (region != null) {
+    if (path !== '/' && !lastIsIndex) {
+      throw new Error(`Cannot append region "${region}" after region path "${path}"`);
+    }
     result = result === '/' ? `/${region}` : `${result}/${region}`;
+    lastIsIndex = false;
   }
   if (index != null) {
-    result = result === '/' ? `/${index}` : `${result}/${index}`;
+    if (lastIsIndex || result === '/') {
+      throw new Error(`Cannot append index ${String(index)} to "${result}"`);
+    }
+    result = `${result}/${index}`;
   }
 
   return result as ComponentPath;

@@ -63,5 +63,16 @@ describe('element-index', () => {
       rebuildIndex({[p2]: makeRecord(p2, el)});
       expect(getPathForElement(el)).toBe(p2);
     });
+
+    it('clears stale entries for elements removed from registry', () => {
+      const el = document.createElement('div');
+      const p = path('/main/0');
+
+      rebuildIndex({[p]: makeRecord(p, el)});
+      expect(getPathForElement(el)).toBe(p);
+
+      rebuildIndex({});
+      expect(getPathForElement(el)).toBeUndefined();
+    });
   });
 });

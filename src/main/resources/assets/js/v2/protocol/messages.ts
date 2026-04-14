@@ -33,6 +33,26 @@ export type PageController = {
   iconClass: string;
 };
 
+export const INCOMING_MESSAGE_TYPES: ReadonlySet<IncomingMessage['type']> = new Set<IncomingMessage['type']>([
+  'init',
+  'select',
+  'deselect',
+  'add',
+  'remove',
+  'move',
+  'load',
+  'duplicate',
+  'reset',
+  'set-component-state',
+  'page-state',
+  'set-lock',
+  'set-modify-allowed',
+  'create-draggable',
+  'destroy-draggable',
+  'set-draggable-visible',
+  'page-controllers',
+]);
+
 export type IncomingMessage =
   | {type: 'init'; config: PageConfig}
   | {type: 'select'; path: ComponentPath; silent?: boolean}

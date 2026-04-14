@@ -261,7 +261,12 @@ function getChannel(): Channel;
 #### adapter.ts
 
 ```ts
-function createAdapter(channel: Channel, callbacks?: RendererCallbacks): () => void;
+type AdapterCallbacks = {
+  onPageState?: (descriptors: PageDescriptor) => void;
+  onComponentLoadRequest?: (path: ComponentPath) => void;
+};
+
+function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): () => void;
 ```
 
 Subscribes to incoming messages and translates them into store mutations. The adapter queues all non-`init` messages until the first `init` message has been processed. This prevents operating on an empty registry and undefined `$config` during the window between `ready` and `init`.

@@ -191,6 +191,18 @@ describe('ComponentPath', () => {
       const p = unwrap('/main');
       expect(append(p)).toBe('/main');
     });
+
+    it('throws when appending bare index to root', () => {
+      expect(() => append(root(), undefined, 0)).toThrow('Cannot append index');
+    });
+
+    it('throws when appending bare index to component path', () => {
+      expect(() => append(unwrap('/main/0'), undefined, 1)).toThrow('Cannot append index');
+    });
+
+    it('throws when appending region name after region path', () => {
+      expect(() => append(unwrap('/main'), 'left')).toThrow('Cannot append region');
+    });
   });
 
   describe('insertAt', () => {

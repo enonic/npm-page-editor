@@ -1,7 +1,7 @@
 import type {ComponentPath} from '../protocol';
 
 import {fromString} from '../protocol';
-import {$dragState, getDragState, isDragging, isPostDragCooldown, setDragState, type DragState} from './drag';
+import {getDragState, isDragging, isPostDragCooldown, resetDragState, setDragState, type DragState} from './drag';
 
 function path(raw: string): ComponentPath {
   const result = fromString(raw);
@@ -28,15 +28,11 @@ function makeDrag(overrides?: Partial<DragState>): DragState {
 describe('drag', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    $dragState.set(undefined);
+    resetDragState();
   });
 
   afterEach(() => {
-    // Clean up any active drag + cooldown
-    if (isDragging()) {
-      $dragState.set(undefined);
-    }
-    vi.advanceTimersByTime(200);
+    resetDragState();
     vi.useRealTimers();
   });
 

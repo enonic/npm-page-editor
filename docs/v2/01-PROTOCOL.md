@@ -44,7 +44,7 @@ Typed discriminated unions for iframe communication. Every message envelope incl
 
 Types to define:
 - `IncomingMessage` — 17 variants (init, select, deselect, add, remove, move, load, duplicate, reset, set-component-state, page-state, set-lock, set-modify-allowed, create-draggable, destroy-draggable, set-draggable-visible, page-controllers)
-- `OutgoingMessage` — 18 variants (ready, select, deselect, move, add, remove, duplicate, reset, inspect, create-fragment, save-as-template, select-page-descriptor, page-reload-request, component-loaded, component-load-failed, drag-started, drag-stopped, drag-dropped, keyboard-event, iframe-loaded, navigate)
+- `OutgoingMessage` — 21 variants (ready, select, deselect, move, add, remove, duplicate, reset, inspect, create-fragment, save-as-template, select-page-descriptor, page-reload-request, component-loaded, component-load-failed, drag-started, drag-stopped, drag-dropped, keyboard-event, iframe-loaded, navigate)
 - `ComponentType` — `'page' | 'region' | 'text' | 'part' | 'layout' | 'fragment'`
 - `Modifiers` — `{ ctrl, alt, shift, meta }`
 - `PageConfig` — init payload (contentId, pageName, locked, modifyPermissions, phrases, etc.)

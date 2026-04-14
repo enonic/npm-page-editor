@@ -1,5 +1,7 @@
 import type {IncomingMessage, OutgoingMessage} from '../protocol';
 
+import {INCOMING_MESSAGE_TYPES} from '../protocol';
+
 export type MessageHandler = (message: IncomingMessage) => void;
 
 export type Channel = {
@@ -10,6 +12,7 @@ export type Channel = {
 
 export function createChannel(target: Window, origin?: string): Channel {
   const handlers = new Set<MessageHandler>();
+  let destroyed = false;
 
   const listener = (event: MessageEvent): void => {
     const data: unknown = event.data;
@@ -20,6 +23,9 @@ export function createChannel(target: Window, origin?: string): Channel {
     if (origin != null && event.origin !== origin) return;
 
     const {version: _, source: __, ...message} = wire;
+    if (typeof message.type !== 'string' || !INCOMING_MESSAGE_TYPES.has(message.type as IncomingMessage['type']))
+      return;
+
     for (const handler of handlers) {
       handler(message as IncomingMessage);
     }
@@ -29,6 +35,7 @@ export function createChannel(target: Window, origin?: string): Channel {
 
   return {
     send(message: OutgoingMessage): void {
+      if (destroyed) return;
       target.postMessage({version: 2, source: 'page-editor', ...message}, origin ?? '*');
     },
 
@@ -40,6 +47,7 @@ export function createChannel(target: Window, origin?: string): Channel {
     },
 
     destroy(): void {
+      destroyed = true;
       globalThis.removeEventListener('message', listener);
       handlers.clear();
     },

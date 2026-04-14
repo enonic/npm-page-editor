@@ -111,6 +111,20 @@ describe('channel', () => {
         channel.destroy();
       });
 
+      it('ignores messages with unknown type', () => {
+        const channel = createChannel(window);
+        const handler = vi.fn<MessageHandler>();
+        channel.subscribe(handler);
+
+        emit(wire({type: 'unknown-message'}));
+        emit(wire({type: ''}));
+        emit(wire({}));
+
+        expect(handler).not.toHaveBeenCalled();
+
+        channel.destroy();
+      });
+
       it('validates origin when configured', () => {
         const channel = createChannel(window, 'https://studio.example.com');
         const handler = vi.fn<MessageHandler>();
@@ -180,6 +194,16 @@ describe('channel', () => {
         const channel = createChannel(window);
         channel.destroy();
         expect(() => channel.destroy()).not.toThrow();
+      });
+
+      it('silently ignores send after destroy', () => {
+        const {target, postMessage} = createMockTarget();
+        const channel = createChannel(target);
+
+        channel.destroy();
+        channel.send({type: 'ready'});
+
+        expect(postMessage).not.toHaveBeenCalled();
       });
     });
   });

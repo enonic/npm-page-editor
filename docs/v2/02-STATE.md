@@ -52,7 +52,7 @@ Key behavior:
 - `setDragState` is the single entry point for starting a drag
 - `isDragging()` — returns `$dragState.get() !== undefined`
 - `isPostDragCooldown()` — returns `true` for 100ms after drag ends (prevents mouseup from triggering click-selection). Cooldown flag stored alongside `$dragState`, cleared via `setTimeout`.
-- Mutual exclusion: callers must check `isDragging()` before writing to `$dragState`
+- Mutual exclusion: `setDragState` rejects a new drag if one is already active
 
 ### page.ts
 

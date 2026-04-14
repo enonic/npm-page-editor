@@ -27,11 +27,13 @@ interface Channel {
 function createChannel(target: Window, origin?: string): Channel;
 function setChannel(channel: Channel): void;
 function getChannel(): Channel;
+function resetChannel(): void;
 ```
 
 - `send` wraps `target.postMessage({ version: 2, source: 'page-editor', ...message }, origin ?? '*')`
 - `subscribe` filters by `source === 'page-editor'` and `version === 2`; validates `event.origin` when origin is provided
 - Module-level reference via `setChannel` / `getChannel` — components and action handlers import `getChannel()` to send messages
+- `resetChannel` destroys and clears the module-level channel reference
 
 ### adapter.ts
 

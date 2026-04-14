@@ -22,4 +22,5 @@ export {
   type PageController,
   type IncomingMessage,
   type OutgoingMessage,
+  INCOMING_MESSAGE_TYPES,
 } from './messages';
