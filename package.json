@@ -92,7 +92,7 @@
     "@enonic/eslint-config": "^2.1.0",
     "@enonic/lib-admin-ui": "file:.xp/dev/lib-admin-ui",
     "@enonic/lib-contentstudio": "file:.xp/dev/lib-contentstudio",
-    "@enonic/ui": "^0.47.5",
+    "@enonic/ui": "^0.47.7",
     "@eslint/js": "^9.39.2",
     "@rollup/plugin-inject": "^5.0.5",
     "@storybook/addon-docs": "~10.2.19",

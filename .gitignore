@@ -26,3 +26,9 @@ build/
 .eslintcache
 *.tsbuildinfo
 .pnpm-store/
+
+# Playwright MCP
+.playwright-mcp/
+
+# Storybook
+storybook-static/

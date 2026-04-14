@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@enonic/ui/preset.css';
+
+/*
+ * ? Currently provided by lib-admin-ui. Uncomment when those styles are removed.
+ * Relative url() won't resolve inside adoptedStyleSheets — use absolute path or data URI.
+ * @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400..700&display=swap');
+ */
+
+@source "../";
+
+/* Preset 0.47.7+ sets tokens + color + font-smoothing on :host — only extras here. */
+@layer base {
+  :host {
+    --tw-border-style: solid;
+
+    font-family: 'Open Sans', sans-serif;
+  }
+}
