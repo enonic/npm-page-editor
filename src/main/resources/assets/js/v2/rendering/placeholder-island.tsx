@@ -1,6 +1,7 @@
 import {render, type ReactNode} from 'preact/compat';
 
 import {injectStyles} from './inject-styles';
+import {registerThemeHost, unregisterThemeHost} from './theme-sync';
 
 const PLACEHOLDER_HOST_ATTR = 'data-pe-placeholder-host';
 
@@ -22,6 +23,8 @@ export function createPlaceholderIsland(target: HTMLElement, content: ReactNode)
   const shadow = host.attachShadow({mode: 'open'});
   injectStyles(shadow);
 
+  registerThemeHost(host);
+
   const mount = document.createElement('div');
   mount.style.height = '100%';
   shadow.appendChild(mount);
@@ -32,6 +35,7 @@ export function createPlaceholderIsland(target: HTMLElement, content: ReactNode)
     host,
     shadow,
     unmount: () => {
+      unregisterThemeHost(host);
       render(null, mount);
       host.remove();
     },

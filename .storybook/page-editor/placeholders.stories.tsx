@@ -1,35 +1,38 @@
-import type {Meta, StoryObj} from '@storybook/preact-vite';
-import type {ComponentChildren, CSSProperties} from 'preact';
 import {useEffect, useRef} from 'preact/hooks';
-import {ComponentPlaceholder} from '../../src/main/resources/assets/js/new-ui/components/placeholders/ComponentPlaceholder';
-import {DragPlaceholder} from '../../src/main/resources/assets/js/new-ui/components/placeholders/DragPlaceholder';
-import {EmptyPlaceholder} from '../../src/main/resources/assets/js/new-ui/components/placeholders/EmptyPlaceholder';
-import {RegionPlaceholder} from '../../src/main/resources/assets/js/new-ui/components/placeholders/RegionPlaceholder';
-import {createPlaceholderIsland} from '../../src/main/resources/assets/js/new-ui/rendering/placeholder-island';
+
+import type {ComponentPath} from '../../src/main/resources/assets/js/v2/protocol';
+import type {Meta, StoryObj} from '@storybook/preact-vite';
+import type {ComponentChildren, CSSProperties, JSX} from 'preact';
+
+import {ComponentErrorPlaceholder} from '../../src/main/resources/assets/js/v2/components/ComponentErrorPlaceholder';
+import {ComponentPlaceholder} from '../../src/main/resources/assets/js/v2/components/ComponentPlaceholder';
+import {DragPlaceholder} from '../../src/main/resources/assets/js/v2/components/DragPlaceholder';
+import {RegionPlaceholder} from '../../src/main/resources/assets/js/v2/components/RegionPlaceholder';
+import {createPlaceholderIsland} from '../../src/main/resources/assets/js/v2/rendering';
 
 //
 // * Helpers
 //
 
-interface IslandMountProps {
-    children: ComponentChildren;
-    className?: string;
-    style?: CSSProperties;
-}
+type IslandMountProps = {
+  children: ComponentChildren;
+  className?: string;
+  style?: CSSProperties;
+};
 
-function IslandMount({children, className, style}: IslandMountProps) {
-    const containerRef = useRef<HTMLDivElement | null>(null);
+function IslandMount({children, className, style}: IslandMountProps): JSX.Element {
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
-    useEffect(() => {
-        if (!containerRef.current) {
-            return undefined;
-        }
+  useEffect(() => {
+    if (!containerRef.current) {
+      return undefined;
+    }
 
-        const island = createPlaceholderIsland(containerRef.current, children);
-        return () => island.unmount();
-    }, [children]);
+    const island = createPlaceholderIsland(containerRef.current, children);
+    return () => island.unmount();
+  }, [children]);
 
-    return <div ref={containerRef} className={className} style={style} />;
+  return <div ref={containerRef} className={className} style={style} />;
 }
 
 //
@@ -37,11 +40,11 @@ function IslandMount({children, className, style}: IslandMountProps) {
 //
 
 const meta = {
-    title: 'Page Editor/Placeholders',
-    parameters: {
-        layout: 'centered',
-    },
-    tags: ['autodocs'],
+  title: 'Page Editor/Placeholders',
+  parameters: {
+    layout: 'centered',
+  },
+  tags: ['autodocs'],
 } satisfies Meta;
 
 export default meta;
@@ -53,34 +56,30 @@ type Story = StoryObj<typeof meta>;
 //
 
 export const DropzoneDefault: Story = {
-    name: 'Dropzone / Default',
-    render: () => (
-        <IslandMount style={{width: '640px'}}>
-            <RegionPlaceholder path='/main' regionName='main' />
-        </IslandMount>
-    ),
+  name: 'Dropzone / Default',
+  render: () => (
+    <IslandMount style={{width: '640px'}}>
+      <RegionPlaceholder path={'/main' as ComponentPath} regionName='main' />
+    </IslandMount>
+  ),
 };
 
 export const DropzoneDragOver: Story = {
-    name: 'Dropzone / Drag Over',
-    render: () => (
-        <IslandMount style={{width: '640px'}}>
-            <DragPlaceholder itemLabel='Hero banner' dropAllowed={true} />
-        </IslandMount>
-    ),
+  name: 'Dropzone / Drag Over',
+  render: () => (
+    <IslandMount style={{width: '640px'}}>
+      <DragPlaceholder itemLabel='Hero banner' dropAllowed={true} />
+    </IslandMount>
+  ),
 };
 
 export const DropzoneForbidden: Story = {
-    name: 'Dropzone / Forbidden',
-    render: () => (
-        <IslandMount style={{width: '640px'}}>
-            <DragPlaceholder
-                itemLabel='Layout'
-                dropAllowed={false}
-                message='This is a message that describes the error'
-            />
-        </IslandMount>
-    ),
+  name: 'Dropzone / Forbidden',
+  render: () => (
+    <IslandMount style={{width: '640px'}}>
+      <DragPlaceholder itemLabel='Layout' dropAllowed={false} message='This is a message that describes the error' />
+    </IslandMount>
+  ),
 };
 
 //
@@ -88,51 +87,53 @@ export const DropzoneForbidden: Story = {
 //
 
 export const PlaceholderStates: Story = {
-    name: 'Placeholder / States',
-    render: () => (
-        <div style={{display: 'flex', gap: '24px', alignItems: 'start'}}>
-            <IslandMount style={{width: '280px'}}>
-                <ComponentPlaceholder type='part' error={false} />
-            </IslandMount>
-            <div style={{width: '280px', borderRadius: '8px', boxShadow: '0 0 0 3px rgb(59 130 246)'}}>
-                <IslandMount>
-                    <ComponentPlaceholder type='part' error={false} />
-                </IslandMount>
-            </div>
-            <div style={{width: '280px', borderRadius: '8px', boxShadow: '0 0 0 1.5px rgb(59 130 246 / 0.7)'}}>
-                <IslandMount>
-                    <ComponentPlaceholder type='part' error={false} />
-                </IslandMount>
-            </div>
-        </div>
-    ),
+  name: 'Placeholder / States',
+  render: () => (
+    <div style={{display: 'flex', gap: '24px', alignItems: 'start'}}>
+      <IslandMount style={{width: '280px'}}>
+        <ComponentPlaceholder type='part' />
+      </IslandMount>
+      <div style={{width: '280px', borderRadius: '8px', boxShadow: '0 0 0 3px rgb(59 130 246)'}}>
+        <IslandMount>
+          <ComponentPlaceholder type='part' />
+        </IslandMount>
+      </div>
+      <div style={{width: '280px', borderRadius: '8px', boxShadow: '0 0 0 1.5px rgb(59 130 246 / 0.7)'}}>
+        <IslandMount>
+          <ComponentPlaceholder type='part' />
+        </IslandMount>
+      </div>
+    </div>
+  ),
 };
 
 export const PlaceholderVariants: Story = {
-    name: 'Placeholder / Variants',
-    render: () => (
-        <div style={{
-            border: '2px dashed rgb(139 92 246 / 0.5)',
-            borderRadius: '8px',
-            padding: '16px',
-            display: 'grid',
-            gap: '16px',
-            width: '400px',
-        }}>
-            <IslandMount>
-                <ComponentPlaceholder type='text' error={false} />
-            </IslandMount>
-            <IslandMount>
-                <ComponentPlaceholder type='part' error={false} />
-            </IslandMount>
-            <IslandMount>
-                <ComponentPlaceholder type='layout' error={false} />
-            </IslandMount>
-            <IslandMount>
-                <ComponentPlaceholder type='fragment' error={false} />
-            </IslandMount>
-        </div>
-    ),
+  name: 'Placeholder / Variants',
+  render: () => (
+    <div
+      style={{
+        border: '2px dashed rgb(139 92 246 / 0.5)',
+        borderRadius: '8px',
+        padding: '16px',
+        display: 'grid',
+        gap: '16px',
+        width: '400px',
+      }}
+    >
+      <IslandMount>
+        <ComponentPlaceholder type='text' />
+      </IslandMount>
+      <IslandMount>
+        <ComponentPlaceholder type='part' />
+      </IslandMount>
+      <IslandMount>
+        <ComponentPlaceholder type='layout' />
+      </IslandMount>
+      <IslandMount>
+        <ComponentPlaceholder type='fragment' />
+      </IslandMount>
+    </div>
+  ),
 };
 
 //
@@ -140,23 +141,10 @@ export const PlaceholderVariants: Story = {
 //
 
 export const ErrorBlock: Story = {
-    name: 'States / Error',
-    render: () => (
-        <IslandMount style={{width: '640px'}}>
-            <ComponentPlaceholder
-                type='part'
-                descriptor='This is a message that describes the error'
-                error={true}
-            />
-        </IslandMount>
-    ),
-};
-
-export const EmptyBlock: Story = {
-    name: 'States / Empty',
-    render: () => (
-        <IslandMount style={{width: '640px'}}>
-            <EmptyPlaceholder name='Hero Banner' />
-        </IslandMount>
-    ),
+  name: 'States / Error',
+  render: () => (
+    <IslandMount style={{width: '640px'}}>
+      <ComponentErrorPlaceholder descriptor='This is a message that describes the error' />
+    </IslandMount>
+  ),
 };

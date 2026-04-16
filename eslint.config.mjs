@@ -33,7 +33,10 @@ const eslintConfig = defineConfig([
         "**/.xp/**/*",
         "**/*.js",
         "**/*.d.ts",
-        "**/spec/**/*"
+        "**/spec/**/*",
+        // Linted by oxlint:
+        "src/main/resources/assets/js/v2/**/*",
+        ".storybook/page-editor/**/*"
     ])
 ])
 

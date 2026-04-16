@@ -14,7 +14,7 @@ describe('IncomingMessage', () => {
     }
   });
 
-  it('includes all 17 variants', () => {
+  it('includes all 18 variants', () => {
     const types: IncomingMessage['type'][] = [
       'init',
       'select',
@@ -29,12 +29,13 @@ describe('IncomingMessage', () => {
       'page-state',
       'set-lock',
       'set-modify-allowed',
+      'set-theme',
       'create-draggable',
       'destroy-draggable',
       'set-draggable-visible',
       'page-controllers',
     ];
-    expect(types).toHaveLength(17);
+    expect(types).toHaveLength(18);
   });
 });
 

@@ -3,7 +3,16 @@ import type {ComponentRecord} from '../state';
 import type {Channel, MessageHandler} from './channel';
 
 import {fromString} from '../protocol';
-import {$config, $contextMenu, $locked, $modifyAllowed, $pageControllers, $registry, $selectedPath} from '../state';
+import {
+  $config,
+  $contextMenu,
+  $locked,
+  $modifyAllowed,
+  $pageControllers,
+  $registry,
+  $selectedPath,
+  $theme,
+} from '../state';
 import {createAdapter} from './adapter';
 
 function path(raw: string): ComponentPath {
@@ -77,6 +86,7 @@ describe('adapter', () => {
     $pageControllers.set([]);
     $registry.set({});
     $contextMenu.set(undefined);
+    $theme.set('light');
   });
 
   describe('init gating', () => {
@@ -267,6 +277,35 @@ describe('adapter', () => {
 
       expect($modifyAllowed.get()).toBe(false);
       expect($locked.get()).toBe(true);
+    });
+
+    it('init: sets theme from config when provided', () => {
+      createAdapter(fakeChannel);
+      const config = makeConfig({theme: 'dark'});
+
+      fakeChannel.emit({type: 'init', config});
+
+      expect($theme.get()).toBe('dark');
+    });
+
+    it('init: keeps default theme when config.theme is absent', () => {
+      createAdapter(fakeChannel);
+      const config = makeConfig();
+
+      fakeChannel.emit({type: 'init', config});
+
+      expect($theme.get()).toBe('light');
+    });
+
+    it('set-theme: updates theme state', () => {
+      createAdapter(fakeChannel);
+      fakeChannel.emit({type: 'init', config: makeConfig()});
+
+      fakeChannel.emit({type: 'set-theme', theme: 'dark'});
+      expect($theme.get()).toBe('dark');
+
+      fakeChannel.emit({type: 'set-theme', theme: 'light'});
+      expect($theme.get()).toBe('light');
     });
 
     it('set-modify-allowed: does not unlock when true', () => {

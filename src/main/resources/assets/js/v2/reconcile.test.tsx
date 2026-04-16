@@ -2,6 +2,12 @@ import type {ComponentPath} from './protocol';
 import type {DragState} from './state/drag';
 import type {Channel} from './transport';
 
+vi.mock('./components/ComponentEmptyPlaceholder', () => ({ComponentEmptyPlaceholder: () => null}));
+vi.mock('./components/ComponentErrorPlaceholder', () => ({ComponentErrorPlaceholder: () => null}));
+vi.mock('./components/ComponentLoadingPlaceholder', () => ({ComponentLoadingPlaceholder: () => null}));
+vi.mock('./components/ComponentPlaceholder', () => ({ComponentPlaceholder: () => null}));
+vi.mock('./components/RegionPlaceholder', () => ({RegionPlaceholder: () => null}));
+
 import {fromString} from './protocol';
 import {reconcilePage, reconcileSubtree, destroyPlaceholders} from './reconcile';
 import {$registry, $selectedPath, $hoveredPath, $config, $contextMenu, getPathForElement} from './state';

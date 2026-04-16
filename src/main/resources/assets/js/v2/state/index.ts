@@ -11,6 +11,9 @@ export {$dragState, setDragState, getDragState, isDragging, isPostDragCooldown, 
 export {$locked, $modifyAllowed, $config, $pageControllers} from './page';
 export {setLocked, setModifyAllowed, setPageConfig, getPageConfig, setPageControllers} from './page';
 
+export type {Theme} from './theme';
+export {$theme, setTheme, getTheme} from './theme';
+
 export type {ContextMenuState} from './context-menu';
 export {$contextMenu, openContextMenu, closeContextMenu} from './context-menu';
 

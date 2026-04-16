@@ -4,8 +4,14 @@ import type {PlaceholderIsland} from './rendering';
 import type {ComponentRecord} from './state';
 import type {ReactNode} from 'preact/compat';
 
+import {ComponentEmptyPlaceholder} from './components/ComponentEmptyPlaceholder';
+import {ComponentErrorPlaceholder} from './components/ComponentErrorPlaceholder';
+import {ComponentLoadingPlaceholder} from './components/ComponentLoadingPlaceholder';
+import {ComponentPlaceholder} from './components/ComponentPlaceholder';
+import {RegionPlaceholder} from './components/RegionPlaceholder';
 import {markDirty} from './geometry';
 import {parsePage, parseSubtree} from './parse';
+import {regionName as getRegionName} from './protocol/path';
 import {createPlaceholderIsland} from './rendering';
 import {
   $registry,
@@ -25,7 +31,7 @@ import {tryGetChannel} from './transport';
 const placeholderIslands = new Map<string, PlaceholderIsland>();
 
 function shouldShowPlaceholder(record: ComponentRecord): boolean {
-  return record.type !== 'page' && (record.empty || record.error);
+  return record.type !== 'page' && (record.empty || record.error || record.loading);
 }
 
 function destroyPlaceholder(path: string): void {
@@ -40,21 +46,24 @@ function isInSubtree(path: string, rootPath: string): boolean {
   return path === rootPath || path.startsWith(`${rootPath}/`);
 }
 
-// TODO: Replace inline JSX with ComponentPlaceholder/RegionPlaceholder (step 08)
 function createPlaceholderContent(record: ComponentRecord): ReactNode {
   if (record.type === 'region') {
-    return <div style={{padding: '16px', textAlign: 'center', color: '#999'}}>Drop components here</div>;
+    return <RegionPlaceholder path={record.path} regionName={getRegionName(record.path) ?? record.path} />;
+  }
+
+  if (record.loading) {
+    return <ComponentLoadingPlaceholder />;
   }
 
   if (record.error) {
-    return (
-      <div style={{padding: '16px', textAlign: 'center', color: '#c00'}}>
-        {record.descriptor ?? 'Component could not be rendered.'}
-      </div>
-    );
+    return <ComponentErrorPlaceholder descriptor={record.descriptor} />;
   }
 
-  return <div style={{padding: '16px', textAlign: 'center', color: '#999'}}>Empty component</div>;
+  if (record.descriptor != null) {
+    return <ComponentEmptyPlaceholder descriptor={record.descriptor} />;
+  }
+
+  return <ComponentPlaceholder type={record.type} />;
 }
 
 function syncPlaceholders(records: Record<string, ComponentRecord>): void {

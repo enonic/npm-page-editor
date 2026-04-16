@@ -110,7 +110,7 @@ import { Component } from './component';
 import type { Meta, StoryObj } from '@storybook/preact-vite';
 import { useState } from 'react';
 // Icons last
-import { Icon1, Icon2 } from 'lucide-react';
+import { Icon1, Icon2 } from 'lucide-preact';
 
 type Story = StoryObj<typeof Component>;
 

@@ -1,6 +1,13 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "printWidth": 120,
+  "experimentalTailwindcss": {
+    "stylesheet": "./src/main/resources/assets/js/v2/rendering/editor-ui.css",
+    "attributes": ["class", "className"],
+    "functions": ["cn"],
+    "preserveDuplicates": false,
+    "preserveWhitespace": false
+  },
   "semi": true,
   "trailingComma": "all",
   "singleQuote": true,

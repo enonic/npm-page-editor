@@ -1,6 +1,7 @@
 import {render, type ReactNode} from 'preact/compat';
 
 import {injectStyles} from './inject-styles';
+import {registerThemeHost, unregisterThemeHost} from './theme-sync';
 
 const OVERLAY_HOST_ID = 'pe-overlay-host';
 const OVERLAY_ROOT_ATTR = 'data-pe-overlay-root';
@@ -21,6 +22,7 @@ export function createOverlayHost(app: ReactNode): OverlayHost {
 
   const shadow = host.attachShadow({mode: 'open'});
   injectStyles(shadow);
+  registerThemeHost(host);
 
   const mount = document.createElement('div');
   mount.setAttribute(OVERLAY_ROOT_ATTR, 'true');
@@ -30,6 +32,7 @@ export function createOverlayHost(app: ReactNode): OverlayHost {
   return {
     root: shadow,
     unmount: () => {
+      unregisterThemeHost(host);
       render(null, mount);
       host.remove();
     },

@@ -7,6 +7,7 @@ import {
   setModifyAllowed,
   setPageConfig,
   setPageControllers,
+  setTheme,
   updateRecord,
   closeContextMenu,
 } from '../state';
@@ -26,6 +27,9 @@ export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): (
         setPageConfig(message.config);
         setLocked(message.config.locked);
         setModifyAllowed(message.config.modifyPermissions);
+        if (message.config.theme != null) {
+          setTheme(message.config.theme);
+        }
         break;
 
       case 'select':
@@ -66,6 +70,10 @@ export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): (
         if (!message.allowed) {
           setLocked(true);
         }
+        break;
+
+      case 'set-theme':
+        setTheme(message.theme);
         break;
 
       case 'create-draggable':

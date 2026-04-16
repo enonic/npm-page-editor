@@ -7,9 +7,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const preactPath = path.resolve(__dirname, '../node_modules/preact');
 
 const config: StorybookConfig = {
-    stories: ['../.storybook/page-editor/**/*.stories.@(ts|tsx)'],
+    stories: [
+      '../.storybook/page-editor/**/*.stories.@(ts|tsx)',
+      '../.storybook/v2/**/*.stories.@(ts|tsx)',
+    ],
     addons: ['@storybook/addon-docs', '@storybook/addon-themes'],
     framework: '@storybook/preact-vite',
+    core: {
+        disableWhatsNewNotifications: true,
+    },
+    features: {
+        sidebarOnboardingChecklist: false,
+    },
     viteFinal(config) {
         config.resolve ??= {};
         config.resolve.alias = {
@@ -33,6 +42,7 @@ const config: StorybookConfig = {
             'preact',
             'preact/hooks',
             'preact/compat',
+            '@enonic/ui',
         ];
 
         config.esbuild = {

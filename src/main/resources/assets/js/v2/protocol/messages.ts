@@ -21,6 +21,7 @@ export type PageConfig = {
   fragmentAllowed: boolean;
   resetEnabled: boolean;
   phrases: Record<string, string>;
+  theme?: 'light' | 'dark';
 };
 
 export type PageDescriptor = {
@@ -47,6 +48,7 @@ export const INCOMING_MESSAGE_TYPES: ReadonlySet<IncomingMessage['type']> = new 
   'page-state',
   'set-lock',
   'set-modify-allowed',
+  'set-theme',
   'create-draggable',
   'destroy-draggable',
   'set-draggable-visible',
@@ -67,6 +69,7 @@ export type IncomingMessage =
   | {type: 'page-state'; page: PageDescriptor}
   | {type: 'set-lock'; locked: boolean}
   | {type: 'set-modify-allowed'; allowed: boolean}
+  | {type: 'set-theme'; theme: 'light' | 'dark'}
   | {type: 'create-draggable'; componentType: string}
   | {type: 'destroy-draggable'}
   | {type: 'set-draggable-visible'; visible: boolean}
