@@ -2,7 +2,7 @@ import type {DescriptorMap} from './parse';
 import type {ComponentPath} from './protocol';
 import type {PlaceholderIsland} from './rendering';
 import type {ComponentRecord} from './state';
-import type {ReactNode} from 'preact/compat';
+import type {ReactNode} from 'react';
 
 import {ComponentEmptyPlaceholder} from './components/ComponentEmptyPlaceholder';
 import {ComponentErrorPlaceholder} from './components/ComponentErrorPlaceholder';

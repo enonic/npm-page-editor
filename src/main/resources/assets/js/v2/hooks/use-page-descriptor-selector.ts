@@ -1,4 +1,4 @@
-import {useCallback, useMemo, useState} from 'preact/compat';
+import {useCallback, useMemo, useState} from 'react';
 
 import type {PageController} from '../protocol';
 

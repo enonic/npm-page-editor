@@ -1,4 +1,4 @@
-import {render, type ReactNode} from 'preact/compat';
+import {render, type ReactNode} from 'react';
 
 import {injectStyles} from './inject-styles';
 import {registerThemeHost, unregisterThemeHost} from './theme-sync';

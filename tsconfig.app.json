@@ -20,7 +20,13 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "preact"
+    "jsxImportSource": "react",
+    "paths": {
+      "react": ["./node_modules/preact/compat/src/index.d.ts"],
+      "react-dom": ["./node_modules/preact/compat/src/index.d.ts"],
+      "react/jsx-runtime": ["./node_modules/preact/jsx-runtime/src/index.d.ts"],
+      "react/jsx-dev-runtime": ["./node_modules/preact/jsx-runtime/src/index.d.ts"]
+    }
   },
   "include": [
     "./src/main/resources/assets/js/types.d.ts",

@@ -1,4 +1,4 @@
-import {useEffect} from 'preact/compat';
+import {useEffect} from 'react';
 
 import type {JSX} from 'preact';
 

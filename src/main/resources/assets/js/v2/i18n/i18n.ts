@@ -1,4 +1,4 @@
-import {useMemo} from 'preact/compat';
+import {useMemo} from 'react';
 
 import {useStoreValue} from '../hooks/use-store';
 import {$config} from '../state';
