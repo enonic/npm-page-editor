@@ -19,6 +19,10 @@ export function setPageConfig(config: PageConfig): void {
   $config.set(config);
 }
 
+export function clearPageConfig(): void {
+  $config.set(undefined);
+}
+
 export function getPageConfig(): PageConfig | undefined {
   return $config.get();
 }

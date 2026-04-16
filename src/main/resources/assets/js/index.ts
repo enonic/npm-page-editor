@@ -1,3 +1,7 @@
+export * from './v2/protocol';
+export {initPageEditor} from './v2/init';
+export type {PageEditorInstance, RendererCallbacks} from './v2/init';
+
 export {PageEditor} from './page-editor/PageEditor';
 export {EditorEvents, EditorEvent} from './page-editor/event/EditorEvent';
 
@@ -23,4 +27,4 @@ export {PageView} from './page-editor/PageView';
 
 // To allow creation of custom elements
 export {Element, NewElementBuilder} from '@enonic/lib-admin-ui/dom/Element';
-export {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
+export {ComponentPath as LegacyComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';

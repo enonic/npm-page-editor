@@ -6,6 +6,21 @@
 
 Wire all modules together, add selection persistence, define the public API, and remove all legacy code. This is the final integration step — after it, the v2 module is complete and the legacy `page-editor/` + transitional `new-ui/` directories can be deleted.
 
+## Sub-steps
+
+This step is split into six sub-steps so each can land as its own PR with `pnpm check` green at every gate. Follow them in order.
+
+| # | Sub-step | Gate |
+|---|----------|------|
+| 11.1 | [Init core integration](11.1-INIT-CORE.md) | v2 loadable via `initPageEditor()`; legacy still exists |
+| 11.2 | [Legacy directory removal](11.2-LEGACY-REMOVAL.md) | `page-editor/` + `new-ui/` deleted; Content Studio on v2 |
+| 11.3 | [Dependency pruning](11.3-DEPENDENCY-PRUNING.md) | jQuery/mousetrap/q/dompurify dropped; lockfile clean |
+| 11.4 | [Build and LESS rework](11.4-BUILD-LESS-REWORK.md) | Vite config simplified; LESS shrunk or dropped |
+| 11.5 | [preact/compat → react alias](11.5-PREACT-REACT-ALIAS.md) | `paths` aliases in tsconfig; no `preact/compat` imports |
+| 11.6 | [Storybook and final polish](11.6-STORYBOOK-POLISH.md) | jQuery global removed; stories legacy-free |
+
+The rest of this document is the original end-state reference for the whole step. Individual sub-step docs contain the executable plans.
+
 ## Scope
 
 ```

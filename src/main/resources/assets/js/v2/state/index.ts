@@ -17,7 +17,7 @@ export {
 } from './drag';
 
 export {$locked, $modifyAllowed, $config, $pageControllers} from './page';
-export {setLocked, setModifyAllowed, setPageConfig, getPageConfig, setPageControllers} from './page';
+export {setLocked, setModifyAllowed, setPageConfig, clearPageConfig, getPageConfig, setPageControllers} from './page';
 
 export type {Theme} from './theme';
 export {$theme, setTheme, getTheme} from './theme';
