@@ -99,7 +99,6 @@ export default defineConfig(({mode}) => {
                 alias: {
                     '@enonic/lib-admin-ui': path.join(__dirname, '.xp/dev/lib-admin-ui'),
                     '@enonic/lib-contentstudio': path.join(__dirname, '.xp/dev/lib-contentstudio'),
-                    '~enonic-admin-artifacts': 'enonic-admin-artifacts/index.less',
                     'react': 'preact/compat',
                     'react-dom': 'preact/compat',
                     'react/jsx-runtime': 'preact/jsx-runtime',
@@ -128,13 +127,13 @@ export default defineConfig(({mode}) => {
                 sourcemap: isDevelopment,
                 rollupOptions: {
                     input: {
-                        'main': path.join(IN_PATH, 'css/main.less'),
+                        'main': path.join(IN_PATH, 'css/main.css'),
                     },
                     output: {
                         assetFileNames: (assetInfo) => {
                             const assetName = assetInfo.names?.[0] ?? '';
                             if (assetName.endsWith('.css')) {
-                                const name = assetName.replace(/\.(less|css)$/, '');
+                                const name = assetName.replace(/\.css$/, '');
                                 return `${name}.css`;
                             }
                             if (/\.(svg|png|jpg|gif)$/.test(assetName)) {
@@ -149,20 +148,11 @@ export default defineConfig(({mode}) => {
                     }
                 }
             },
+            plugins: [tailwindcss()],
             resolve: {
-                alias: {
-                    '@enonic/lib-admin-ui': path.join(__dirname, '.xp/dev/lib-admin-ui'),
-                    '@enonic/lib-contentstudio': path.join(__dirname, '.xp/dev/lib-contentstudio'),
-                    '~enonic-admin-artifacts': 'enonic-admin-artifacts/index.less'
-                },
-                extensions: ['.less', '.css']
+                extensions: ['.css']
             },
             css: {
-                preprocessorOptions: {
-                    less: {
-                        javascriptEnabled: true
-                    }
-                },
                 postcss: {
                     plugins: [
                         postcssNormalize(),

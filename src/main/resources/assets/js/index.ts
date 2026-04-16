@@ -1,30 +1,3 @@
 export * from './v2/protocol';
 export {initPageEditor} from './v2/init';
 export type {PageEditorInstance, RendererCallbacks} from './v2/init';
-
-export {PageEditor} from './page-editor/PageEditor';
-export {EditorEvents, EditorEvent} from './page-editor/event/EditorEvent';
-
-export {ItemView} from './page-editor/ItemView';
-export {ItemViewId} from './page-editor/ItemViewId';
-export {ItemViewIdProducer} from './page-editor/ItemViewIdProducer';
-export {CreateItemViewConfig} from './page-editor/CreateItemViewConfig';
-export {type ItemViewFactory, DefaultItemViewFactory} from './page-editor/ItemViewFactory';
-export {ComponentItemType} from './page-editor/ComponentItemType';
-export {ComponentView} from './page-editor/ComponentView';
-export {DescriptorBasedComponentView} from './page-editor/DescriptorBasedComponentView';
-export {ContentBasedComponentView} from './page-editor/ContentBasedComponentView';
-export {PartComponentView} from './page-editor/part/PartComponentView';
-export {PartItemType} from './page-editor/part/PartItemType';
-export {LayoutItemType} from './page-editor/layout/LayoutItemType';
-export {LayoutComponentView} from './page-editor/layout/LayoutComponentView';
-export {TextItemType} from './page-editor/text/TextItemType';
-export {TextComponentView} from './page-editor/text/TextComponentView';
-export {FragmentItemType} from './page-editor/fragment/FragmentItemType';
-export {FragmentComponentView} from './page-editor/fragment/FragmentComponentView';
-export {RegionView} from './page-editor/RegionView';
-export {PageView} from './page-editor/PageView';
-
-// To allow creation of custom elements
-export {Element, NewElementBuilder} from '@enonic/lib-admin-ui/dom/Element';
-export {ComponentPath as LegacyComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';

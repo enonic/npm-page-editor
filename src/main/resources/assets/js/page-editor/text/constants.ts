@@ -1,1 +1,0 @@
-export const TEXT_COMPONENT_DBL_CLICK_TIMEOUT = 250;
