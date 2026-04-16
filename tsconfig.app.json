@@ -1,13 +1,6 @@
 {
   "compilerOptions": {
     "target": "ES2023",
-    "types": [
-      "jquery",
-      "jqueryui",
-      "q",
-      "ckeditor",
-      "mousetrap"
-    ],
     "lib": [
       "ES2023",
       "DOM"
@@ -31,9 +24,7 @@
   },
   "include": [
     "./src/main/resources/assets/js/types.d.ts",
-    "src/**/*",
-    ".xp/dev/lib-admin-ui/**/*.ts",
-    ".xp/dev/lib-contentstudio/**/*.ts"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",

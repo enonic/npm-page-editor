@@ -1,10 +1,5 @@
-import inject from '@rollup/plugin-inject';
 import tailwindcss from '@tailwindcss/vite';
-import autoprefixer from 'autoprefixer';
-import cssnano from 'cssnano';
 import path from 'path';
-import postcssNormalize from 'postcss-normalize';
-import postcssSortMediaQueries from 'postcss-sort-media-queries';
 import {fileURLToPath} from 'url';
 import {defineConfig, type UserConfig} from 'vite';
 import dts from 'vite-plugin-dts';
@@ -55,12 +50,6 @@ export default defineConfig(({mode}) => {
                         if (warning.code === 'INVALID_ANNOTATION' && warning.message.includes('node_modules')) return;
                         warn(warning);
                     },
-                    plugins: [
-                        inject({
-                            $: 'jquery',
-                            jQuery: 'jquery',
-                        })
-                    ],
                     output: {
                         chunkFileNames: 'js/chunks/[name]-[hash].js',
                         assetFileNames: '[name][extname]',
@@ -80,8 +69,6 @@ export default defineConfig(({mode}) => {
                     root: OUT_PATH,
                     tsconfigPath: path.join(__dirname, 'tsconfig.app.json'),
                     rollupTypes: true,
-                    aliasesExclude: ['@enonic/lib-admin-ui', '@enonic/lib-contentstudio'],
-                    bundledPackages: ['@enonic/lib-admin-ui', '@enonic/lib-contentstudio'],
                 })
             ],
             esbuild: {
@@ -97,8 +84,6 @@ export default defineConfig(({mode}) => {
             },
             resolve: {
                 alias: {
-                    '@enonic/lib-admin-ui': path.join(__dirname, '.xp/dev/lib-admin-ui'),
-                    '@enonic/lib-contentstudio': path.join(__dirname, '.xp/dev/lib-contentstudio'),
                     'react': 'preact/compat',
                     'react-dom': 'preact/compat',
                     'react/jsx-runtime': 'preact/jsx-runtime',
@@ -151,16 +136,6 @@ export default defineConfig(({mode}) => {
             plugins: [tailwindcss()],
             resolve: {
                 extensions: ['.css']
-            },
-            css: {
-                postcss: {
-                    plugins: [
-                        postcssNormalize(),
-                        autoprefixer(),
-                        postcssSortMediaQueries({sort: 'desktop-first'}),
-                        ...(isProduction ? [cssnano({preset: ['default', {normalizeUrl: false}]})] : [])
-                    ]
-                }
             }
         }
     };
