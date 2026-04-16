@@ -1,0 +1,567 @@
+import type {ComponentPath} from '../protocol';
+import type {ComponentRecord} from '../state';
+
+import {fromString} from '../protocol';
+import {$dragState, isPostDragCooldown, rebuildIndex, resetDragState, setDragState, setRegistry} from '../state';
+import {initComponentDrag} from './component-drag';
+import {createFakeChannel} from './testing/helpers';
+
+function path(raw: string): ComponentPath {
+  const result = fromString(raw);
+  if (!result.ok) throw new Error(`Invalid path: ${raw}`);
+  return result.value;
+}
+
+function makeRecord(
+  p: string,
+  type: ComponentRecord['type'],
+  element: HTMLElement | undefined,
+  parentPath: string | undefined,
+  children: string[] = [],
+): ComponentRecord {
+  return {
+    path: path(p),
+    type,
+    element,
+    parentPath: parentPath != null ? path(parentPath) : undefined,
+    children: children.map(path),
+    empty: children.length === 0 && type === 'region',
+    error: false,
+    descriptor: undefined,
+    fragmentContentId: undefined,
+    loading: false,
+  };
+}
+
+function setRect(el: HTMLElement, rect: Partial<DOMRect>): void {
+  vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
+    width: 0,
+    height: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+    ...rect,
+  });
+}
+
+function makeTrackedElement(type = 'part'): HTMLElement {
+  const el = document.createElement('div');
+  el.setAttribute('data-portal-component-type', type);
+  document.body.appendChild(el);
+  return el;
+}
+
+function makeRegionElement(name: string): HTMLElement {
+  const el = document.createElement('section');
+  el.setAttribute('data-portal-region', name);
+  document.body.appendChild(el);
+  return el;
+}
+
+function setupRegistry(records: Record<string, ComponentRecord>): void {
+  setRegistry(records);
+  rebuildIndex(records);
+}
+
+function mouseDown(target: HTMLElement, x = 0, y = 0): void {
+  target.dispatchEvent(new MouseEvent('mousedown', {bubbles: true, clientX: x, clientY: y, button: 0}));
+}
+
+function mouseMove(x: number, y: number): void {
+  document.dispatchEvent(new MouseEvent('mousemove', {bubbles: true, clientX: x, clientY: y}));
+}
+
+function mouseUp(x = 0, y = 0, button = 0): void {
+  document.dispatchEvent(new MouseEvent('mouseup', {bubbles: true, clientX: x, clientY: y, button}));
+}
+
+describe('component-drag', () => {
+  let cleanup: () => void;
+  let channel: ReturnType<typeof createFakeChannel>;
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    resetDragState();
+    channel = createFakeChannel();
+    // jsdom does not implement elementsFromPoint — polyfill for tests
+    if (!('elementsFromPoint' in document)) {
+      Object.defineProperty(document, 'elementsFromPoint', {value: () => [], writable: true, configurable: true});
+    }
+  });
+
+  afterEach(() => {
+    cleanup();
+    document.body.innerHTML = '';
+    resetDragState();
+    setRegistry({});
+  });
+
+  describe('initComponentDrag', () => {
+    //
+    // * Basic drag flow
+    //
+
+    it('starts drag after threshold exceeded', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      mouseDown(part, 100, 100);
+      expect($dragState.get()).toBeUndefined();
+
+      mouseMove(110, 100);
+      expect($dragState.get()).toBeDefined();
+      expect(channel.messages).toEqual([expect.objectContaining({type: 'drag-started', path: path('/main/0')})]);
+    });
+
+    it('hides source element during drag', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      mouseDown(part, 100, 100);
+      mouseMove(110, 100);
+      expect(part.style.display).toBe('none');
+    });
+
+    it('restores source element on drop', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      mouseDown(part, 100, 100);
+      mouseMove(110, 100);
+      mouseUp(110, 100);
+
+      expect(part.style.display).not.toBe('none');
+    });
+
+    it('sends move on valid drop', () => {
+      const region = makeRegionElement('main');
+      const part0 = makeTrackedElement('part');
+      const part1 = makeTrackedElement('part');
+      region.appendChild(part0);
+      region.appendChild(part1);
+      setRect(part0, {top: 0, height: 100});
+      setRect(part1, {top: 100, height: 100});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0', '/main/1']),
+        '/main/0': makeRecord('/main/0', 'part', part0, '/main'),
+        '/main/1': makeRecord('/main/1', 'part', part1, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([region]);
+
+      mouseDown(part0, 100, 50);
+      mouseMove(100, 60);
+      mouseUp(100, 180);
+
+      const moveMsg = channel.messages.find(m => m.type === 'move');
+      expect(moveMsg).toBeDefined();
+    });
+
+    it('sends drag-stopped on mouseup outside a valid target', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([]);
+
+      mouseDown(part, 100, 100);
+      mouseMove(110, 100);
+      mouseUp(110, 100);
+
+      expect(channel.messages.some(m => m.type === 'drag-stopped')).toBe(true);
+    });
+
+    it('does not send drag-stopped on successful drop', () => {
+      const region = makeRegionElement('main');
+      const part0 = makeTrackedElement('part');
+      const part1 = makeTrackedElement('part');
+      region.appendChild(part0);
+      region.appendChild(part1);
+      setRect(part0, {top: 0, height: 100});
+      setRect(part1, {top: 100, height: 100});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0', '/main/1']),
+        '/main/0': makeRecord('/main/0', 'part', part0, '/main'),
+        '/main/1': makeRecord('/main/1', 'part', part1, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([region]);
+
+      mouseDown(part0, 100, 50);
+      mouseMove(100, 60);
+      mouseUp(100, 180);
+
+      expect(channel.messages.some(m => m.type === 'move')).toBe(true);
+      expect(channel.messages.some(m => m.type === 'drag-dropped')).toBe(true);
+      expect(channel.messages.some(m => m.type === 'drag-stopped')).toBe(false);
+    });
+
+    it('clears drag state after drop', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([]);
+
+      mouseDown(part, 100, 100);
+      mouseMove(110, 100);
+      mouseUp(110, 100);
+
+      expect($dragState.get()).toBeUndefined();
+    });
+
+    //
+    // * Threshold
+    //
+
+    it('does not start drag below threshold', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      mouseDown(part, 100, 100);
+      mouseMove(103, 100);
+
+      expect($dragState.get()).toBeUndefined();
+      expect(channel.messages).toEqual([]);
+    });
+
+    //
+    // * Cancel
+    //
+
+    it('cancels drag on Escape', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      mouseDown(part, 100, 100);
+      mouseMove(110, 100);
+
+      document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+
+      expect($dragState.get()).toBeUndefined();
+      expect(part.style.display).not.toBe('none');
+      expect(channel.messages.some(m => m.type === 'drag-stopped')).toBe(true);
+    });
+
+    it('cancels drag on window blur', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      mouseDown(part, 100, 100);
+      mouseMove(110, 100);
+
+      window.dispatchEvent(new Event('blur'));
+
+      expect($dragState.get()).toBeUndefined();
+      expect(part.style.display).not.toBe('none');
+    });
+
+    //
+    // * Guards
+    //
+
+    it('ignores non-primary button', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      part.dispatchEvent(new MouseEvent('mousedown', {bubbles: true, clientX: 100, clientY: 100, button: 2}));
+      mouseMove(110, 100);
+
+      expect($dragState.get()).toBeUndefined();
+    });
+
+    it('does not drag page records', () => {
+      const page = document.createElement('div');
+      page.setAttribute('data-portal-component-type', 'page');
+      document.body.appendChild(page);
+
+      setupRegistry({
+        '/': makeRecord('/', 'page', page, undefined, ['/main']),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      mouseDown(page, 100, 100);
+      mouseMove(110, 100);
+
+      expect($dragState.get()).toBeUndefined();
+    });
+
+    it('does not drag region records', () => {
+      const region = makeRegionElement('main');
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      mouseDown(region, 100, 100);
+      mouseMove(110, 100);
+
+      expect($dragState.get()).toBeUndefined();
+    });
+
+    //
+    // * Mutual exclusion
+    //
+
+    it('rejects mousedown while another drag is already active', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      // Simulate a pre-existing drag session (e.g., context-window-drag)
+      setDragState({
+        itemType: 'part',
+        itemLabel: 'External',
+        sourcePath: undefined,
+        targetRegion: undefined,
+        targetIndex: undefined,
+        dropAllowed: false,
+        message: undefined,
+        placeholderElement: undefined,
+        x: undefined,
+        y: undefined,
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      mouseDown(part, 100, 100);
+      mouseMove(110, 100);
+
+      // The external session remains; no component-drag was started
+      expect($dragState.get()?.sourcePath).toBeUndefined();
+      expect(part.style.display).not.toBe('none');
+      expect(channel.messages.some(m => m.type === 'drag-started')).toBe(false);
+    });
+
+    it('rejects beginDrag when another drag starts during the pending window', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      // mousedown sets pending — no guard triggered yet
+      mouseDown(part, 100, 100);
+
+      // Another session takes the lock between mousedown and mousemove
+      setDragState({
+        itemType: 'layout',
+        itemLabel: 'External',
+        sourcePath: undefined,
+        targetRegion: undefined,
+        targetIndex: undefined,
+        dropAllowed: false,
+        message: undefined,
+        placeholderElement: undefined,
+        x: undefined,
+        y: undefined,
+      });
+
+      // Threshold exceeded — beginDrag must bail out, not desync state
+      mouseMove(110, 100);
+
+      expect($dragState.get()?.itemLabel).toBe('External');
+      expect(part.style.display).not.toBe('none');
+      expect(channel.messages.some(m => m.type === 'drag-started')).toBe(false);
+    });
+
+    //
+    // * Post-drag cooldown
+    //
+
+    it('activates post-drag cooldown after successful drop', () => {
+      vi.useFakeTimers();
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+      setRect(part, {top: 0, height: 100});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([region]);
+
+      mouseDown(part, 100, 50);
+      mouseMove(100, 60);
+      mouseUp(100, 80);
+
+      expect(isPostDragCooldown()).toBe(true);
+
+      vi.advanceTimersByTime(100);
+      expect(isPostDragCooldown()).toBe(false);
+
+      vi.useRealTimers();
+    });
+
+    it('activates post-drag cooldown after cancel', () => {
+      vi.useFakeTimers();
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      mouseDown(part, 100, 100);
+      mouseMove(110, 100);
+      document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+
+      expect(isPostDragCooldown()).toBe(true);
+
+      vi.advanceTimersByTime(100);
+      expect(isPostDragCooldown()).toBe(false);
+
+      vi.useRealTimers();
+    });
+
+    //
+    // * Cleanup
+    //
+
+    it('cleans up active drag on teardown', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      mouseDown(part, 100, 100);
+      mouseMove(110, 100);
+      expect($dragState.get()).toBeDefined();
+
+      cleanup();
+      expect($dragState.get()).toBeUndefined();
+      expect(part.style.display).not.toBe('none');
+
+      // Prevent afterEach cleanup from calling it again
+      cleanup = () => undefined;
+    });
+
+    it('removes listeners on cleanup', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+      cleanup();
+
+      mouseDown(part, 100, 100);
+      mouseMove(110, 100);
+
+      expect($dragState.get()).toBeUndefined();
+
+      cleanup = () => undefined;
+    });
+  });
+});

@@ -79,7 +79,6 @@ export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): (
       case 'create-draggable':
       case 'destroy-draggable':
       case 'set-draggable-visible':
-        // TODO: Wire to context window drag system
         break;
 
       case 'page-controllers':

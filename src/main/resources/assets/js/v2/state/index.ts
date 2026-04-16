@@ -6,7 +6,15 @@ export {$selectedPath, setSelectedPath, getSelectedPath} from './selection';
 export {$hoveredPath, setHoveredPath, getHoveredPath} from './hover';
 
 export type {DragState} from './drag';
-export {$dragState, setDragState, getDragState, isDragging, isPostDragCooldown, resetDragState} from './drag';
+export {
+  $dragState,
+  setDragState,
+  updateDragState,
+  getDragState,
+  isDragging,
+  isPostDragCooldown,
+  resetDragState,
+} from './drag';
 
 export {$locked, $modifyAllowed, $config, $pageControllers} from './page';
 export {setLocked, setModifyAllowed, setPageConfig, getPageConfig, setPageControllers} from './page';

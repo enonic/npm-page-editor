@@ -3,6 +3,7 @@ import {ContextMenu as UiContextMenu} from '@enonic/ui';
 import type {ActionDef} from '../../actions';
 import type {JSX} from 'preact';
 
+import {useI18n} from '../../i18n';
 import {useMenuAction} from './context';
 import {INSERT_ICONS} from './helpers';
 
@@ -12,11 +13,12 @@ export type InsertGroupProps = {
 
 export const InsertGroup = ({actions}: InsertGroupProps): JSX.Element => {
   const dispatch = useMenuAction();
+  const t = useI18n();
   const sorted = actions.toSorted((a, b) => a.sortOrder - b.sortOrder);
 
   return (
     <>
-      <UiContextMenu.Label>Insert</UiContextMenu.Label>
+      <UiContextMenu.Label>{t('action.insert')}</UiContextMenu.Label>
       {sorted.map(child => {
         const Icon = INSERT_ICONS[child.id];
 

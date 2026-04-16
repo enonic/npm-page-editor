@@ -4,6 +4,7 @@ import {FileCog} from 'lucide-preact';
 import type {JSX} from 'preact';
 
 import {usePageDescriptorSelector} from '../hooks/use-page-descriptor-selector';
+import {useI18n} from '../i18n';
 
 export type PageDescriptorSelectorProps = {
   className?: string;
@@ -22,12 +23,13 @@ export const PageDescriptorSelector = ({className}: PageDescriptorSelectorProps)
     disabled,
     isEmpty,
   } = usePageDescriptorSelector();
+  const t = useI18n();
 
-  const placeholder = isEmpty ? 'No controllers available' : 'Choose a controller';
+  const placeholder = isEmpty ? t('field.pageController.empty') : t('field.pageController.placeholder');
 
   return (
     <div data-component={PAGE_DESCRIPTOR_SELECTOR_NAME} className={cn('flex flex-col gap-2.5', className)}>
-      <span className='font-semibold'>Page controller</span>
+      <span className='font-semibold'>{t('field.pageController')}</span>
       <Combobox.Root
         value={searchValue}
         onChange={setSearchValue}

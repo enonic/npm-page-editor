@@ -2,6 +2,8 @@ import {cn} from '@enonic/ui';
 
 import type {JSX} from 'preact';
 
+import {useI18n} from '../i18n';
+
 export type DragPlaceholderProps = {
   itemLabel: string;
   dropAllowed: boolean;
@@ -12,7 +14,8 @@ export type DragPlaceholderProps = {
 const DRAG_PLACEHOLDER_NAME = 'DragPlaceholder';
 
 export const DragPlaceholder = ({dropAllowed, message, className}: DragPlaceholderProps): JSX.Element => {
-  const text = dropAllowed ? 'Release here...' : (message ?? 'Cannot drop this component here.');
+  const t = useI18n();
+  const text = dropAllowed ? t('field.drag.release') : (message ?? t('field.drag.notAllowed'));
 
   return (
     <div

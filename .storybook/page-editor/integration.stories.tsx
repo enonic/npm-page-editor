@@ -1,21 +1,24 @@
 import {useEffect, useRef} from 'preact/hooks';
 
-import type {ComponentPath, ComponentType} from '../../src/main/resources/assets/js/v2/protocol';
+import type {ComponentPath, ComponentType, OutgoingMessage} from '../../src/main/resources/assets/js/v2/protocol';
 import type {ComponentRecord} from '../../src/main/resources/assets/js/v2/state';
+import type {Channel} from '../../src/main/resources/assets/js/v2/transport';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {CSSProperties, JSX} from 'preact';
 
 import {OverlayApp} from '../../src/main/resources/assets/js/v2/components/OverlayApp';
 import {RegionPlaceholder} from '../../src/main/resources/assets/js/v2/components/RegionPlaceholder';
 import {initGeometryScheduler, markDirty} from '../../src/main/resources/assets/js/v2/geometry';
+import {
+  initComponentDrag,
+  initHoverDetection,
+  initSelectionDetection,
+} from '../../src/main/resources/assets/js/v2/interaction';
 import {fromString} from '../../src/main/resources/assets/js/v2/protocol';
 import {createOverlayHost, createPlaceholderIsland} from '../../src/main/resources/assets/js/v2/rendering';
 import {
-  $selectedPath,
   closeContextMenu,
-  getPathForElement,
   getRecord,
-  openContextMenu,
   rebuildIndex,
   setDragState,
   setHoveredPath,
@@ -67,116 +70,22 @@ function resetState(): void {
   setRegistry({});
 }
 
-//
-// * Interaction handler
-//
-
-function initInteraction(): () => void {
-  const DRAG_THRESHOLD = 5;
-
-  let dragPending = false;
-  let dragActive = false;
-  let startX = 0;
-  let startY = 0;
-  const handleMouseDown = (event: MouseEvent): void => {
-    if (event.button !== 0) return;
-
-    const target = event.target as HTMLElement;
-    const p =
-      getPathForElement(target) ?? getPathForElement(target.closest('[data-portal-component-type]') as HTMLElement);
-    const rec = p != null ? getRecord(p) : undefined;
-
-    if (rec != null && rec.type !== 'region' && rec.type !== 'page') {
-      event.preventDefault();
-      dragPending = true;
-      startX = event.clientX;
-      startY = event.clientY;
-    }
-  };
-
-  const handleMouseMove = (event: MouseEvent): void => {
-    if (!dragPending && !dragActive) return;
-
-    if (dragPending) {
-      const dx = event.clientX - startX;
-      const dy = event.clientY - startY;
-      if (dx * dx + dy * dy < DRAG_THRESHOLD * DRAG_THRESHOLD) return;
-
-      dragPending = false;
-      dragActive = true;
-      document.body.style.cursor = 'grabbing';
-      closeContextMenu();
-      setSelectedPath(undefined);
-      setHoveredPath(undefined);
-    }
-  };
-
-  const handleMouseUp = (event: MouseEvent): void => {
-    if (event.button !== 0) return;
-
-    if (dragActive) {
-      document.body.style.cursor = '';
-      setDragState(undefined);
-      dragActive = false;
-      dragPending = false;
-      return;
-    }
-
-    dragPending = false;
-
-    const target = event.target as HTMLElement;
-    const p =
-      getPathForElement(target) ?? getPathForElement(target.closest('[data-portal-component-type]') as HTMLElement);
-
-    if (p != null) {
-      closeContextMenu();
-      setSelectedPath($selectedPath.get() === p ? undefined : p);
-    } else {
-      setSelectedPath(undefined);
-      closeContextMenu();
-    }
-  };
-
-  const handleContextMenu = (event: MouseEvent): void => {
-    if (dragActive) return;
-
-    const target = event.target as HTMLElement;
-    const p =
-      getPathForElement(target) ?? getPathForElement(target.closest('[data-portal-component-type]') as HTMLElement);
-
-    if (p != null) {
-      event.preventDefault();
-      event.stopPropagation();
-      setSelectedPath(p);
-      openContextMenu({kind: 'component', path: p, x: event.pageX, y: event.pageY});
-    }
-  };
-
-  const handleHover = (event: MouseEvent): void => {
-    if (dragActive || dragPending) return;
-
-    const target = event.target as HTMLElement;
-    const p =
-      getPathForElement(target) ?? getPathForElement(target.closest('[data-portal-component-type]') as HTMLElement);
-    setHoveredPath(p);
-  };
-
-  document.addEventListener('mousedown', handleMouseDown);
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('mouseup', handleMouseUp);
-  document.addEventListener('contextmenu', handleContextMenu, {capture: true});
-  document.addEventListener('mouseover', handleHover);
-
-  return () => {
-    document.body.style.cursor = '';
-    setDragState(undefined);
-    dragActive = false;
-    dragPending = false;
-    document.removeEventListener('mousedown', handleMouseDown);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-    document.removeEventListener('contextmenu', handleContextMenu, {capture: true});
-    document.removeEventListener('mouseover', handleHover);
+function createStoryChannel(): Channel {
+  const handlers = new Set<(msg: never) => void>();
+  return {
+    send(message: OutgoingMessage): void {
+      // eslint-disable-next-line no-console
+      console.log('[PageEditor]', message.type, message);
+    },
+    subscribe(handler) {
+      handlers.add(handler as (msg: never) => void);
+      return () => {
+        handlers.delete(handler as (msg: never) => void);
+      };
+    },
+    destroy() {
+      handlers.clear();
+    },
   };
 }
 
@@ -275,17 +184,23 @@ function OverlayTest(): JSX.Element {
       <RegionPlaceholder path={path('/main/2/center')} regionName='center' />,
     );
 
+    const channel = createStoryChannel();
     const stopGeometry = initGeometryScheduler(p => getRecord(p)?.element);
-    const stopInteraction = initInteraction();
+    const stopHover = initHoverDetection();
+    const stopSelection = initSelectionDetection(channel);
+    const stopDrag = initComponentDrag(channel);
 
     markDirty();
 
     return () => {
-      stopInteraction();
+      stopDrag();
+      stopSelection();
+      stopHover();
       stopGeometry();
       rightIsland.unmount();
       centerIsland.unmount();
       overlay.unmount();
+      channel.destroy();
       resetState();
     };
   }, []);
@@ -301,7 +216,7 @@ function OverlayTest(): JSX.Element {
         >
           <h3 style={{margin: '0 0 4px', fontSize: '16px'}}>Part A — Hero Banner</h3>
           <p style={{margin: 0, opacity: 0.6, fontSize: '13px'}}>
-            Hover, click to select, right-click for context menu.
+            Hover, click to select, right-click for context menu. Drag to reorder.
           </p>
         </article>
 

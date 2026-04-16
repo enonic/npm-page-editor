@@ -1,7 +1,15 @@
 import type {ComponentPath} from '../protocol';
 
 import {fromString} from '../protocol';
-import {getDragState, isDragging, isPostDragCooldown, resetDragState, setDragState, type DragState} from './drag';
+import {
+  getDragState,
+  isDragging,
+  isPostDragCooldown,
+  resetDragState,
+  setDragState,
+  updateDragState,
+  type DragState,
+} from './drag';
 
 function path(raw: string): ComponentPath {
   const result = fromString(raw);
@@ -74,6 +82,31 @@ describe('drag', () => {
       setDragState(second);
 
       expect(getDragState()).toBe(first);
+    });
+  });
+
+  describe('updateDragState', () => {
+    it('merges partial state into active drag', () => {
+      setDragState(makeDrag());
+      updateDragState({targetRegion: path('/main'), targetIndex: 1, dropAllowed: false});
+
+      const state = getDragState();
+      expect(state?.targetRegion).toBe(path('/main'));
+      expect(state?.targetIndex).toBe(1);
+      expect(state?.dropAllowed).toBe(false);
+      expect(state?.itemLabel).toBe('My Part');
+    });
+
+    it('is a no-op when no drag is active', () => {
+      updateDragState({dropAllowed: false});
+      expect(getDragState()).toBeUndefined();
+    });
+
+    it('does not trigger cooldown', () => {
+      setDragState(makeDrag());
+      updateDragState({x: 100, y: 200});
+      expect(isPostDragCooldown()).toBe(false);
+      expect(isDragging()).toBe(true);
     });
   });
 

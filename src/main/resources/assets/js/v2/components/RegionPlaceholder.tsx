@@ -2,6 +2,7 @@ import type {ComponentPath} from '../protocol';
 import type {JSX} from 'preact';
 
 import {useStoreValue} from '../hooks/use-store';
+import {useI18n} from '../i18n';
 import {$dragState} from '../state';
 
 export type RegionPlaceholderProps = {
@@ -13,6 +14,7 @@ const REGION_PLACEHOLDER_NAME = 'RegionPlaceholder';
 
 export const RegionPlaceholder = ({path}: RegionPlaceholderProps): JSX.Element | null => {
   const dragState = useStoreValue($dragState);
+  const t = useI18n();
 
   if (dragState?.targetRegion === path) return null;
 
@@ -20,7 +22,7 @@ export const RegionPlaceholder = ({path}: RegionPlaceholderProps): JSX.Element |
     <div data-component={REGION_PLACEHOLDER_NAME} className='pe-shell overflow-hidden bg-surface-neutral'>
       <div className='h-full p-2.5'>
         <div className='pe-dash flex min-h-25 items-center justify-center px-4 py-2.5'>
-          <p className='text-center text-subtle italic'>Drop components here...</p>
+          <p className='text-center text-subtle italic'>{t('field.region.empty')}</p>
         </div>
       </div>
     </div>

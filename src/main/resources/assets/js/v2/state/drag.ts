@@ -46,6 +46,12 @@ export function setDragState(state: DragState | undefined): void {
   $dragState.set(state);
 }
 
+export function updateDragState(partial: Partial<DragState>): void {
+  const current = $dragState.get();
+  if (current == null) return;
+  $dragState.set({...current, ...partial});
+}
+
 export function getDragState(): DragState | undefined {
   return $dragState.get();
 }

@@ -16,6 +16,7 @@ import {ContextMenu} from '../../src/main/resources/assets/js/v2/components/Cont
 import {DragPreview} from '../../src/main/resources/assets/js/v2/components/DragPreview';
 import {PagePlaceholderOverlay} from '../../src/main/resources/assets/js/v2/components/PagePlaceholderOverlay';
 import {Shader} from '../../src/main/resources/assets/js/v2/components/Shader';
+import {DEFAULT_PHRASES} from '../../src/main/resources/assets/js/v2/i18n';
 import {fromString} from '../../src/main/resources/assets/js/v2/protocol';
 import {createOverlayHost, createPlaceholderIsland} from '../../src/main/resources/assets/js/v2/rendering';
 import {
@@ -67,7 +68,7 @@ const DEFAULT_CONFIG: PageConfig = {
   fragment: false,
   fragmentAllowed: true,
   resetEnabled: true,
-  phrases: {},
+  phrases: {...DEFAULT_PHRASES},
 };
 
 const SAMPLE_CONTROLLERS: PageController[] = [

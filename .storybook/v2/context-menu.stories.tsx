@@ -7,6 +7,7 @@ import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
 import {ContextMenuItems} from '../../src/main/resources/assets/js/v2/components/ContextMenu';
+import {DEFAULT_PHRASES} from '../../src/main/resources/assets/js/v2/i18n';
 import {$config, $dragState, setRegistry} from '../../src/main/resources/assets/js/v2/state';
 import {setChannel} from '../../src/main/resources/assets/js/v2/transport';
 
@@ -35,7 +36,7 @@ const DEFAULT_CONFIG: PageConfig = {
   fragment: false,
   fragmentAllowed: true,
   resetEnabled: true,
-  phrases: {},
+  phrases: {...DEFAULT_PHRASES},
 };
 
 function makeRecord(
