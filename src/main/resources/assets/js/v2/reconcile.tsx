@@ -28,18 +28,28 @@ import {
 } from './state';
 import {tryGetChannel} from './transport';
 
-const placeholderIslands = new Map<string, PlaceholderIsland>();
+type PlaceholderEntry = {island: PlaceholderIsland; stateKey: string};
+
+const placeholderEntries = new Map<string, PlaceholderEntry>();
+
+function placeholderStateKey(record: ComponentRecord): string {
+  if (record.type === 'region') return 'region';
+  if (record.loading) return 'loading';
+  if (record.error) return `error:${record.descriptor ?? ''}`;
+  if (record.descriptor != null) return `empty:${record.descriptor}`;
+  return record.type;
+}
 
 function shouldShowPlaceholder(record: ComponentRecord): boolean {
   return record.type !== 'page' && (record.empty || record.error || record.loading);
 }
 
 function destroyPlaceholder(path: string): void {
-  const island = placeholderIslands.get(path);
-  if (island == null) return;
+  const entry = placeholderEntries.get(path);
+  if (entry == null) return;
 
-  island.unmount();
-  placeholderIslands.delete(path);
+  entry.island.unmount();
+  placeholderEntries.delete(path);
 }
 
 function isInSubtree(path: string, rootPath: string): boolean {
@@ -77,18 +87,19 @@ function syncPlaceholders(records: Record<string, ComponentRecord>): void {
 
     nextPaths.add(path);
 
-    const currentIsland = placeholderIslands.get(path);
-    if (currentIsland?.container === record.element && currentIsland.host.isConnected) {
+    const key = placeholderStateKey(record);
+    const current = placeholderEntries.get(path);
+    if (current?.island.container === record.element && current.island.host.isConnected && current.stateKey === key) {
       continue;
     }
 
     destroyPlaceholder(path);
 
     const content = createPlaceholderContent(record);
-    placeholderIslands.set(path, createPlaceholderIsland(record.element, content));
+    placeholderEntries.set(path, {island: createPlaceholderIsland(record.element, content), stateKey: key});
   }
 
-  for (const path of placeholderIslands.keys()) {
+  for (const path of placeholderEntries.keys()) {
     if (!nextPaths.has(path)) {
       destroyPlaceholder(path);
     }
@@ -167,7 +178,7 @@ export function reconcileSubtree(element: HTMLElement, parentPath: ComponentPath
 }
 
 export function destroyPlaceholders(): void {
-  for (const path of Array.from(placeholderIslands.keys())) {
+  for (const path of Array.from(placeholderEntries.keys())) {
     destroyPlaceholder(path);
   }
 }

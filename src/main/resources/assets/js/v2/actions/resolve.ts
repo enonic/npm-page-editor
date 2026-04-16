@@ -7,7 +7,6 @@ export type ActionContext = {
   empty: boolean;
   error: boolean;
   locked: boolean;
-  modifyAllowed: boolean;
   fragment: boolean;
   fragmentAllowed: boolean;
   resetEnabled: boolean;

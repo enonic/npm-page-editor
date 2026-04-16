@@ -7,7 +7,7 @@ import {$registry, getRecord} from '../state';
 import {useStoreValue} from './use-store';
 
 export function useTrackedRect(path: ComponentPath | undefined): DOMRect | undefined {
-  // Subscribe to $registry so we re-derive `element` when the registry changes
+  // ? Subscribe to $registry to re-derive `element` when reconciliation replaces the DOM node at this path
   const _registry = useStoreValue($registry);
   const element = path != null ? getRecord(path)?.element : undefined;
   const [rect, setRect] = useState<DOMRect | undefined>(undefined);

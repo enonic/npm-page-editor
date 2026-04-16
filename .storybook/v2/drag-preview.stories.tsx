@@ -27,6 +27,7 @@ function makeDragState(overrides: Partial<DragState>): DragState {
     targetRegion: undefined,
     targetIndex: undefined,
     dropAllowed: true,
+    message: undefined,
     placeholderElement: undefined,
     x: 0,
     y: 0,

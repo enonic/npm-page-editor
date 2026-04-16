@@ -83,7 +83,7 @@ During active drag, `reconcilePage` and `reconcileSubtree` skip updates (impleme
 
 ### Post-drag cooldown
 
-After drop or cancel, `isPostDragCooldown()` returns `true` for 100ms. This is implemented in `state/drag.ts` (step 02) and consumed by `interaction/selection.ts` (step 09) to prevent the mouseup from triggering click-selection.
+After drop or cancel, `isPostDragCooldown()` returns `true` for 100ms. This is implemented in `state/drag.ts` (step 02) and consumed by `interaction/selection.ts` and `interaction/hover.ts` (step 09) to prevent the mouseup from triggering click-selection and to suppress hover highlight flicker immediately after a drag ends.
 
 ## What replaces what
 

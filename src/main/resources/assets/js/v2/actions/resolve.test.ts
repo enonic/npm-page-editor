@@ -18,7 +18,6 @@ function makeContext(overrides?: Partial<ActionContext>): ActionContext {
     empty: false,
     error: false,
     locked: false,
-    modifyAllowed: true,
     fragment: false,
     fragmentAllowed: true,
     resetEnabled: true,

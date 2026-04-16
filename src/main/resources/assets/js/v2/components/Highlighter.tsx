@@ -1,5 +1,3 @@
-import {cn} from '@enonic/ui';
-
 import type {JSX} from 'preact';
 
 import {useStoreValue} from '../hooks/use-store';
@@ -18,7 +16,7 @@ export const Highlighter = (): JSX.Element | null => {
   return (
     <div
       data-component={HIGHLIGHTER_NAME}
-      className={cn('pointer-events-none fixed border-2 border-main/80 transition-all duration-75')}
+      className='pointer-events-none fixed border-2 border-main/80 transition-all duration-75'
       style={{
         top: `${String(rect.top)}px`,
         left: `${String(rect.left)}px`,

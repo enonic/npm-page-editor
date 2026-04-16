@@ -314,6 +314,29 @@ describe('placeholder diffing', () => {
     expect(partEl.querySelector('[data-pe-placeholder-host]')).not.toBeNull();
   });
 
+  it('recreates placeholder when record state changes but element stays the same', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part"></article>
+      </section>
+    `;
+
+    reconcilePage(document.body, {});
+
+    const partEl = document.querySelector('[data-portal-component-type="part"]') as HTMLElement;
+    const hostBefore = partEl.querySelector('[data-pe-placeholder-host]');
+    expect(hostBefore).not.toBeNull();
+
+    // Add error attribute to the same element — state changes, element stays
+    partEl.setAttribute('data-portal-placeholder-error', 'true');
+    reconcilePage(document.body, {});
+
+    const hostAfter = partEl.querySelector('[data-pe-placeholder-host]');
+    expect(hostAfter).not.toBeNull();
+    // The placeholder host should be a different instance (recreated)
+    expect(hostAfter).not.toBe(hostBefore);
+  });
+
   it('destroys placeholder when record is removed', () => {
     document.body.innerHTML = '<section data-portal-region="main"></section>';
     reconcilePage(document.body, {});

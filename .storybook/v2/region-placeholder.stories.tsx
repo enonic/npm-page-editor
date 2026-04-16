@@ -57,6 +57,7 @@ function HiddenDuringDragStory(): JSX.Element {
       targetRegion: REGION_PATH,
       targetIndex: 0,
       dropAllowed: true,
+      message: undefined,
       placeholderElement: undefined,
       x: undefined,
       y: undefined,

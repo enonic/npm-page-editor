@@ -9,6 +9,7 @@ export type DragState = {
   targetRegion: ComponentPath | undefined;
   targetIndex: number | undefined;
   dropAllowed: boolean;
+  message: string | undefined;
   placeholderElement: HTMLElement | undefined;
   x: number | undefined;
   y: number | undefined;
