@@ -90,6 +90,7 @@ function makeRecord(
     empty: type === 'region' ? children.length === 0 : isNodeEmpty(element),
     error: element.getAttribute(ERROR_ATTR) === 'true',
     descriptor: resolveDescriptor(path, type, descriptors),
+    fragmentContentId: type === 'fragment' ? descriptors[path]?.fragment : undefined,
     loading: false,
   };
 }
@@ -179,6 +180,7 @@ function parseStandardPage(body: HTMLElement, descriptors: DescriptorMap): Recor
     empty: children.length === 0,
     error: false,
     descriptor: undefined,
+    fragmentContentId: undefined,
     loading: false,
   };
 
@@ -200,6 +202,7 @@ function parseFragmentPage(body: HTMLElement, descriptors: DescriptorMap): Recor
       empty: true,
       error: false,
       descriptor: undefined,
+      fragmentContentId: undefined,
       loading: false,
     };
 

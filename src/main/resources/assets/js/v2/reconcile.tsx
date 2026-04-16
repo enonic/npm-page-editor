@@ -95,6 +95,25 @@ function syncPlaceholders(records: Record<string, ComponentRecord>): void {
   }
 }
 
+function resetRootLinks(records: Record<string, ComponentRecord>): void {
+  for (const record of Object.values(records)) {
+    if ((record.type === 'part' || record.type === 'fragment') && record.element?.tagName === 'A') {
+      record.element.setAttribute('href', '#');
+    }
+  }
+}
+
+function applyTextDirection(records: Record<string, ComponentRecord>): void {
+  const dir = $config.get()?.langDirection;
+  if (dir !== 'rtl') return;
+
+  for (const record of Object.values(records)) {
+    if (record.type === 'text' && record.element != null) {
+      record.element.dir = 'rtl';
+    }
+  }
+}
+
 function finalizeReconcile(records: Record<string, ComponentRecord>): void {
   // ? Rebuild index before setting registry so subscribers see consistent state
   rebuildIndex(records);
@@ -112,6 +131,8 @@ function finalizeReconcile(records: Record<string, ComponentRecord>): void {
     setHoveredPath(undefined);
   }
 
+  resetRootLinks(records);
+  applyTextDirection(records);
   syncPlaceholders(records);
   markDirty();
 }

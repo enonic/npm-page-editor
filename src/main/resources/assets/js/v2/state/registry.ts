@@ -11,6 +11,7 @@ export type ComponentRecord = {
   empty: boolean;
   error: boolean;
   descriptor: string | undefined;
+  fragmentContentId: string | undefined;
   loading: boolean;
 };
 

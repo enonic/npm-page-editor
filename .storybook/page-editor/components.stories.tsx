@@ -51,6 +51,7 @@ function makeRecord(raw: string, type: ComponentType, empty = false): ComponentR
     empty,
     error: false,
     descriptor: undefined,
+    fragmentContentId: undefined,
     loading: false,
   };
 }

@@ -12,10 +12,13 @@ export type ActionId =
   | 'insert-text'
   | 'insert-fragment'
   | 'inspect'
+  | 'edit-text'
+  | 'edit-content'
   | 'reset'
   | 'remove'
   | 'duplicate'
   | 'create-fragment'
+  | 'detach-fragment'
   | 'save-as-template'
   | 'page-settings';
 
@@ -86,8 +89,24 @@ export function executeAction(action: ActionId, path: ComponentPath, channel: Ch
       channel.send({type: 'add', path: resolveInsertPath(path), componentType: 'fragment'});
       break;
 
+    case 'edit-text':
+      channel.send({type: 'edit-text', path});
+      break;
+
+    case 'edit-content': {
+      const record = getRecord(path);
+      if (record?.fragmentContentId != null) {
+        channel.send({type: 'edit-content', contentId: record.fragmentContentId});
+      }
+      break;
+    }
+
     case 'create-fragment':
       channel.send({type: 'create-fragment', path});
+      break;
+
+    case 'detach-fragment':
+      channel.send({type: 'detach-fragment', path});
       break;
 
     case 'save-as-template':

@@ -29,17 +29,19 @@ function makeChannel(): Channel & {messages: Record<string, unknown>[]} {
   };
 }
 
-function makeRecord(p: string, children: string[] = []): ComponentRecord {
+function makeRecord(p: string, overrides?: Partial<ComponentRecord>): ComponentRecord {
   return {
     path: path(p),
     type: 'part',
     element: undefined,
     parentPath: undefined,
-    children: children.map(path),
+    children: [],
     empty: false,
     error: false,
     descriptor: undefined,
+    fragmentContentId: undefined,
     loading: false,
+    ...overrides,
   };
 }
 
@@ -61,7 +63,7 @@ describe('definitions', () => {
   describe('resolveInsertPath', () => {
     it('appends at end for region with children', () => {
       setRegistry({
-        '/main': makeRecord('/main', ['/main/0', '/main/1', '/main/2']),
+        '/main': makeRecord('/main', {children: ['/main/0', '/main/1', '/main/2'].map(path)}),
       });
 
       expect(resolveInsertPath(path('/main'))).toBe('/main/3');
@@ -69,7 +71,7 @@ describe('definitions', () => {
 
     it('appends at 0 for empty region', () => {
       setRegistry({
-        '/main': makeRecord('/main', []),
+        '/main': makeRecord('/main'),
       });
 
       expect(resolveInsertPath(path('/main'))).toBe('/main/0');
@@ -151,7 +153,7 @@ describe('definitions', () => {
 
     it('sends add with resolved path for insert-part', () => {
       setRegistry({
-        '/main': makeRecord('/main', ['/main/0']),
+        '/main': makeRecord('/main', {children: ['/main/0'].map(path)}),
       });
       const ch = makeChannel();
       executeAction('insert-part', path('/main'), ch);
@@ -180,6 +182,36 @@ describe('definitions', () => {
       const ch = makeChannel();
       executeAction('insert', path('/main/0'), ch);
       expect(ch.messages).toEqual([]);
+    });
+
+    it('sends edit-text message', () => {
+      const ch = makeChannel();
+      executeAction('edit-text', path('/main/0'), ch);
+      expect(ch.messages).toEqual([{type: 'edit-text', path: '/main/0'}]);
+    });
+
+    it('sends edit-content message with contentId from registry', () => {
+      setRegistry({
+        '/main/0': makeRecord('/main/0', {type: 'fragment', fragmentContentId: 'abc-123'}),
+      });
+      const ch = makeChannel();
+      executeAction('edit-content', path('/main/0'), ch);
+      expect(ch.messages).toEqual([{type: 'edit-content', contentId: 'abc-123'}]);
+    });
+
+    it('does nothing for edit-content when fragmentContentId is missing', () => {
+      setRegistry({
+        '/main/0': makeRecord('/main/0', {type: 'fragment'}),
+      });
+      const ch = makeChannel();
+      executeAction('edit-content', path('/main/0'), ch);
+      expect(ch.messages).toEqual([]);
+    });
+
+    it('sends detach-fragment message', () => {
+      const ch = makeChannel();
+      executeAction('detach-fragment', path('/main/0'), ch);
+      expect(ch.messages).toEqual([{type: 'detach-fragment', path: '/main/0'}]);
     });
   });
 });

@@ -48,6 +48,7 @@ function makeRecord(p: ComponentPath, overrides?: Partial<ComponentRecord>): Com
     empty: false,
     error: false,
     descriptor: undefined,
+    fragmentContentId: undefined,
     loading: false,
     ...overrides,
   };

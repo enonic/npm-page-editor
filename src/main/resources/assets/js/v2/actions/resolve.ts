@@ -59,14 +59,20 @@ function resolveRegionActions(context: ActionContext): ActionDef[] {
 }
 
 function resolveComponentActions(context: ActionContext): ActionDef[] {
-  const actions: ActionDef[] = [
-    {id: 'select-parent', label: 'Select Parent', sortOrder: 0},
-    buildInsertSubmenu(context.hasParentLayout),
-    {id: 'inspect', label: 'Inspect', sortOrder: 20},
-  ];
+  const actions: ActionDef[] = [{id: 'select-parent', label: 'Select Parent', sortOrder: 0}];
+
+  if (context.type === 'text' && !context.empty) {
+    actions.push({id: 'edit-text', label: 'Edit', sortOrder: 5, enabled: !context.error});
+  }
+
+  if (context.type === 'fragment' && !context.empty) {
+    actions.push({id: 'edit-content', label: 'Edit', sortOrder: 5, enabled: !context.error});
+  }
+
+  actions.push(buildInsertSubmenu(context.hasParentLayout), {id: 'inspect', label: 'Inspect', sortOrder: 20});
 
   if (!context.empty) {
-    actions.push({id: 'reset', label: 'Reset', sortOrder: 30});
+    actions.push({id: 'reset', label: 'Reset', sortOrder: 30, enabled: !context.error});
   }
 
   if (!context.isTopFragment) {
@@ -74,6 +80,10 @@ function resolveComponentActions(context: ActionContext): ActionDef[] {
   }
 
   actions.push({id: 'duplicate', label: 'Duplicate', sortOrder: 50});
+
+  if (context.type === 'fragment' && !context.empty) {
+    actions.push({id: 'detach-fragment', label: 'Detach Fragment', sortOrder: 55, enabled: !context.error});
+  }
 
   if (context.fragmentAllowed && !context.hasParentLayout) {
     actions.push({id: 'create-fragment', label: 'Create Fragment', sortOrder: 60});

@@ -20,6 +20,7 @@ function makeRecord(p: ComponentPath, element?: HTMLElement): ComponentRecord {
     empty: false,
     error: false,
     descriptor: undefined,
+    fragmentContentId: undefined,
     loading: false,
   };
 }

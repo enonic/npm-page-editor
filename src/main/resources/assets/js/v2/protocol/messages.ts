@@ -22,6 +22,7 @@ export type PageConfig = {
   resetEnabled: boolean;
   phrases: Record<string, string>;
   theme?: 'light' | 'dark';
+  langDirection?: 'ltr' | 'rtl';
 };
 
 export type PageDescriptor = {
@@ -86,6 +87,9 @@ export type OutgoingMessage =
   | {type: 'reset'; path: ComponentPath}
   | {type: 'inspect'; path: ComponentPath}
   | {type: 'create-fragment'; path: ComponentPath}
+  | {type: 'detach-fragment'; path: ComponentPath}
+  | {type: 'edit-text'; path: ComponentPath}
+  | {type: 'edit-content'; contentId: string}
   | {type: 'save-as-template'}
   | {type: 'select-page-descriptor'; descriptorKey: string}
   | {type: 'page-reload-request'}

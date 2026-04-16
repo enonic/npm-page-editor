@@ -42,6 +42,7 @@ function emptyPageRecord(): Record<string, ComponentRecord> {
       empty: true,
       error: false,
       descriptor: undefined,
+      fragmentContentId: undefined,
       loading: false,
     },
   };

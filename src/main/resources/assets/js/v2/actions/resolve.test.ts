@@ -1,4 +1,5 @@
 import type {ComponentPath} from '../protocol';
+import type {ActionDef} from './definitions';
 import type {ActionContext} from './resolve';
 
 import {fromString} from '../protocol';
@@ -30,6 +31,10 @@ function makeContext(overrides?: Partial<ActionContext>): ActionContext {
 
 function actionIds(context: ActionContext): string[] {
   return resolveActions(context).map(a => a.id);
+}
+
+function findAction(context: ActionContext, id: string): ActionDef | undefined {
+  return resolveActions(context).find(a => a.id === id);
 }
 
 function childIds(context: ActionContext, parentId: string): string[] {
@@ -149,18 +154,86 @@ describe('resolveActions', () => {
   });
 
   describe('component (text)', () => {
-    it('returns expected actions for text', () => {
+    it('returns full action list', () => {
       const ctx = makeContext({type: 'text'});
-      expect(actionIds(ctx)).toContain('inspect');
-      expect(actionIds(ctx)).toContain('remove');
+      expect(actionIds(ctx)).toEqual([
+        'select-parent',
+        'edit-text',
+        'insert',
+        'inspect',
+        'reset',
+        'remove',
+        'duplicate',
+        'create-fragment',
+      ]);
+    });
+
+    it('includes edit-text when non-empty', () => {
+      const ctx = makeContext({type: 'text'});
+      expect(actionIds(ctx)).toContain('edit-text');
+    });
+
+    it('omits edit-text when empty', () => {
+      const ctx = makeContext({type: 'text', empty: true});
+      expect(actionIds(ctx)).not.toContain('edit-text');
     });
   });
 
   describe('component (fragment)', () => {
-    it('returns expected actions for fragment', () => {
+    it('returns full action list', () => {
       const ctx = makeContext({type: 'fragment'});
-      expect(actionIds(ctx)).toContain('select-parent');
-      expect(actionIds(ctx)).toContain('inspect');
+      expect(actionIds(ctx)).toEqual([
+        'select-parent',
+        'edit-content',
+        'insert',
+        'inspect',
+        'reset',
+        'remove',
+        'duplicate',
+        'detach-fragment',
+        'create-fragment',
+      ]);
+    });
+
+    it('includes edit-content and detach-fragment when non-empty', () => {
+      const ctx = makeContext({type: 'fragment'});
+      expect(actionIds(ctx)).toContain('edit-content');
+      expect(actionIds(ctx)).toContain('detach-fragment');
+    });
+
+    it('omits edit-content and detach-fragment when empty', () => {
+      const ctx = makeContext({type: 'fragment', empty: true});
+      expect(actionIds(ctx)).not.toContain('edit-content');
+      expect(actionIds(ctx)).not.toContain('detach-fragment');
+    });
+  });
+
+  //
+  // * Error-conditional disabling
+  //
+
+  describe('error-conditional disabling', () => {
+    it('disables edit-text on text with error', () => {
+      const ctx = makeContext({type: 'text', error: true});
+      expect(findAction(ctx, 'edit-text')?.enabled).toBe(false);
+    });
+
+    it('disables edit-content and detach-fragment on fragment with error', () => {
+      const ctx = makeContext({type: 'fragment', error: true});
+      expect(findAction(ctx, 'edit-content')?.enabled).toBe(false);
+      expect(findAction(ctx, 'detach-fragment')?.enabled).toBe(false);
+    });
+
+    it('disables reset on component with error', () => {
+      const ctx = makeContext({error: true});
+      expect(findAction(ctx, 'reset')?.enabled).toBe(false);
+    });
+
+    it('keeps structural actions enabled on component with error', () => {
+      const ctx = makeContext({error: true});
+      expect(findAction(ctx, 'select-parent')?.enabled).not.toBe(false);
+      expect(findAction(ctx, 'remove')?.enabled).not.toBe(false);
+      expect(findAction(ctx, 'duplicate')?.enabled).not.toBe(false);
     });
   });
 
