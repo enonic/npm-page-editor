@@ -77,7 +77,6 @@ function OverlaySetup({controllers = SAMPLE_CONTROLLERS, children}: OverlaySetup
 const meta = {
   title: 'Page Editor v2/Page Placeholder Overlay',
   parameters: {layout: 'fullscreen'},
-  tags: ['autodocs'],
 } satisfies Meta;
 
 export default meta;

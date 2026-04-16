@@ -9,7 +9,9 @@
     "src/main/resources/assets/js/types.d.ts",
     ".storybook/page-editor/**/*",
     ".storybook/v2/**/*",
-    "src/main/resources/assets/js/v2/**/*"
+    "src/main/resources/assets/js/v2/**/*",
+    "src/main/resources/assets/js/page-editor/**/*",
+    "src/main/resources/assets/js/new-ui/**/*"
   ],
   "exclude": [
     "node_modules",

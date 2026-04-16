@@ -6,7 +6,7 @@ import type {
   PageConfig,
   PageController,
 } from '../../src/main/resources/assets/js/v2/protocol';
-import type {ComponentRecord, DragState} from '../../src/main/resources/assets/js/v2/state';
+import type {ComponentRecord} from '../../src/main/resources/assets/js/v2/state';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {ComponentChildren, CSSProperties, JSX} from 'preact';
 
@@ -249,28 +249,24 @@ export const ShaderStates: Story = {
 
 function DragPreviewDemo(): JSX.Element {
   useEffect(() => {
-    const makeDrag = (overrides: Partial<DragState>): DragState => ({
+    setDragState({
       itemType: 'part',
       itemLabel: 'Hero Banner',
       sourcePath: path('/main/0'),
-      targetRegion: undefined,
+      targetRegion: path('/main'),
       targetIndex: undefined,
       dropAllowed: true,
-      message: undefined,
       placeholderElement: undefined,
       x: 0,
       y: 0,
-      ...overrides,
     });
-
-    setDragState(makeDrag({x: 20, y: 20, targetRegion: path('/main'), dropAllowed: true}));
     return resetState;
   }, []);
 
   return (
-    <OverlayHostMount>
+    <div className='h-32 w-120' style={{transform: 'translate(0, 0)'}}>
       <DragPreview />
-    </OverlayHostMount>
+    </div>
   );
 }
 
@@ -288,18 +284,17 @@ function DragPreviewForbiddenDemo(): JSX.Element {
       targetRegion: path('/main/1/left'),
       targetIndex: 0,
       dropAllowed: false,
-      message: 'Layouts cannot be nested',
       placeholderElement: undefined,
-      x: 20,
-      y: 20,
+      x: 0,
+      y: 0,
     });
     return resetState;
   }, []);
 
   return (
-    <OverlayHostMount>
+    <div className='h-32 w-120' style={{transform: 'translate(0, 0)'}}>
       <DragPreview />
-    </OverlayHostMount>
+    </div>
   );
 }
 
@@ -317,18 +312,17 @@ function DragPreviewInsertDemo(): JSX.Element {
       targetRegion: path('/main'),
       targetIndex: 0,
       dropAllowed: true,
-      message: undefined,
       placeholderElement: undefined,
-      x: 20,
-      y: 20,
+      x: 0,
+      y: 0,
     });
     return resetState;
   }, []);
 
   return (
-    <OverlayHostMount>
+    <div className='h-32 w-120' style={{transform: 'translate(0, 0)'}}>
       <DragPreview />
-    </OverlayHostMount>
+    </div>
   );
 }
 

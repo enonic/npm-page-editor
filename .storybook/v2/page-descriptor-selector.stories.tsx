@@ -60,7 +60,6 @@ function SelectorSetup({
 const meta = {
   title: 'Page Editor v2/Page Descriptor Selector',
   parameters: {layout: 'centered'},
-  tags: ['autodocs'],
 } satisfies Meta;
 
 export default meta;

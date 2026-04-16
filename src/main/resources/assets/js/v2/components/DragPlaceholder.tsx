@@ -6,27 +6,29 @@ export type DragPlaceholderProps = {
   itemLabel: string;
   dropAllowed: boolean;
   message?: string;
+  className?: string;
 };
 
 const DRAG_PLACEHOLDER_NAME = 'DragPlaceholder';
 
-export const DragPlaceholder = ({dropAllowed, message}: DragPlaceholderProps): JSX.Element => {
+export const DragPlaceholder = ({dropAllowed, message, className}: DragPlaceholderProps): JSX.Element => {
   const text = dropAllowed ? 'Release here...' : (message ?? 'Cannot drop this component here.');
-
-  const dashClass = dropAllowed ? 'pe-dash-info' : 'pe-dash-error';
-  const bgClass = dropAllowed ? 'bg-info/8' : 'bg-error/8';
-  const textClass = dropAllowed ? 'text-info' : 'text-error';
 
   return (
     <div
       data-component={DRAG_PLACEHOLDER_NAME}
-      className={cn(
-        'pe-shell pe-dash flex min-h-full items-center justify-center rounded-lg px-6 py-10',
-        dashClass,
-        bgClass,
-      )}
+      className={cn('pe-shell overflow-hidden bg-surface-neutral', className)}
     >
-      <p className={cn('text-base italic', textClass)}>{text}</p>
+      <div className='h-full p-2.5'>
+        <div
+          className={cn(
+            'pe-dash flex min-h-25 items-center justify-center bg-surface-info/20 px-4 py-2.5 text-center',
+            dropAllowed ? 'pe-dash-info text-subtle italic' : 'pe-dash-error text-error',
+          )}
+        >
+          {text}
+        </div>
+      </div>
     </div>
   );
 };

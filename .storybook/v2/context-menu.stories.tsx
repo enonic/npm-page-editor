@@ -109,7 +109,6 @@ const LAYOUT_PATH = '/main/1' as ComponentPath;
 const meta = {
   title: 'Page Editor v2/Context Menu',
   parameters: {layout: 'centered'},
-  tags: ['autodocs'],
 } satisfies Meta;
 
 export default meta;

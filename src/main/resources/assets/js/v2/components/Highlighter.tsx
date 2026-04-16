@@ -18,7 +18,7 @@ export const Highlighter = (): JSX.Element | null => {
   return (
     <div
       data-component={HIGHLIGHTER_NAME}
-      className={cn('pointer-events-none fixed rounded-[4px] border-2 border-black/75 transition-all duration-75')}
+      className={cn('pointer-events-none fixed border-2 border-main/80 transition-all duration-75')}
       style={{
         top: `${String(rect.top)}px`,
         left: `${String(rect.left)}px`,
