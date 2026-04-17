@@ -4,6 +4,9 @@
   "description": "Adds page editing capability for externally rendered sites in Enonic XP",
   "license": "GPL-3.0",
   "author": "Pavel Milkevich <pmi@enonic.com>",
+  "contributors": [
+    "Mikita Taukachou <edloidas@gmail.com>"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/enonic/npm-page-editor.git"
@@ -28,7 +31,7 @@
     "*.css"
   ],
   "engines": {
-    "node": ">= 24.13.0"
+    "node": ">= 24.15.0"
   },
   "files": [
     "dist",
@@ -46,14 +49,16 @@
   "scripts": {
     "build": "vp run clean && vp build",
     "build:storybook": "storybook build",
-    "clean": "rm -rf dist coverage reports storybook-static *.tgz",
     "check": "vp check",
+    "clean": "rm -rf dist coverage reports storybook-static *.tgz",
     "fix": "vp check --fix && pnpm typecheck",
-    "typecheck": "tsgo --noEmit",
-    "test": "vp test --run",
-    "storybook": "storybook dev -p 6006",
+    "pack:inspect": "pnpm pack && tar -tzf enonic-page-editor-*.tgz && rm enonic-page-editor-*.tgz",
     "prepare": "vp config",
-    "prepublishOnly": "pnpm check && pnpm typecheck && pnpm build"
+    "prepublishOnly": "pnpm check && pnpm typecheck && pnpm build",
+    "publish:dry": "pnpm publish --dry-run --no-git-checks --tag beta",
+    "storybook": "storybook dev -p 6006",
+    "test": "vp test --run",
+    "typecheck": "tsgo --noEmit"
   },
   "devDependencies": {
     "@enonic/ui": "^0.47.10",

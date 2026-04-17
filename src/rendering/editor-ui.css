@@ -5,22 +5,6 @@
 @source '../../node_modules/@enonic/ui';
 @source '../';
 
-@font-face {
-  font-family: 'Open Sans';
-  font-display: swap;
-  font-style: normal;
-  font-weight: 100 900;
-  src: url('../assets/fonts/OpenSans.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Open Sans';
-  font-display: swap;
-  font-style: italic;
-  font-weight: 100 900;
-  src: url('../assets/fonts/OpenSans-Italic.woff2') format('woff2');
-}
-
 /* Preset 0.47.7+ sets tokens + color + font-smoothing on :host — only extras here. */
 @layer base {
   :host,

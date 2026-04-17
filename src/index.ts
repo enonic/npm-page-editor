@@ -1,3 +1,4 @@
+import './rendering/editor-fonts.css';
 import './rendering/editor-ui.css';
 
 export * from './protocol';
