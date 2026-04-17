@@ -1,13 +1,13 @@
 import {useEffect} from 'preact/hooks';
 
-import type {ComponentPath} from '../../../src/main/resources/assets/js/v2/protocol';
-import type {DragState} from '../../../src/main/resources/assets/js/v2/state';
+import type {ComponentPath} from '../../../src/protocol';
+import type {DragState} from '../../../src/state';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {DragPreview} from '../../../src/main/resources/assets/js/v2/components/DragPreview';
-import {fromString} from '../../../src/main/resources/assets/js/v2/protocol';
-import {resetDragState, setDragState} from '../../../src/main/resources/assets/js/v2/state';
+import {DragPreview} from '../../../src/components/DragPreview';
+import {fromString} from '../../../src/protocol';
+import {resetDragState, setDragState} from '../../../src/state';
 
 //
 // * Helpers

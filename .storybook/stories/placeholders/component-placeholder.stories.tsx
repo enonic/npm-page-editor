@@ -1,11 +1,11 @@
 import {useEffect, useRef} from 'preact/hooks';
 
-import type {ComponentType} from '../../../src/main/resources/assets/js/v2/protocol';
+import type {ComponentType} from '../../../src/protocol';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {ComponentPlaceholder} from '../../../src/main/resources/assets/js/v2/components/ComponentPlaceholder';
-import {createPlaceholderIsland} from '../../../src/main/resources/assets/js/v2/rendering';
+import {ComponentPlaceholder} from '../../../src/components/ComponentPlaceholder';
+import {createPlaceholderIsland} from '../../../src/rendering';
 
 //
 // * Helpers

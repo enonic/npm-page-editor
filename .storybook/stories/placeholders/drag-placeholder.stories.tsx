@@ -1,6 +1,6 @@
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 
-import {DragPlaceholder} from '../../../src/main/resources/assets/js/v2/components/DragPlaceholder';
+import {DragPlaceholder} from '../../../src/components/DragPlaceholder';
 
 //
 // * Meta

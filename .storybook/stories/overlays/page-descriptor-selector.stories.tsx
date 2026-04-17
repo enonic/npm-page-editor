@@ -1,12 +1,12 @@
 import {useEffect} from 'preact/hooks';
 
-import type {PageController} from '../../../src/main/resources/assets/js/v2/protocol';
+import type {PageController} from '../../../src/protocol';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {PageDescriptorSelector} from '../../../src/main/resources/assets/js/v2/components/PageDescriptorSelector';
-import {$modifyAllowed, $pageControllers} from '../../../src/main/resources/assets/js/v2/state';
-import {setChannel} from '../../../src/main/resources/assets/js/v2/transport';
+import {PageDescriptorSelector} from '../../../src/components/PageDescriptorSelector';
+import {$modifyAllowed, $pageControllers} from '../../../src/state';
+import {setChannel} from '../../../src/transport';
 
 //
 // * Helpers

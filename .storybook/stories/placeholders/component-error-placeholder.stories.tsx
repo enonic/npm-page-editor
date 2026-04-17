@@ -3,8 +3,8 @@ import {useEffect, useRef} from 'preact/hooks';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {ComponentErrorPlaceholder} from '../../../src/main/resources/assets/js/v2/components/ComponentErrorPlaceholder';
-import {createPlaceholderIsland} from '../../../src/main/resources/assets/js/v2/rendering';
+import {ComponentErrorPlaceholder} from '../../../src/components/ComponentErrorPlaceholder';
+import {createPlaceholderIsland} from '../../../src/rendering';
 
 //
 // * Helpers

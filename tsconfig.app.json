@@ -1,17 +1,12 @@
 {
   "compilerOptions": {
     "target": "ES2023",
-    "lib": [
-      "ES2023",
-      "DOM"
-    ],
+    "lib": ["ES2023", "DOM"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "outDir": "build",
+    "outDir": "dist/types",
     "rootDir": "src",
-    "composite": true,
     "declaration": true,
-    "declarationMap": true,
     "sourceMap": true,
     "removeComments": true,
     "verbatimModuleSyntax": true,
@@ -19,6 +14,8 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noEmit": true,
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "paths": {
@@ -28,18 +25,6 @@
       "react/jsx-dev-runtime": ["./node_modules/preact/jsx-runtime/src/index.d.ts"]
     }
   },
-  "include": [
-    "./src/main/resources/assets/js/types.d.ts",
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "build",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/*.spec.ts",
-    "**/*.spec.tsx",
-    "src/main/resources/assets/js/test/**/*"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "build", "**/*.test.ts", "**/*.test.tsx"]
 }

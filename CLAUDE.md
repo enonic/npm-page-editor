@@ -1,33 +1,30 @@
-**@enonic/page-editor** adds page editing capability for externally rendered sites in Enonic XP. Stack: TypeScript, jQuery (legacy), Preact/TSX (new UI), LESS + Tailwind, Vite, Gradle. Published as an npm package.
+**@enonic/page-editor** adds page editing capability for externally rendered sites in Enonic XP. Stack: Preact/TSX + Tailwind + `@enonic/ui`, bundled with Vite (via `vite-plus`), type-checked with `tsgo`. Published as an npm package.
 
 ## Commands
 
-After making changes, run `pnpm fix` to auto-fix lint/format, then `pnpm check` to verify.
+After making changes, run `pnpm fix` to auto-fix lint/format issues and typecheck in one go.
 
 ```bash
-pnpm check            # typecheck + lint + test (default verification)
-pnpm check:types      # typecheck only
-pnpm check:lint       # lint only
-pnpm fix              # autofix lint + format (oxlint + oxfmt)
-pnpm build:dev        # dev build (JS + CSS)
-pnpm build:prod       # production build (JS + CSS)
-pnpm build-storybook  # build Storybook
-./gradlew build -Penv=dev  # full Gradle build (JS + CSS + Gradle tasks)
-./gradlew yolo        # fast Gradle build (skip install, check, test)
+pnpm fix              # vp check --fix + typecheck
+pnpm check            # vp check (lint + format, read-only)
+pnpm typecheck        # tsgo --noEmit
+pnpm test             # vitest run
+pnpm build            # clean + JS lib build + CSS build
+pnpm build:storybook  # build Storybook
 ```
 
 **Do not run autonomously** (interactive / long-running — only if explicitly asked):
-- `pnpm storybook` — dev server, runs until stopped
 
-Only run `./gradlew build -Penv=dev` when the task specifically requires testing the Gradle build. For most changes, `pnpm check` is sufficient.
+- `pnpm storybook` — dev server, runs until stopped
 
 ## Code Structure
 
-- **Legacy** (current codebase): `src/main/resources/assets/js/` — class-based, jQuery, LESS styling
-- **New UI** (migration target): Preact/TSX, `@enonic/ui`, Tailwind — isolated inside Shadow DOM
-- **Styles**: `src/main/resources/assets/css/` — LESS, global stylesheet
+- `src/` — Preact/TSX source. Editor UI is rendered inside a Shadow DOM (`src/rendering/overlay-host.ts`) to prevent style leakage between editor chrome and the edited page.
+- `src/rendering/editor-ui.css` — Shadow-DOM stylesheet; loaded via `?inline` + `adoptedStyleSheets` in `inject-styles.ts`. OpenSans fonts inline as data URIs at build time.
+- `src/assets/fonts/` — bundled OpenSans woff2 files (referenced by `editor-ui.css`).
+- `dist/` — published package output (`index.js`, `index.cjs`, `types/index.d.ts`, `main.css`).
 
-New Preact surfaces must be rendered inside a Shadow DOM boundary to prevent style leakage between editor chrome and the edited page. See `docs/prd.md` for the target architecture, migration scope, and legacy dependency analysis.
+See `docs/prd.md` for the target architecture and `docs/SPEC-v2.md` for the v2 design.
 
 ## Documentation
 
@@ -43,6 +40,7 @@ Unless asked for specific format by the user, use the default one:
 
 - **Title**: plain descriptive text — e.g. `Add MyComponent to browse view`, `PublishDialog: add schedule button`
 - **Body**: concisely explain what and why, skip trivial details
+
   ```
   <4–8 sentence description: what, what's affected, how to reproduce, impact>
 
@@ -66,6 +64,7 @@ Unless asked for specific format by the user, use the default one:
 - **Title**: use the exact same pattern as the commit title when linked to an issue (`<Issue Title> #<number>`)
 - **Commit/PR title pair example**: issue `Do fix` #10 → commit `Do fix #10`, PR `Do fix #10`
 - **Body**: concisely explain what and why, skip trivial details. No emojis. Separate all sections with one blank line.
+
   ```
   <summary of changes>
 

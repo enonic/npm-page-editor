@@ -1,14 +1,14 @@
 import {useEffect} from 'preact/hooks';
 
-import type {PageController} from '../../../src/main/resources/assets/js/v2/protocol';
-import type {ComponentRecord} from '../../../src/main/resources/assets/js/v2/state';
+import type {PageController} from '../../../src/protocol';
+import type {ComponentRecord} from '../../../src/state';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {PagePlaceholderOverlay} from '../../../src/main/resources/assets/js/v2/components/PagePlaceholderOverlay';
-import {root} from '../../../src/main/resources/assets/js/v2/protocol';
-import {$modifyAllowed, $pageControllers, setRegistry} from '../../../src/main/resources/assets/js/v2/state';
-import {setChannel} from '../../../src/main/resources/assets/js/v2/transport';
+import {PagePlaceholderOverlay} from '../../../src/components/PagePlaceholderOverlay';
+import {root} from '../../../src/protocol';
+import {$modifyAllowed, $pageControllers, setRegistry} from '../../../src/state';
+import {setChannel} from '../../../src/transport';
 
 //
 // * Helpers

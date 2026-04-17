@@ -1,19 +1,9 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
-    "types": [
-      "vitest/globals"
-    ],
-    "composite": true,
+    "types": ["vitest/globals"],
     "removeComments": false
   },
-  "include": [
-    "src/**/*",
-    "src/main/resources/assets/js/test/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "build"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "build"]
 }

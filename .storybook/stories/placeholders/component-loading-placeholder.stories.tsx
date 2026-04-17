@@ -3,9 +3,9 @@ import {useEffect, useRef} from 'preact/hooks';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {ComponentLoadingPlaceholder} from '../../../src/main/resources/assets/js/v2/components/ComponentLoadingPlaceholder';
-import {ComponentPlaceholder} from '../../../src/main/resources/assets/js/v2/components/ComponentPlaceholder';
-import {createPlaceholderIsland} from '../../../src/main/resources/assets/js/v2/rendering';
+import {ComponentLoadingPlaceholder} from '../../../src/components/ComponentLoadingPlaceholder';
+import {ComponentPlaceholder} from '../../../src/components/ComponentPlaceholder';
+import {createPlaceholderIsland} from '../../../src/rendering';
 
 //
 // * Helpers

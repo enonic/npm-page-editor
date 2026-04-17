@@ -5,99 +5,90 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  id-token: write  # Required for OIDC
-  contents: write
-
 concurrency:
   group: release
-  cancel-in-progress: false
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  id-token: write
 
 jobs:
+  precheck:
+    name: Verify tag points to main/master or version branches (x.y)
+    runs-on: ubuntu-latest
+    outputs:
+      allowed: ${{ steps.contains.outputs.allowed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-  release:
+      - name: Check if tag commit is in allowed branches
+        id: contains
+        shell: bash
+        run: |
+          git fetch --quiet origin '+refs/heads/*:refs/remotes/origin/*' || true
+
+          contains="$(git branch -r --contains "${GITHUB_SHA}" | sed 's/^[ *]*//')"
+
+          echo "Branches containing the tag commit:"
+          echo "${contains}"
+
+          if echo "${contains}" | grep -Eq '^origin/(main|master|[0-9]+\.[0-9]+)$'; then
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  npm-publish:
+    name: Publish to NPM
+    needs: precheck
+    if: needs.precheck.outputs.allowed == 'true'
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          ref: 'master'
           fetch-depth: 0
 
-      - name: Verify tag points to HEAD of master
-        run: |
-          if [ "$GITHUB_SHA" != "$(git rev-parse HEAD)" ]; then
-            echo "Tag $GITHUB_REF_NAME does not point to the latest commit on master"
-            exit 1
-          fi
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-java@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          java-version: 25
-          distribution: 'temurin'
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
 
-      - uses: gradle/actions/setup-gradle@v6
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Set release version from git tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          sed -i "s/^version=.*/version=$VERSION/" gradle.properties
-          npm version "$VERSION" --no-git-tag-version
-          echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
 
-      - name: Get publishing variables
-        id: publish_vars
-        uses: enonic/release-tools/publish-vars@master
-        env:
-          PROPERTIES_PATH: './gradle.properties'
-          JAVA_HOME: '' # Unset to avoid interfering with publish-vars action
-
-      - name: Verify release version
-        if: steps.publish_vars.outputs.release != 'true'
-        run: exit 1
-
-      - name: Set NPM publish tag
+      - name: Determine npm dist-tag
         run: |
-          if [[ "$RELEASE_VERSION" =~ ^[1-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "NPM_TAG=latest" >> $GITHUB_ENV
+          if [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "NPM_TAG=latest" >> "$GITHUB_ENV"
           else
-            echo "NPM_TAG=beta" >> $GITHUB_ENV
+            echo "NPM_TAG=beta" >> "$GITHUB_ENV"
           fi
 
-      - name: Build and prepare package with Gradle
-        run: ./gradlew preparePackage
+      - name: Publish
+        run: pnpm publish --provenance --no-git-checks --tag "$NPM_TAG"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Publish to npm
-        working-directory: build/npm-resources
-        run: npm publish --tag $NPM_TAG
-
-      - name: Create github release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Enonic Page Editor v${{ steps.publish_vars.outputs.version }}
+          name: Enonic Page Editor ${{ github.ref_name }}
           generate_release_notes: true
-          prerelease: ${{ steps.publish_vars.outputs.prerelease == 'true' }}
-
-      - name: Update to next snapshot version
-        if: steps.publish_vars.outputs.release == 'true'
-        run: |
-          NEXT_SNAPSHOT="${{ steps.publish_vars.outputs.nextSnapshot }}"
-          sed -i "s/^version=.*/version=$NEXT_SNAPSHOT/" gradle.properties
-          npm version "$NEXT_SNAPSHOT" --no-git-tag-version
-
-      - name: Commit and push snapshot version
-        if: steps.publish_vars.outputs.release == 'true'
-        uses: EndBug/add-and-commit@v10
-        with:
-          add: |
-            - gradle.properties
-            - package.json
-          message: 'Updated to next SNAPSHOT version'
-          push: 'origin HEAD:master'
-          default_author: github_actions
-
+          prerelease: ${{ env.NPM_TAG == 'beta' }}

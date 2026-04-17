@@ -1,32 +1,19 @@
 import {useEffect, useRef} from 'preact/hooks';
 
-import type {
-  ComponentPath,
-  ComponentType,
-  IncomingMessage,
-  OutgoingMessage,
-  PageConfig,
-  PageController,
-} from '../../src/main/resources/assets/js/v2/protocol';
-import type {ComponentRecord} from '../../src/main/resources/assets/js/v2/state';
-import type {Channel} from '../../src/main/resources/assets/js/v2/transport';
+import type {ComponentPath, ComponentType, IncomingMessage, OutgoingMessage, PageConfig} from '../../src/protocol';
+import type {ComponentRecord} from '../../src/state';
+import type {Channel} from '../../src/transport';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {ComponentEmptyPlaceholder} from '../../src/main/resources/assets/js/v2/components/ComponentEmptyPlaceholder';
-import {ComponentErrorPlaceholder} from '../../src/main/resources/assets/js/v2/components/ComponentErrorPlaceholder';
-import {ComponentLoadingPlaceholder} from '../../src/main/resources/assets/js/v2/components/ComponentLoadingPlaceholder';
-import {OverlayApp} from '../../src/main/resources/assets/js/v2/components/OverlayApp';
-import {RegionPlaceholder} from '../../src/main/resources/assets/js/v2/components/RegionPlaceholder';
-import {initGeometryScheduler, markDirty} from '../../src/main/resources/assets/js/v2/geometry';
-import {DEFAULT_PHRASES} from '../../src/main/resources/assets/js/v2/i18n';
-import {
-  initComponentDrag,
-  initHoverDetection,
-  initSelectionDetection,
-} from '../../src/main/resources/assets/js/v2/interaction';
-import {fromString} from '../../src/main/resources/assets/js/v2/protocol';
-import {createOverlayHost, createPlaceholderIsland} from '../../src/main/resources/assets/js/v2/rendering';
+import {ComponentEmptyPlaceholder} from '../../src/components/ComponentEmptyPlaceholder';
+import {OverlayApp} from '../../src/components/OverlayApp';
+import {RegionPlaceholder} from '../../src/components/RegionPlaceholder';
+import {initGeometryScheduler, markDirty} from '../../src/geometry';
+import {DEFAULT_PHRASES} from '../../src/i18n';
+import {initComponentDrag, initHoverDetection, initSelectionDetection} from '../../src/interaction';
+import {fromString} from '../../src/protocol';
+import {createOverlayHost, createPlaceholderIsland} from '../../src/rendering';
 import {
   closeContextMenu,
   getRecord,
@@ -39,8 +26,8 @@ import {
   setPageControllers,
   setRegistry,
   setSelectedPath,
-} from '../../src/main/resources/assets/js/v2/state';
-import {resetChannel, setChannel} from '../../src/main/resources/assets/js/v2/transport';
+} from '../../src/state';
+import {resetChannel, setChannel} from '../../src/transport';
 
 //
 // * Helpers
@@ -76,9 +63,9 @@ function makeRecord(
   };
 }
 
-const DEFAULT_CONFIG: PageConfig = {
-  contentId: 'storybook-integration',
-  pageName: 'Integration Demo',
+const PAGE_CONFIG: PageConfig = {
+  contentId: 'storybook-horizon',
+  pageName: 'Horizon',
   pageIconClass: 'icon-page',
   locked: false,
   modifyPermissions: true,
@@ -89,12 +76,6 @@ const DEFAULT_CONFIG: PageConfig = {
   resetEnabled: true,
   phrases: {...DEFAULT_PHRASES},
 };
-
-const SAMPLE_CONTROLLERS: PageController[] = [
-  {descriptorKey: 'com.example:default', displayName: 'Default Page', iconClass: 'icon-page'},
-  {descriptorKey: 'com.example:landing', displayName: 'Landing Page', iconClass: 'icon-page'},
-  {descriptorKey: 'com.example:blog', displayName: 'Blog Post', iconClass: 'icon-page'},
-];
 
 function resetState(): void {
   closeContextMenu();
@@ -111,7 +92,7 @@ function createStoryChannel(): Channel {
   const handlers = new Set<(msg: IncomingMessage) => void>();
   return {
     send(message: OutgoingMessage): void {
-      // eslint-disable-next-line no-console
+      // oxlint-disable-next-line no-console
       console.log('[PageEditor]', message.type, message);
     },
     subscribe(handler) {
@@ -127,128 +108,112 @@ function createStoryChannel(): Channel {
 }
 
 //
-// * Story style tokens — demo canvas only, not production UI
+// * Theme tokens — Horizon-like chrome, not pixel accurate
 //
 
-const canvasClass = 'relative flex w-[760px] flex-col gap-3 rounded-xl border border-bdr-soft bg-surface-primary p-4';
-const regionClass = 'flex min-h-[60px] flex-col gap-2.5 rounded-lg bg-surface-neutral p-2.5';
-const emptyRegionClass = 'flex min-h-[60px] flex-col';
-const subRegionClass = 'flex min-h-[60px] flex-col gap-2 rounded-md border border-dashed border-bdr-soft p-2.5';
-const placeholderHostClass = 'min-h-[96px] cursor-grab select-none';
-const blockBaseClass = 'min-h-[72px] cursor-grab select-none rounded-lg border border-bdr-soft p-3.5';
-const labelClass = 'text-xs font-semibold text-subtle';
+const pageClass = 'relative flex w-[960px] flex-col bg-surface-primary text-main shadow-sm';
+const headerClass = 'flex flex-col gap-1 border-b border-bdr-soft bg-surface-neutral px-8 py-6';
+const siteTitleClass = 'text-2xl font-semibold tracking-tight text-main';
+const siteDescriptionClass = 'text-sm text-subtle';
+const mainRegionClass = 'flex flex-col gap-4 px-8 py-8';
+const footerClass = 'border-t border-bdr-soft bg-surface-neutral px-8 py-4 text-xs text-subtle';
+
+//
+// * Component blocks — rendered content
+//
+
+const heroBlockClass = 'cursor-grab rounded-md border border-bdr-soft bg-surface-info px-4 py-5 text-main select-none';
+const cardBlockClass =
+  'cursor-grab rounded-md border border-bdr-soft bg-surface-primary px-4 py-4 text-main select-none';
+const layoutFrameClass = 'cursor-grab rounded-md border border-bdr-soft bg-surface-neutral p-3 select-none';
+const subRegionClass = 'flex min-h-24 flex-col gap-2 rounded border border-dashed border-bdr-soft p-2.5';
+const subRegionEmptyClass = 'flex min-h-24 flex-col';
+const textBlockClass =
+  'cursor-grab rounded-md border border-bdr-soft bg-surface-neutral px-4 py-4 text-main select-none';
+const placeholderHostClass = 'min-h-24 cursor-grab select-none';
+const labelClass = 'mb-1 block text-xs font-semibold tracking-wide text-subtle uppercase';
 
 //
 // * Demo canvas
 //
 
-type StoryVariant = 'default' | 'locked' | 'empty';
-
-type DemoProps = {
-  variant: StoryVariant;
+type HorizonPageProps = {
+  locked?: boolean;
 };
 
-function IntegrationDemo({variant}: DemoProps): JSX.Element {
+function HorizonPage({locked = false}: HorizonPageProps): JSX.Element {
   const pageRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLElement>(null);
-  const heroRef = useRef<HTMLElement>(null);
   const mainRef = useRef<HTMLElement>(null);
-  const textRef = useRef<HTMLDivElement>(null);
-  const layoutRef = useRef<HTMLDivElement>(null);
-  const leftRef = useRef<HTMLElement>(null);
-  const cardRef = useRef<HTMLElement>(null);
-  const rightRef = useRef<HTMLElement>(null);
-  const errorRef = useRef<HTMLDivElement>(null);
-  const loadingRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const twoColRef = useRef<HTMLDivElement>(null);
+  const twoColLeftRef = useRef<HTMLElement>(null);
+  const twoColLeftPartRef = useRef<HTMLElement>(null);
+  const twoColRightRef = useRef<HTMLElement>(null);
+  const oneColRef = useRef<HTMLDivElement>(null);
+  const oneColRegionRef = useRef<HTMLElement>(null);
   const fragmentRef = useRef<HTMLDivElement>(null);
-  const footerRef = useRef<HTMLElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const page = pageRef.current;
-    const header = headerRef.current;
-    const hero = heroRef.current;
     const main = mainRef.current;
-    const text = textRef.current;
-    const layout = layoutRef.current;
-    const left = leftRef.current;
-    const card = cardRef.current;
-    const right = rightRef.current;
-    const errorBlock = errorRef.current;
-    const loadingBlock = loadingRef.current;
+    const hero = heroRef.current;
+    const twoCol = twoColRef.current;
+    const twoColLeft = twoColLeftRef.current;
+    const twoColLeftPart = twoColLeftPartRef.current;
+    const twoColRight = twoColRightRef.current;
+    const oneCol = oneColRef.current;
+    const oneColRegion = oneColRegionRef.current;
     const fragment = fragmentRef.current;
-    const footer = footerRef.current;
+    const text = textRef.current;
 
     if (
       !page ||
-      !header ||
-      !hero ||
       !main ||
-      !text ||
-      !layout ||
-      !left ||
-      !card ||
-      !right ||
-      !errorBlock ||
-      !loadingBlock ||
+      !hero ||
+      !twoCol ||
+      !twoColLeft ||
+      !twoColLeftPart ||
+      !twoColRight ||
+      !oneCol ||
+      !oneColRegion ||
       !fragment ||
-      !footer
+      !text
     ) {
       return undefined;
     }
 
-    const pageEmpty = variant === 'empty';
-
     const records: Record<string, ComponentRecord> = {
-      '/': makeRecord('/', 'page', page, undefined, ['/header', '/main', '/footer'], {empty: pageEmpty}),
-      '/header': makeRecord('/header', 'region', header, '/', ['/header/0']),
-      '/header/0': makeRecord('/header/0', 'part', hero, '/header', [], {descriptor: 'Hero Banner'}),
+      '/': makeRecord('/', 'page', page, undefined, ['/main']),
       '/main': makeRecord('/main', 'region', main, '/', ['/main/0', '/main/1', '/main/2', '/main/3', '/main/4']),
-      '/main/0': makeRecord('/main/0', 'text', text, '/main', []),
-      '/main/1': makeRecord('/main/1', 'layout', layout, '/main', ['/main/1/left', '/main/1/right'], {
+      '/main/0': makeRecord('/main/0', 'part', hero, '/main', [], {descriptor: 'Hero Banner'}),
+      '/main/1': makeRecord('/main/1', 'layout', twoCol, '/main', ['/main/1/left', '/main/1/right'], {
         descriptor: 'Two Column Layout',
       }),
-      '/main/1/left': makeRecord('/main/1/left', 'region', left, '/main/1', ['/main/1/left/0']),
-      '/main/1/left/0': makeRecord('/main/1/left/0', 'part', card, '/main/1/left', [], {descriptor: 'Card'}),
-      '/main/1/right': makeRecord('/main/1/right', 'region', right, '/main/1', [], {empty: true}),
-      '/main/2': makeRecord('/main/2', 'part', errorBlock, '/main', [], {
-        descriptor: 'Failed Part',
-        error: true,
+      '/main/1/left': makeRecord('/main/1/left', 'region', twoColLeft, '/main/1', ['/main/1/left/0']),
+      '/main/1/left/0': makeRecord('/main/1/left/0', 'part', twoColLeftPart, '/main/1/left', [], {
+        descriptor: 'Card',
       }),
-      '/main/3': makeRecord('/main/3', 'part', loadingBlock, '/main', [], {
-        descriptor: 'Async Part',
-        loading: true,
+      '/main/1/right': makeRecord('/main/1/right', 'region', twoColRight, '/main/1', [], {empty: true}),
+      '/main/2': makeRecord('/main/2', 'layout', oneCol, '/main', ['/main/2/main'], {
+        descriptor: 'Full-width Layout',
       }),
-      '/main/4': makeRecord('/main/4', 'fragment', fragment, '/main', [], {empty: true}),
-      '/footer': makeRecord('/footer', 'region', footer, '/', [], {empty: true}),
+      '/main/2/main': makeRecord('/main/2/main', 'region', oneColRegion, '/main/2', [], {empty: true}),
+      '/main/3': makeRecord('/main/3', 'fragment', fragment, '/main', [], {empty: true}),
+      '/main/4': makeRecord('/main/4', 'text', text, '/main', []),
     };
 
     setRegistry(records);
     rebuildIndex(records);
-    setPageConfig({...DEFAULT_CONFIG, locked: variant === 'locked', pageEmpty});
+    setPageConfig(PAGE_CONFIG);
     setModifyAllowed(true);
-    setLocked(variant === 'locked');
-    setPageControllers(variant === 'empty' ? SAMPLE_CONTROLLERS : []);
+    setLocked(locked);
 
     const overlay = createOverlayHost(<OverlayApp />);
 
-    // ? Scope overlay host to the demo canvas for the empty variant so the
-    //   PagePlaceholderOverlay (fixed inset-0) does not cover the whole viewport.
-    if (variant === 'empty') {
-      const host = overlay.root.host as HTMLElement;
-      host.style.position = 'absolute';
-      host.style.inset = '0';
-      page.appendChild(host);
-
-      const positionOverride = document.createElement('style');
-      positionOverride.textContent = "[data-component='PagePlaceholderOverlay']{position:absolute !important}";
-      overlay.root.appendChild(positionOverride);
-    }
-
     const islands = [
-      createPlaceholderIsland(right, <RegionPlaceholder path={path('/main/1/right')} regionName='right' />),
-      createPlaceholderIsland(footer, <RegionPlaceholder path={path('/footer')} regionName='footer' />),
-      createPlaceholderIsland(errorBlock, <ComponentErrorPlaceholder />),
-      createPlaceholderIsland(loadingBlock, <ComponentLoadingPlaceholder />),
+      createPlaceholderIsland(twoColRight, <RegionPlaceholder path={path('/main/1/right')} regionName='right' />),
+      createPlaceholderIsland(oneColRegion, <RegionPlaceholder path={path('/main/2/main')} regionName='main' />),
       createPlaceholderIsland(fragment, <ComponentEmptyPlaceholder descriptor='Empty fragment' />),
     ];
 
@@ -271,71 +236,54 @@ function IntegrationDemo({variant}: DemoProps): JSX.Element {
       resetChannel();
       resetState();
     };
-  }, [variant]);
+  }, [locked]);
 
   return (
-    <div ref={pageRef} data-testid='integration-canvas' className={canvasClass}>
-      <section ref={headerRef} data-portal-region='header' className={regionClass}>
-        <article
-          ref={heroRef}
-          data-portal-component-type='part'
-          data-testid='header-hero'
-          className={`${blockBaseClass} bg-surface-warn`}
-        >
-          <p className={labelClass}>HEADER / PART</p>
-          <h3 className='mt-1 text-lg text-main'>Hero Banner</h3>
+    <div ref={pageRef} data-testid='horizon-page' className={pageClass}>
+      <header className={headerClass}>
+        <h1 className={siteTitleClass}>Horizon</h1>
+        <p className={siteDescriptionClass}>A modern theme for Enonic XP</p>
+      </header>
+
+      <section ref={mainRef} data-portal-region='main' className={mainRegionClass}>
+        <article ref={heroRef} data-portal-component-type='part' data-testid='hero-part' className={heroBlockClass}>
+          <span className={labelClass}>Part · Hero</span>
+          <h2 className='text-lg font-semibold'>Welcome to Horizon</h2>
+          <p className='mt-1 text-sm text-subtle'>A rendered part sitting at the top of the main region.</p>
         </article>
-      </section>
-
-      <section ref={mainRef} data-portal-region='main' className={regionClass}>
-        <div
-          ref={textRef}
-          data-portal-component-type='text'
-          data-testid='main-text'
-          className={`${blockBaseClass} bg-surface-success`}
-        >
-          <p className={labelClass}>TEXT</p>
-          <p className='mt-1 text-sm text-main'>
-            Drag this block to reorder inside main, or drop it into another region.
-          </p>
-        </div>
 
         <div
-          ref={layoutRef}
+          ref={twoColRef}
           data-portal-component-type='layout'
-          data-testid='main-layout'
-          className={`${blockBaseClass} bg-surface-secondary`}
+          data-testid='two-col-layout'
+          className={layoutFrameClass}
         >
-          <p className={`mb-2.5 ${labelClass}`}>LAYOUT · 2 columns</p>
-          <div className='grid grid-cols-2 gap-2.5'>
-            <section ref={leftRef} data-portal-region='left' className={subRegionClass}>
+          <span className={labelClass}>Layout · Two columns</span>
+          <div className='grid grid-cols-2 gap-3'>
+            <section ref={twoColLeftRef} data-portal-region='left' className={subRegionClass}>
               <article
-                ref={cardRef}
+                ref={twoColLeftPartRef}
                 data-portal-component-type='part'
-                data-testid='layout-card'
-                className={`${blockBaseClass} bg-surface-info`}
+                data-testid='two-col-left-part'
+                className={cardBlockClass}
               >
-                <p className={labelClass}>PART</p>
-                <p className='mt-1 text-sm text-main'>Card in left column</p>
+                <span className={labelClass}>Part · Card</span>
+                <p className='text-sm'>Left column content.</p>
               </article>
             </section>
-            <section ref={rightRef} data-portal-region='right' className={emptyRegionClass} />
+            <section ref={twoColRightRef} data-portal-region='right' className={subRegionEmptyClass} />
           </div>
         </div>
 
         <div
-          ref={errorRef}
-          data-portal-component-type='part'
-          data-testid='main-error'
-          className={placeholderHostClass}
-        />
-
-        <div
-          ref={loadingRef}
-          data-portal-component-type='part'
-          data-testid='main-loading'
-          className={placeholderHostClass}
-        />
+          ref={oneColRef}
+          data-portal-component-type='layout'
+          data-testid='one-col-layout'
+          className={layoutFrameClass}
+        >
+          <span className={labelClass}>Layout · Full width</span>
+          <section ref={oneColRegionRef} data-portal-region='main' className={subRegionEmptyClass} />
+        </div>
 
         <div
           ref={fragmentRef}
@@ -343,9 +291,14 @@ function IntegrationDemo({variant}: DemoProps): JSX.Element {
           data-testid='main-fragment'
           className={placeholderHostClass}
         />
+
+        <div ref={textRef} data-portal-component-type='text' data-testid='main-text' className={textBlockClass}>
+          <span className={labelClass}>Text</span>
+          <p className='text-sm'>A short excerpt rendered as a text component near the bottom of the page.</p>
+        </div>
       </section>
 
-      <section ref={footerRef} data-portal-region='footer' className={emptyRegionClass} />
+      <footer className={footerClass}>Created by Enonic</footer>
     </div>
   );
 }
@@ -356,45 +309,26 @@ function IntegrationDemo({variant}: DemoProps): JSX.Element {
 
 const meta = {
   title: 'Integration',
-  parameters: {layout: 'centered'},
+  parameters: {layout: 'fullscreen'},
 } satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const DESCRIPTION =
-  'Hover to highlight. Click to select. Right-click for the context menu. Drag any block to reorder within a region or move it across regions. Drop messages are logged to the browser console.';
-
-export const Default: Story = {
-  name: 'Examples / Full page (editable)',
+export const PageLayout: Story = {
+  name: 'Examples / Page layout',
   render: () => (
-    <div className='flex flex-col items-center gap-y-3 p-4'>
-      <div className='max-w-180 text-sm text-subtle'>{DESCRIPTION}</div>
-      <IntegrationDemo variant='default' />
+    <div className='flex justify-center p-4'>
+      <HorizonPage />
     </div>
   ),
 };
 
 export const Locked: Story = {
-  name: 'States / Page locked',
+  name: 'States / Locked',
   render: () => (
-    <div className='flex flex-col items-center gap-y-3 p-4'>
-      <div className='max-w-180 text-sm text-subtle'>
-        Page is locked — the Shader dims the canvas and interactions are disabled.
-      </div>
-      <IntegrationDemo variant='locked' />
-    </div>
-  ),
-};
-
-export const EmptyPage: Story = {
-  name: 'States / Empty page (template picker)',
-  render: () => (
-    <div className='flex flex-col items-center gap-y-3 p-4'>
-      <div className='max-w-180 text-sm text-subtle'>
-        Page has no controller — the PagePlaceholderOverlay covers the canvas with the descriptor selector.
-      </div>
-      <IntegrationDemo variant='empty' />
+    <div className='flex justify-center p-4'>
+      <HorizonPage locked />
     </div>
   ),
 };

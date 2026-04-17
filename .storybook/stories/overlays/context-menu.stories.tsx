@@ -1,15 +1,15 @@
 import {ContextMenu} from '@enonic/ui';
 import {useEffect} from 'preact/hooks';
 
-import type {ComponentPath, PageConfig} from '../../../src/main/resources/assets/js/v2/protocol';
-import type {ComponentRecord} from '../../../src/main/resources/assets/js/v2/state';
+import type {ComponentPath, PageConfig} from '../../../src/protocol';
+import type {ComponentRecord} from '../../../src/state';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {ContextMenuItems} from '../../../src/main/resources/assets/js/v2/components/ContextMenu';
-import {DEFAULT_PHRASES} from '../../../src/main/resources/assets/js/v2/i18n';
-import {$config, $dragState, setRegistry} from '../../../src/main/resources/assets/js/v2/state';
-import {setChannel} from '../../../src/main/resources/assets/js/v2/transport';
+import {ContextMenuItems} from '../../../src/components/ContextMenu';
+import {DEFAULT_PHRASES} from '../../../src/i18n';
+import {$config, $dragState, setRegistry} from '../../../src/state';
+import {setChannel} from '../../../src/transport';
 
 //
 // * Helpers

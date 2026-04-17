@@ -1,11 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
-@import '../src/main/resources/assets/js/v2/rendering/pe-components.css';
+@import '../src/rendering/pe-components.css';
+
+@font-face {
+  font-family: 'Open Sans';
+  font-display: swap;
+  font-style: normal;
+  font-weight: 100 900;
+  src: url('../src/assets/fonts/OpenSans.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  font-display: swap;
+  font-style: italic;
+  font-weight: 100 900;
+  src: url('../src/assets/fonts/OpenSans-Italic.woff2') format('woff2');
+}
 
 @layer base {
   body,
   .docs-story {
     background-color: var(--color-surface-neutral);
     color: var(--color-main);
-    font-family: 'Open Sans', sans-serif;
+    font-family: 'Open Sans', Helvetica, Arial, sans-serif;
   }
 }

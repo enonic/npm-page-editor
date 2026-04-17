@@ -7,7 +7,8 @@ export function isOverlayChromeEvent(event: Event): boolean {
 
 export function getTrackedTarget(target: EventTarget | null): HTMLElement | undefined {
   if (!(target instanceof HTMLElement)) return undefined;
-  return target.closest(TRACKED_SELECTOR) ?? undefined;
+  const match = target.closest(TRACKED_SELECTOR);
+  return match instanceof HTMLElement ? match : undefined;
 }
 
 export function suppressNativeEvent(event: Event): void {

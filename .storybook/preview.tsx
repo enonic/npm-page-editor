@@ -1,9 +1,9 @@
 import {withThemeByClassName} from '@storybook/addon-themes';
-import type {Preview} from '@storybook/preact-vite';
 import {themes} from 'storybook/theming';
 
-import {setTheme} from '../src/main/resources/assets/js/v2/state';
+import type {Preview} from '@storybook/preact-vite';
 
+import {setTheme} from '../src/state';
 import './ui.css';
 import './storybook.css';
 
@@ -21,20 +21,20 @@ themeObserver.observe(themeSource, {attributes: true, attributeFilter: ['class']
 setTheme(isDark ? 'dark' : 'light');
 
 const preview: Preview = {
-    parameters: {
-        layout: 'centered',
-        controls: {matchers: {color: /(background|color)$/i, date: /Date$/i}},
-        docs: {theme: isDark ? themes.dark : themes.light},
-    },
-    decorators: [
-        withThemeByClassName({
-            themes: {
-                light: 'light',
-                dark: 'dark',
-            },
-            defaultTheme: isDark ? 'dark' : 'light',
-        }),
-    ],
+  parameters: {
+    layout: 'centered',
+    controls: {matchers: {color: /(background|color)$/i, date: /Date$/i}},
+    docs: {theme: isDark ? themes.dark : themes.light},
+  },
+  decorators: [
+    withThemeByClassName({
+      themes: {
+        light: 'light',
+        dark: 'dark',
+      },
+      defaultTheme: isDark ? 'dark' : 'light',
+    }),
+  ],
 };
 
 export default preview;

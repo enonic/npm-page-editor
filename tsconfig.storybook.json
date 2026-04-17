@@ -1,18 +1,9 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
-    "composite": true,
     "rootDir": ".",
-    "outDir": "build/storybook"
+    "outDir": "dist/storybook"
   },
-  "include": [
-    "src/main/resources/assets/js/types.d.ts",
-    ".storybook/stories/**/*",
-    "src/main/resources/assets/js/v2/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/*.test.ts",
-    "**/*.test.tsx"
-  ]
+  "include": ["src/**/*", ".storybook/stories/**/*", ".storybook/*.ts", ".storybook/*.tsx"],
+  "exclude": ["node_modules", "**/*.test.ts", "**/*.test.tsx"]
 }
