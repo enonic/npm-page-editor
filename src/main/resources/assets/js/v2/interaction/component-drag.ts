@@ -4,6 +4,7 @@ import type {Channel} from '../transport';
 import {markDirty} from '../geometry';
 import {translate} from '../i18n';
 import {insertAt} from '../protocol/path';
+import {syncDragEmptyRegions} from '../reconcile';
 import {
   closeContextMenu,
   getPathForElement,
@@ -82,10 +83,12 @@ export function initComponentDrag(channel: Channel): () => void {
       dropAllowed: false,
       message: undefined,
       placeholderElement: undefined,
+      placeholderVariant: undefined,
       x,
       y,
     });
 
+    syncDragEmptyRegions(p);
     channel.send({type: 'drag-started', path: p});
     updateDropTarget(x, y);
   }
@@ -105,6 +108,7 @@ export function initComponentDrag(channel: Channel): () => void {
           regionRecord.element,
           target.index,
           active.path,
+          target.axis,
         );
       } else {
         clearPlaceholder(active.placeholderAnchor);
@@ -116,7 +120,8 @@ export function initComponentDrag(channel: Channel): () => void {
         targetIndex: target.index,
         dropAllowed: validation.allowed,
         message: validation.message,
-        placeholderElement: active.placeholderAnchor,
+        placeholderElement: validation.allowed ? active.placeholderAnchor : regionRecord?.element,
+        placeholderVariant: validation.allowed ? 'slot' : 'region',
         x,
         y,
       });
@@ -129,6 +134,7 @@ export function initComponentDrag(channel: Channel): () => void {
         dropAllowed: false,
         message: undefined,
         placeholderElement: undefined,
+        placeholderVariant: undefined,
         x,
         y,
       });
@@ -143,6 +149,7 @@ export function initComponentDrag(channel: Channel): () => void {
     clearPlaceholder(active.placeholderAnchor);
     active = undefined;
 
+    syncDragEmptyRegions(undefined);
     setDragState(undefined);
     if (canceled) channel.send({type: 'drag-stopped', path: dragPath});
     markDirty();

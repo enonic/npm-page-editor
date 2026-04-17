@@ -5,7 +5,7 @@ export {$selectedPath, setSelectedPath, getSelectedPath} from './selection';
 
 export {$hoveredPath, setHoveredPath, getHoveredPath} from './hover';
 
-export type {DragState} from './drag';
+export type {DragPlaceholderVariant, DragState} from './drag';
 export {
   $dragState,
   setDragState,

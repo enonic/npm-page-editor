@@ -9,11 +9,13 @@ import {getPathForElement, getRecord, $registry} from '../state';
 // * Types
 //
 
-type Axis = 'x' | 'y';
+export type Axis = 'x' | 'y';
 
 export type DropTarget = {
   regionPath: ComponentPath;
   index: number;
+  axis: Axis;
+  regionEmpty: boolean;
 };
 
 export type DropValidation = {
@@ -27,6 +29,7 @@ export type DropValidation = {
 
 const REGION_SELECTOR = '[data-portal-region]';
 const PLACEHOLDER_ATTR = 'data-pe-drag-anchor';
+const DRAG_PLACEHOLDER_SIZE_PX = 120;
 
 //
 // * Drop target inference
@@ -101,7 +104,7 @@ export function inferDropTarget(x: number, y: number, sourcePath?: ComponentPath
   const cursor = axis === 'y' ? y : x;
   const index = computeInsertionIndex(children, axis, cursor);
 
-  return {regionPath, index};
+  return {regionPath, index, axis, regionEmpty: children.length === 0};
 }
 
 //
@@ -121,6 +124,15 @@ function isInsideLayout(regionPath: ComponentPath): boolean {
   if (regionRecord?.parentPath == null) return false;
   const parentRecord = getRecord(regionRecord.parentPath);
   return parentRecord?.type === 'layout';
+}
+
+function isLayoutCellOccupied(regionPath: ComponentPath, sourcePath: ComponentPath | undefined): boolean {
+  // TODO: Replace heuristic with `maxOccurrences` when the portal adapter
+  // surfaces region max-child limits. Until then we treat any region whose
+  // parent is a `layout` as single-slot.
+  const regionRecord = getRecord(regionPath);
+  if (regionRecord == null) return false;
+  return regionRecord.children.some(path => path !== sourcePath);
 }
 
 export function validateDrop(
@@ -145,6 +157,11 @@ export function validateDrop(
     return {allowed: false, message: translate('field.drag.fragmentLayout')};
   }
 
+  // Layout cells are single-slot (heuristic): reject if already occupied
+  if (insideLayout && isLayoutCellOccupied(targetRegion, sourcePath)) {
+    return {allowed: false, message: translate('field.drag.cellOccupied')};
+  }
+
   return {allowed: true};
 }
 
@@ -152,11 +169,26 @@ export function validateDrop(
 // * Placeholder anchor management
 //
 
+function applyAnchorSize(anchor: HTMLElement, axis: Axis): void {
+  const size = `${String(DRAG_PLACEHOLDER_SIZE_PX)}px`;
+  if (axis === 'x') {
+    anchor.style.width = size;
+    anchor.style.removeProperty('height');
+    anchor.style.alignSelf = 'stretch';
+  } else {
+    anchor.style.height = size;
+    anchor.style.removeProperty('width');
+    anchor.style.removeProperty('align-self');
+  }
+  anchor.style.removeProperty('flex');
+}
+
 export function ensurePlaceholderAnchor(
   current: HTMLElement | undefined,
   regionElement: HTMLElement,
   index: number,
   sourcePath?: ComponentPath,
+  axis: Axis = 'y',
 ): HTMLElement {
   const anchor = current ?? document.createElement('div');
   anchor.setAttribute(PLACEHOLDER_ATTR, '');
@@ -174,6 +206,8 @@ export function ensurePlaceholderAnchor(
   if (anchor.parentElement !== regionElement || anchor.nextSibling !== reference) {
     regionElement.insertBefore(anchor, reference);
   }
+
+  applyAnchorSize(anchor, axis);
 
   return anchor;
 }

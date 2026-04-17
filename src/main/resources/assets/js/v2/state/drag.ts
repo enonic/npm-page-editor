@@ -2,6 +2,8 @@ import {atom} from 'nanostores';
 
 import type {ComponentPath, ComponentType} from '../protocol';
 
+export type DragPlaceholderVariant = 'slot' | 'region';
+
 export type DragState = {
   itemType: ComponentType;
   itemLabel: string;
@@ -11,6 +13,7 @@ export type DragState = {
   dropAllowed: boolean;
   message: string | undefined;
   placeholderElement: HTMLElement | undefined;
+  placeholderVariant: DragPlaceholderVariant | undefined;
   x: number | undefined;
   y: number | undefined;
 };

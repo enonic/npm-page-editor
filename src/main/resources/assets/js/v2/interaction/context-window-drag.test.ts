@@ -117,6 +117,7 @@ describe('context-window-drag', () => {
         dropAllowed: false,
         message: undefined,
         placeholderElement: undefined,
+        placeholderVariant: undefined,
         x: undefined,
         y: undefined,
       });

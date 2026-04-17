@@ -28,9 +28,15 @@ import {
 } from './state';
 import {tryGetChannel} from './transport';
 
+// Host visibility during drag is managed inside RegionPlaceholder itself via a
+// useLayoutEffect that walks to the placeholder-island's host element. That
+// path works for islands mounted through this module AND for islands mounted
+// directly (e.g., Storybook integration stories).
+
 type PlaceholderEntry = {island: PlaceholderIsland; stateKey: string};
 
 const placeholderEntries = new Map<string, PlaceholderEntry>();
+const dragPlaceholderEntries = new Map<string, PlaceholderIsland>();
 
 function placeholderStateKey(record: ComponentRecord): string {
   if (record.type === 'region') return 'region';
@@ -180,5 +186,46 @@ export function reconcileSubtree(element: HTMLElement, parentPath: ComponentPath
 export function destroyPlaceholders(): void {
   for (const path of Array.from(placeholderEntries.keys())) {
     destroyPlaceholder(path);
+  }
+  for (const path of Array.from(dragPlaceholderEntries.keys())) {
+    destroyDragPlaceholder(path);
+  }
+}
+
+//
+// * Drag-time placeholders
+//
+
+function destroyDragPlaceholder(path: string): void {
+  const island = dragPlaceholderEntries.get(path);
+  if (island == null) return;
+
+  island.unmount();
+  dragPlaceholderEntries.delete(path);
+}
+
+function isEffectivelyEmptyDuringDrag(record: ComponentRecord, sourcePath: string): boolean {
+  if (record.type !== 'region' || record.element == null) return false;
+  if (record.empty) return false;
+  return record.children.every(childPath => childPath === sourcePath);
+}
+
+export function syncDragEmptyRegions(sourcePath: string | undefined): void {
+  if (sourcePath == null) {
+    for (const path of Array.from(dragPlaceholderEntries.keys())) {
+      destroyDragPlaceholder(path);
+    }
+    return;
+  }
+
+  const records = $registry.get();
+
+  for (const [path, record] of Object.entries(records)) {
+    if (!isEffectivelyEmptyDuringDrag(record, sourcePath)) continue;
+    if (placeholderEntries.has(path) || dragPlaceholderEntries.has(path)) continue;
+    if (record.element == null) continue;
+
+    const content = <RegionPlaceholder path={record.path} regionName={getRegionName(record.path) ?? record.path} />;
+    dragPlaceholderEntries.set(path, createPlaceholderIsland(record.element, content));
   }
 }

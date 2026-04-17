@@ -150,6 +150,7 @@ describe('keyboard', () => {
         dropAllowed: false,
         message: undefined,
         placeholderElement: undefined,
+        placeholderVariant: undefined,
         x: undefined,
         y: undefined,
       });

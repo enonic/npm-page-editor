@@ -59,6 +59,7 @@ function HiddenDuringDragStory(): JSX.Element {
       dropAllowed: true,
       message: undefined,
       placeholderElement: undefined,
+      placeholderVariant: undefined,
       x: undefined,
       y: undefined,
     });

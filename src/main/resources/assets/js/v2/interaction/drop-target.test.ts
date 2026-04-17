@@ -90,7 +90,7 @@ describe('drop-target', () => {
       vi.spyOn(document, 'elementsFromPoint').mockReturnValue([region]);
 
       const target = inferDropTarget(100, 100);
-      expect(target).toEqual({regionPath: path('/main'), index: 0});
+      expect(target).toMatchObject({regionPath: path('/main'), index: 0, regionEmpty: true, axis: 'y'});
     });
 
     it('returns correct index when cursor is above child midpoint', () => {
@@ -118,7 +118,8 @@ describe('drop-target', () => {
       vi.spyOn(document, 'elementsFromPoint').mockReturnValue([child0, region]);
 
       // Cursor at y=40, first child midpoint is 50 → insert before first
-      expect(inferDropTarget(100, 40)).toEqual({regionPath: path('/main'), index: 0});
+      const target = inferDropTarget(100, 40);
+      expect(target).toMatchObject({regionPath: path('/main'), index: 0, axis: 'y', regionEmpty: false});
     });
 
     it('returns correct index when cursor is below child midpoint', () => {
@@ -146,7 +147,8 @@ describe('drop-target', () => {
       vi.spyOn(document, 'elementsFromPoint').mockReturnValue([child0, region]);
 
       // Cursor at y=60, first child midpoint is 50 → insert after first
-      expect(inferDropTarget(100, 60)).toEqual({regionPath: path('/main'), index: 1});
+      const target = inferDropTarget(100, 60);
+      expect(target).toMatchObject({regionPath: path('/main'), index: 1, axis: 'y'});
     });
 
     it('returns last index when cursor is past all children', () => {
@@ -168,7 +170,7 @@ describe('drop-target', () => {
       vi.spyOn(document, 'elementsFromPoint').mockReturnValue([region]);
 
       // Cursor at y=200, well past child midpoint (50)
-      expect(inferDropTarget(100, 200)).toEqual({regionPath: path('/main'), index: 1});
+      expect(inferDropTarget(100, 200)).toMatchObject({regionPath: path('/main'), index: 1});
     });
 
     it('excludes source component from children', () => {
@@ -197,7 +199,7 @@ describe('drop-target', () => {
 
       // Drag /main/0: only /main/1 considered. Cursor at y=200 → after last = index 1
       const target = inferDropTarget(100, 200, path('/main/0'));
-      expect(target).toEqual({regionPath: path('/main'), index: 1});
+      expect(target).toMatchObject({regionPath: path('/main'), index: 1});
     });
 
     it('returns undefined for non-region elements', () => {
@@ -325,6 +327,41 @@ describe('drop-target', () => {
 
       expect(validateDrop(undefined, path('/main'), 'layout')).toEqual({allowed: true});
     });
+
+    it('rejects drop on an occupied layout cell', () => {
+      const layout = document.createElement('div');
+      const region = document.createElement('section');
+      document.body.appendChild(layout);
+      layout.appendChild(region);
+
+      const records: Record<string, ComponentRecord> = {
+        '/main/0': makeRecord('/main/0', 'layout', layout, '/main', ['/main/0/inner']),
+        '/main/0/inner': makeRecord('/main/0/inner', 'region', region, '/main/0', ['/main/0/inner/0']),
+        '/main/0/inner/0': makeRecord('/main/0/inner/0', 'part', document.createElement('div'), '/main/0/inner'),
+      };
+      setupRegistry(records);
+
+      const result = validateDrop(path('/main/1'), path('/main/0/inner'), 'part');
+      expect(result.allowed).toBe(false);
+      expect(result.message).toContain('already occupied');
+    });
+
+    it('allows dropping back into an empty layout cell (only-child drag)', () => {
+      const layout = document.createElement('div');
+      const region = document.createElement('section');
+      document.body.appendChild(layout);
+      layout.appendChild(region);
+
+      const records: Record<string, ComponentRecord> = {
+        '/main/0': makeRecord('/main/0', 'layout', layout, '/main', ['/main/0/inner']),
+        '/main/0/inner': makeRecord('/main/0/inner', 'region', region, '/main/0', ['/main/0/inner/0']),
+        '/main/0/inner/0': makeRecord('/main/0/inner/0', 'part', document.createElement('div'), '/main/0/inner'),
+      };
+      setupRegistry(records);
+
+      // Source is the sole occupant; the cell is effectively empty for this drag
+      expect(validateDrop(path('/main/0/inner/0'), path('/main/0/inner'), 'part')).toEqual({allowed: true});
+    });
   });
 
   //
@@ -361,6 +398,25 @@ describe('drop-target', () => {
 
       const anchor = ensurePlaceholderAnchor(undefined, region, 1);
       expect(region.children[1]).toBe(anchor);
+    });
+
+    it('applies fixed 120px height on vertical axis', () => {
+      const region = document.createElement('section');
+      document.body.appendChild(region);
+
+      const anchor = ensurePlaceholderAnchor(undefined, region, 0, undefined, 'y');
+      expect(anchor.style.height).toBe('120px');
+      expect(anchor.style.width).toBe('');
+    });
+
+    it('applies fixed 120px width on horizontal axis', () => {
+      const region = document.createElement('section');
+      document.body.appendChild(region);
+
+      const anchor = ensurePlaceholderAnchor(undefined, region, 0, undefined, 'x');
+      expect(anchor.style.width).toBe('120px');
+      expect(anchor.style.height).toBe('');
+      expect(anchor.style.alignSelf).toBe('stretch');
     });
   });
 

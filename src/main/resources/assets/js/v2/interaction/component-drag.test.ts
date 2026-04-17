@@ -6,6 +6,11 @@ import {$dragState, isPostDragCooldown, rebuildIndex, resetDragState, setDragSta
 import {initComponentDrag} from './component-drag';
 import {createFakeChannel} from './testing/helpers';
 
+const syncDragEmptyRegionsMock = vi.fn<(path: string | undefined) => void>();
+vi.mock('../reconcile', () => ({
+  syncDragEmptyRegions: (path: string | undefined) => syncDragEmptyRegionsMock(path),
+}));
+
 function path(raw: string): ComponentPath {
   const result = fromString(raw);
   if (!result.ok) throw new Error(`Invalid path: ${raw}`);
@@ -87,6 +92,7 @@ describe('component-drag', () => {
     document.body.innerHTML = '';
     resetDragState();
     channel = createFakeChannel();
+    syncDragEmptyRegionsMock.mockReset();
     // jsdom does not implement elementsFromPoint — polyfill for tests
     if (!('elementsFromPoint' in document)) {
       Object.defineProperty(document, 'elementsFromPoint', {value: () => [], writable: true, configurable: true});
@@ -406,6 +412,7 @@ describe('component-drag', () => {
         dropAllowed: false,
         message: undefined,
         placeholderElement: undefined,
+        placeholderVariant: undefined,
         x: undefined,
         y: undefined,
       });
@@ -446,6 +453,7 @@ describe('component-drag', () => {
         dropAllowed: false,
         message: undefined,
         placeholderElement: undefined,
+        placeholderVariant: undefined,
         x: undefined,
         y: undefined,
       });
@@ -562,6 +570,82 @@ describe('component-drag', () => {
       expect($dragState.get()).toBeUndefined();
 
       cleanup = () => undefined;
+    });
+
+    //
+    // * Drag-time empty-region placeholders
+    //
+
+    it('notifies empty-region sync with the source path on drag start', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      mouseDown(part, 100, 100);
+      mouseMove(110, 100);
+
+      expect(syncDragEmptyRegionsMock).toHaveBeenCalledWith(path('/main/0'));
+    });
+
+    it('clears empty-region sync on drag end', () => {
+      const region = makeRegionElement('main');
+      const part = makeTrackedElement('part');
+      region.appendChild(part);
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0']),
+        '/main/0': makeRecord('/main/0', 'part', part, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      mouseDown(part, 100, 100);
+      mouseMove(110, 100);
+      syncDragEmptyRegionsMock.mockClear();
+
+      document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+
+      expect(syncDragEmptyRegionsMock).toHaveBeenCalledWith(undefined);
+    });
+
+    //
+    // * Placeholder sizing + variant
+    //
+
+    it('sizes the anchor to the fixed drop-placeholder height', () => {
+      const region = makeRegionElement('main');
+      const part0 = makeTrackedElement('part');
+      const part1 = makeTrackedElement('part');
+      region.appendChild(part0);
+      region.appendChild(part1);
+      setRect(part0, {top: 0, height: 200});
+      setRect(part1, {top: 200, height: 200});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0', '/main/1']),
+        '/main/0': makeRecord('/main/0', 'part', part0, '/main'),
+        '/main/1': makeRecord('/main/1', 'part', part1, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([region]);
+
+      mouseDown(part0, 100, 50);
+      mouseMove(100, 60);
+
+      const state = $dragState.get();
+      expect(state?.placeholderVariant).toBe('slot');
+      expect(state?.placeholderElement).toBeDefined();
+      // Fixed 120px regardless of neighbour size (200px)
+      expect(state?.placeholderElement?.style.height).toBe('120px');
     });
   });
 });

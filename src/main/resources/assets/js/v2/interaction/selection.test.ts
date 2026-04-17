@@ -139,6 +139,7 @@ describe('selection', () => {
         dropAllowed: false,
         message: undefined,
         placeholderElement: undefined,
+        placeholderVariant: undefined,
         x: undefined,
         y: undefined,
       });
@@ -168,6 +169,7 @@ describe('selection', () => {
         dropAllowed: false,
         message: undefined,
         placeholderElement: undefined,
+        placeholderVariant: undefined,
         x: undefined,
         y: undefined,
       });
@@ -198,6 +200,7 @@ describe('selection', () => {
         dropAllowed: false,
         message: undefined,
         placeholderElement: undefined,
+        placeholderVariant: undefined,
         x: undefined,
         y: undefined,
       });

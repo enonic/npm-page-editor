@@ -36,6 +36,7 @@ export const DEFAULT_PHRASES: Readonly<Record<string, string>> = {
   'field.drag.self': 'Cannot drop a component inside itself.',
   'field.drag.layoutNested': 'Layouts cannot be nested inside other layouts.',
   'field.drag.fragmentLayout': 'This fragment contains a layout and cannot be placed inside another layout.',
+  'field.drag.cellOccupied': 'This layout cell is already occupied.',
 
   //
   // * Error states

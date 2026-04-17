@@ -72,6 +72,7 @@ export function initContextWindowDrag(channel: Channel): () => void {
           dropAllowed: false,
           message: undefined,
           placeholderElement: undefined,
+          placeholderVariant: undefined,
           x: undefined,
           y: undefined,
         });
@@ -96,6 +97,7 @@ export function initContextWindowDrag(channel: Channel): () => void {
             dropAllowed: false,
             message: undefined,
             placeholderElement: undefined,
+            placeholderVariant: undefined,
             x: undefined,
             y: undefined,
           });
@@ -127,6 +129,8 @@ export function initContextWindowDrag(channel: Channel): () => void {
           session.placeholderAnchor,
           regionRecord.element,
           target.index,
+          undefined,
+          target.axis,
         );
       } else {
         clearPlaceholder(session.placeholderAnchor);
@@ -138,7 +142,8 @@ export function initContextWindowDrag(channel: Channel): () => void {
         targetIndex: target.index,
         dropAllowed: validation.allowed,
         message: validation.message,
-        placeholderElement: session.placeholderAnchor,
+        placeholderElement: validation.allowed ? session.placeholderAnchor : regionRecord?.element,
+        placeholderVariant: validation.allowed ? 'slot' : 'region',
         x,
         y,
       });
@@ -151,6 +156,7 @@ export function initContextWindowDrag(channel: Channel): () => void {
         dropAllowed: false,
         message: undefined,
         placeholderElement: undefined,
+        placeholderVariant: undefined,
         x,
         y,
       });

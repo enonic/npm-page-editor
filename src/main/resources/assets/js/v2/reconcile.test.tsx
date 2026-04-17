@@ -9,7 +9,7 @@ vi.mock('./components/ComponentPlaceholder', () => ({ComponentPlaceholder: () =>
 vi.mock('./components/RegionPlaceholder', () => ({RegionPlaceholder: () => null}));
 
 import {fromString} from './protocol';
-import {reconcilePage, reconcileSubtree, destroyPlaceholders} from './reconcile';
+import {reconcilePage, reconcileSubtree, destroyPlaceholders, syncDragEmptyRegions} from './reconcile';
 import {$registry, $selectedPath, $hoveredPath, $config, $contextMenu, getPathForElement} from './state';
 import {$dragState, resetDragState} from './state/drag';
 import {setChannel, resetChannel} from './transport';
@@ -63,6 +63,7 @@ function makeDrag(overrides?: Partial<DragState>): DragState {
     dropAllowed: true,
     message: undefined,
     placeholderElement: undefined,
+    placeholderVariant: undefined,
     x: undefined,
     y: undefined,
     ...overrides,
@@ -346,6 +347,67 @@ describe('placeholder diffing', () => {
     reconcilePage(document.body, {});
 
     expect(document.body.querySelectorAll('[data-pe-placeholder-host]')).toHaveLength(0);
+  });
+});
+
+//
+// * syncDragEmptyRegions
+//
+
+describe('syncDragEmptyRegions', () => {
+  it('mounts a placeholder when the region becomes effectively empty during drag', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part"></article>
+      </section>
+    `;
+
+    reconcilePage(document.body, {});
+
+    const region = document.querySelector('[data-portal-region="main"]') as HTMLElement;
+    // No drag-time placeholder yet — only the empty-part's inner placeholder exists
+    expect(region.querySelector(':scope > [data-pe-placeholder-host]')).toBeNull();
+
+    syncDragEmptyRegions(path('/main/0'));
+
+    expect(region.querySelector(':scope > [data-pe-placeholder-host]')).not.toBeNull();
+  });
+
+  it('does not mount a placeholder when other siblings remain visible', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part"></article>
+        <article data-portal-component-type="part"></article>
+      </section>
+    `;
+
+    reconcilePage(document.body, {});
+
+    const region = document.querySelector('[data-portal-region="main"]') as HTMLElement;
+    syncDragEmptyRegions(path('/main/0'));
+
+    // Only the existing empty-part placeholders remain; no new region host
+    const hosts = region.querySelectorAll(':scope > [data-pe-placeholder-host]');
+    expect(hosts).toHaveLength(0);
+  });
+
+  it('tears down drag-time placeholders when the drag ends', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part"></article>
+      </section>
+    `;
+
+    reconcilePage(document.body, {});
+    syncDragEmptyRegions(path('/main/0'));
+
+    const region = document.querySelector('[data-portal-region="main"]') as HTMLElement;
+    expect(region.querySelector('[data-pe-placeholder-host]')).not.toBeNull();
+
+    syncDragEmptyRegions(undefined);
+
+    // The region's direct placeholder host (drag-time) was removed
+    expect(region.querySelector(':scope > [data-pe-placeholder-host]')).toBeNull();
   });
 });
 
