@@ -1,11 +1,11 @@
 import {useEffect, useRef} from 'preact/hooks';
 
-import type {ComponentType} from '../../src/main/resources/assets/js/v2/protocol';
+import type {ComponentType} from '../../../src/main/resources/assets/js/v2/protocol';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {ComponentPlaceholder} from '../../src/main/resources/assets/js/v2/components/ComponentPlaceholder';
-import {createPlaceholderIsland} from '../../src/main/resources/assets/js/v2/rendering';
+import {ComponentPlaceholder} from '../../../src/main/resources/assets/js/v2/components/ComponentPlaceholder';
+import {createPlaceholderIsland} from '../../../src/main/resources/assets/js/v2/rendering';
 
 //
 // * Helpers
@@ -33,7 +33,7 @@ function IslandMount({children, className}: IslandMountProps): JSX.Element {
 //
 
 const meta = {
-  title: 'Page Editor v2/Component Placeholder',
+  title: 'Placeholders/Component Placeholder',
   parameters: {layout: 'centered'},
   tags: ['autodocs'],
 } satisfies Meta;

@@ -28,7 +28,7 @@ export const DragPreview = (): JSX.Element | null => {
       ) : (
         <FilledCircleX className='mt-2.5 size-7 shrink-0 text-error' />
       )}
-      <div className='rounded-lg border border-bdr-soft bg-surface-neutral px-7.5 py-4 leading-5.5 font-semibold text-main shadow'>
+      <div className='rounded-lg border border-bdr-soft bg-surface-neutral px-7.5 py-4 leading-5.5 font-semibold whitespace-nowrap text-main shadow'>
         {dragState.itemLabel}
       </div>
     </div>

@@ -55,7 +55,7 @@ export const Shader = (): JSX.Element | null => {
     event.stopPropagation();
 
     if (modifyAllowed) {
-      toggleLockedMenu(event.pageX, event.pageY);
+      toggleLockedMenu(event.clientX, event.clientY);
       return;
     }
 
@@ -67,18 +67,25 @@ export const Shader = (): JSX.Element | null => {
     event.stopPropagation();
 
     if (modifyAllowed) {
-      toggleLockedMenu(event.pageX, event.pageY);
+      toggleLockedMenu(event.clientX, event.clientY);
       return;
     }
 
     handleSelectionFallback(event.pageX, event.pageY, true);
   };
 
+  // ? Block Radix's capture-phase pointerdown so the menu's click-outside handler
+  //   does not close the menu before our onClick toggle evaluates the current state.
+  const handlePointerDown = (event: PointerEvent): void => {
+    event.stopPropagation();
+  };
+
   return (
     <div
       role='presentation'
       data-component={SHADER_NAME}
-      className='pointer-events-auto fixed inset-0 bg-black/18'
+      className='pointer-events-auto fixed inset-0 z-30 bg-black/50'
+      onPointerDown={handlePointerDown}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
     />

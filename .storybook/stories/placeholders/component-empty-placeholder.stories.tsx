@@ -3,8 +3,8 @@ import {useEffect, useRef} from 'preact/hooks';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {ComponentErrorPlaceholder} from '../../src/main/resources/assets/js/v2/components/ComponentErrorPlaceholder';
-import {createPlaceholderIsland} from '../../src/main/resources/assets/js/v2/rendering';
+import {ComponentEmptyPlaceholder} from '../../../src/main/resources/assets/js/v2/components/ComponentEmptyPlaceholder';
+import {createPlaceholderIsland} from '../../../src/main/resources/assets/js/v2/rendering';
 
 //
 // * Helpers
@@ -32,7 +32,7 @@ function IslandMount({children, className}: IslandMountProps): JSX.Element {
 //
 
 const meta = {
-  title: 'Page Editor v2/Component Error Placeholder',
+  title: 'Placeholders/Component Empty Placeholder',
   parameters: {layout: 'centered'},
   tags: ['autodocs'],
 } satisfies Meta;
@@ -44,20 +44,20 @@ type Story = StoryObj<typeof meta>;
 // * Examples
 //
 
-export const WithMessage: Story = {
-  name: 'Examples / With Message',
+export const Basic: Story = {
+  name: 'Examples / Basic',
   render: () => (
     <IslandMount className='w-96'>
-      <ComponentErrorPlaceholder descriptor='com.example:broken-widget — Failed to render: java.lang.NullPointerException' />
+      <ComponentEmptyPlaceholder descriptor='My Part Component' />
     </IslandMount>
   ),
 };
 
-export const DefaultMessage: Story = {
-  name: 'Examples / Default Message',
+export const DescriptorKey: Story = {
+  name: 'Examples / Descriptor Key',
   render: () => (
     <IslandMount className='w-96'>
-      <ComponentErrorPlaceholder />
+      <ComponentEmptyPlaceholder descriptor='com.example:my-widget' />
     </IslandMount>
   ),
 };
@@ -82,7 +82,7 @@ export const Sizing: Story = {
             {label} — {className}
           </p>
           <IslandMount className={className}>
-            <ComponentErrorPlaceholder descriptor='Rendering failed for unknown reason.' />
+            <ComponentEmptyPlaceholder descriptor='Article Component' />
           </IslandMount>
         </div>
       ))}

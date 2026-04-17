@@ -1,4 +1,4 @@
-import {Blocks, Package, PanelLeft, PenLine, Puzzle} from 'lucide-preact';
+import {Blocks, Box, Columns2, FileChartPie, PenLine} from 'lucide-preact';
 
 import type {ActionContext, ActionId} from '../../actions';
 import type {ComponentPath, ComponentType} from '../../protocol';
@@ -10,16 +10,16 @@ import {$config, getRecord} from '../../state';
 export const TYPE_ICONS: Partial<Record<ComponentType, LucideIcon>> = {
   region: Blocks,
   text: PenLine,
-  part: Package,
-  layout: PanelLeft,
-  fragment: Puzzle,
+  part: Box,
+  layout: Columns2,
+  fragment: FileChartPie,
 };
 
 export const INSERT_ICONS: Partial<Record<ActionId, LucideIcon>> = {
-  'insert-part': Package,
-  'insert-layout': PanelLeft,
+  'insert-part': Box,
+  'insert-layout': Columns2,
   'insert-text': PenLine,
-  'insert-fragment': Puzzle,
+  'insert-fragment': FileChartPie,
 };
 
 export function capitalize(value: string): string {

@@ -32,7 +32,11 @@ const PositionSetter = ({x, y}: PositionSetterProps): null => {
 // * Component
 //
 
-export const ContextMenu = (): JSX.Element | null => {
+export type ContextMenuProps = {
+  portalContainer?: HTMLElement;
+};
+
+export const ContextMenu = ({portalContainer}: ContextMenuProps): JSX.Element | null => {
   const state = useStoreValue($contextMenu);
   const dragState = useStoreValue($dragState);
 
@@ -45,8 +49,8 @@ export const ContextMenu = (): JSX.Element | null => {
   return (
     <UiContextMenu open onOpenChange={handleOpenChange}>
       <PositionSetter x={state.x} y={state.y} />
-      <UiContextMenu.Portal>
-        <UiContextMenu.Content data-component={CONTEXT_MENU_NAME}>
+      <UiContextMenu.Portal container={portalContainer}>
+        <UiContextMenu.Content className='pointer-events-auto z-50' data-component={CONTEXT_MENU_NAME}>
           <ContextMenuItems path={state.path} kind={state.kind} />
         </UiContextMenu.Content>
       </UiContextMenu.Portal>

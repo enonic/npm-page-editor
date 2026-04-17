@@ -1,13 +1,13 @@
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 
-import {DragPlaceholder} from '../../src/main/resources/assets/js/v2/components/DragPlaceholder';
+import {DragPlaceholder} from '../../../src/main/resources/assets/js/v2/components/DragPlaceholder';
 
 //
 // * Meta
 //
 
 const meta = {
-  title: 'Page Editor v2/Drag Placeholder',
+  title: 'Placeholders/Drag Placeholder',
   parameters: {layout: 'centered'},
 } satisfies Meta;
 

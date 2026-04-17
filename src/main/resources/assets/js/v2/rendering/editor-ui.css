@@ -2,7 +2,7 @@
 @import 'tw-animate-css';
 @import '@enonic/ui/preset.css';
 
-@source '../node_modules/@enonic/ui';
+@source '../../../../../../../node_modules/@enonic/ui';
 
 /*
  * ? Currently provided by lib-admin-ui. Uncomment when those styles are removed.

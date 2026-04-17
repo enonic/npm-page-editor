@@ -1,12 +1,12 @@
 import {useEffect} from 'preact/hooks';
 
-import type {PageController} from '../../src/main/resources/assets/js/v2/protocol';
+import type {PageController} from '../../../src/main/resources/assets/js/v2/protocol';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {PageDescriptorSelector} from '../../src/main/resources/assets/js/v2/components/PageDescriptorSelector';
-import {$modifyAllowed, $pageControllers} from '../../src/main/resources/assets/js/v2/state';
-import {setChannel} from '../../src/main/resources/assets/js/v2/transport';
+import {PageDescriptorSelector} from '../../../src/main/resources/assets/js/v2/components/PageDescriptorSelector';
+import {$modifyAllowed, $pageControllers} from '../../../src/main/resources/assets/js/v2/state';
+import {setChannel} from '../../../src/main/resources/assets/js/v2/transport';
 
 //
 // * Helpers
@@ -58,7 +58,7 @@ function SelectorSetup({
 //
 
 const meta = {
-  title: 'Page Editor v2/Page Descriptor Selector',
+  title: 'Overlays/Page Descriptor Selector',
   parameters: {layout: 'centered'},
 } satisfies Meta;
 

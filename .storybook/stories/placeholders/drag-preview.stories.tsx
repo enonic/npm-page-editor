@@ -1,13 +1,13 @@
 import {useEffect} from 'preact/hooks';
 
-import type {ComponentPath} from '../../src/main/resources/assets/js/v2/protocol';
-import type {DragState} from '../../src/main/resources/assets/js/v2/state';
+import type {ComponentPath} from '../../../src/main/resources/assets/js/v2/protocol';
+import type {DragState} from '../../../src/main/resources/assets/js/v2/state';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {DragPreview} from '../../src/main/resources/assets/js/v2/components/DragPreview';
-import {fromString} from '../../src/main/resources/assets/js/v2/protocol';
-import {resetDragState, setDragState} from '../../src/main/resources/assets/js/v2/state';
+import {DragPreview} from '../../../src/main/resources/assets/js/v2/components/DragPreview';
+import {fromString} from '../../../src/main/resources/assets/js/v2/protocol';
+import {resetDragState, setDragState} from '../../../src/main/resources/assets/js/v2/state';
 
 //
 // * Helpers
@@ -40,7 +40,7 @@ function makeDragState(overrides: Partial<DragState>): DragState {
 //
 
 const meta = {
-  title: 'Page Editor v2/Drag Preview',
+  title: 'Placeholders/Drag Preview',
   parameters: {layout: 'centered'},
 } satisfies Meta;
 

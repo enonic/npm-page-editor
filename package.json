@@ -44,11 +44,10 @@
     "check": "pnpm /^check:.*$/",
     "check:types": "tsc --build --noEmit",
     "check:lint": "eslint . --quiet --cache",
-    "check:v2:lint": "oxlint src/main/resources/assets/js/v2/ .storybook/v2/",
-    "check:v2:fmt": "oxfmt --check src/main/resources/assets/js/v2/ .storybook/v2/",
+    "check:lint:oxlint": "oxlint src/main/resources/assets/js/v2/ .storybook/stories/",
+    "check:fmt": "oxfmt --check src/main/resources/assets/js/v2/ .storybook/stories/",
     "check:test": "vitest run",
-    "fix": "eslint --fix **/*.ts",
-    "fix:v2": "oxlint --fix src/main/resources/assets/js/v2/ .storybook/v2/ && oxfmt src/main/resources/assets/js/v2/ .storybook/v2/",
+    "fix": "oxlint --fix src/main/resources/assets/js/v2/ .storybook/stories/ && oxfmt src/main/resources/assets/js/v2/ .storybook/stories/",
     "clean": "del-cli build/ enonic-page-editor-*.zip",
     "test": "vitest run",
     "storybook": "storybook dev -p 6006",
@@ -63,7 +62,7 @@
       "oxlint --fix",
       "oxfmt"
     ],
-    ".storybook/v2/**/*.{ts,tsx}": [
+    ".storybook/stories/**/*.{ts,tsx}": [
       "oxlint --fix",
       "oxfmt"
     ]

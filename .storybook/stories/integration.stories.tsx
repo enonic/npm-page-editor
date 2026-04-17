@@ -11,7 +11,7 @@ import type {
 import type {ComponentRecord} from '../../src/main/resources/assets/js/v2/state';
 import type {Channel} from '../../src/main/resources/assets/js/v2/transport';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
-import type {CSSProperties, JSX} from 'preact';
+import type {JSX} from 'preact';
 
 import {ComponentEmptyPlaceholder} from '../../src/main/resources/assets/js/v2/components/ComponentEmptyPlaceholder';
 import {ComponentErrorPlaceholder} from '../../src/main/resources/assets/js/v2/components/ComponentErrorPlaceholder';
@@ -40,6 +40,7 @@ import {
   setRegistry,
   setSelectedPath,
 } from '../../src/main/resources/assets/js/v2/state';
+import {resetChannel, setChannel} from '../../src/main/resources/assets/js/v2/transport';
 
 //
 // * Helpers
@@ -126,62 +127,16 @@ function createStoryChannel(): Channel {
 }
 
 //
-// * Story styles — demo canvas only, not production UI
+// * Story style tokens — demo canvas only, not production UI
 //
 
-const canvasStyle: CSSProperties = {
-  width: '760px',
-  border: '1px solid rgba(33, 52, 75, 0.12)',
-  borderRadius: '12px',
-  background: '#fff',
-  padding: '16px',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '12px',
-};
-
-const regionStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '10px',
-  padding: '10px',
-  borderRadius: '8px',
-  background: 'rgba(15, 23, 42, 0.02)',
-  minHeight: '60px',
-};
-
-const blockStyle = (bg: string, border: string): CSSProperties => ({
-  minHeight: '72px',
-  borderRadius: '8px',
-  background: bg,
-  border: `1px solid ${border}`,
-  padding: '14px',
-  cursor: 'grab',
-  userSelect: 'none',
-});
-
-const emptyRegionStyle: CSSProperties = {
-  minHeight: '60px',
-  cursor: 'default',
-  display: 'flex',
-  flexDirection: 'column',
-};
-
-const placeholderHostStyle: CSSProperties = {
-  minHeight: '96px',
-  cursor: 'grab',
-  userSelect: 'none',
-};
-
-const subRegionStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '8px',
-  padding: '10px',
-  borderRadius: '6px',
-  border: '1px dashed rgba(33, 52, 75, 0.12)',
-  minHeight: '60px',
-};
+const canvasClass = 'relative flex w-[760px] flex-col gap-3 rounded-xl border border-bdr-soft bg-surface-primary p-4';
+const regionClass = 'flex min-h-[60px] flex-col gap-2.5 rounded-lg bg-surface-neutral p-2.5';
+const emptyRegionClass = 'flex min-h-[60px] flex-col';
+const subRegionClass = 'flex min-h-[60px] flex-col gap-2 rounded-md border border-dashed border-bdr-soft p-2.5';
+const placeholderHostClass = 'min-h-[96px] cursor-grab select-none';
+const blockBaseClass = 'min-h-[72px] cursor-grab select-none rounded-lg border border-bdr-soft p-3.5';
+const labelClass = 'text-xs font-semibold text-subtle';
 
 //
 // * Demo canvas
@@ -276,6 +231,19 @@ function IntegrationDemo({variant}: DemoProps): JSX.Element {
 
     const overlay = createOverlayHost(<OverlayApp />);
 
+    // ? Scope overlay host to the demo canvas for the empty variant so the
+    //   PagePlaceholderOverlay (fixed inset-0) does not cover the whole viewport.
+    if (variant === 'empty') {
+      const host = overlay.root.host as HTMLElement;
+      host.style.position = 'absolute';
+      host.style.inset = '0';
+      page.appendChild(host);
+
+      const positionOverride = document.createElement('style');
+      positionOverride.textContent = "[data-component='PagePlaceholderOverlay']{position:absolute !important}";
+      overlay.root.appendChild(positionOverride);
+    }
+
     const islands = [
       createPlaceholderIsland(right, <RegionPlaceholder path={path('/main/1/right')} regionName='right' />),
       createPlaceholderIsland(footer, <RegionPlaceholder path={path('/footer')} regionName='footer' />),
@@ -285,6 +253,7 @@ function IntegrationDemo({variant}: DemoProps): JSX.Element {
     ];
 
     const channel = createStoryChannel();
+    setChannel(channel);
     const stopGeometry = initGeometryScheduler(p => getRecord(p)?.element);
     const stopHover = initHoverDetection();
     const stopSelection = initSelectionDetection(channel);
@@ -299,34 +268,34 @@ function IntegrationDemo({variant}: DemoProps): JSX.Element {
       stopGeometry();
       for (const island of islands) island.unmount();
       overlay.unmount();
-      channel.destroy();
+      resetChannel();
       resetState();
     };
   }, [variant]);
 
   return (
-    <div ref={pageRef} data-testid='integration-canvas' style={canvasStyle}>
-      <section ref={headerRef} data-portal-region='header' style={regionStyle}>
+    <div ref={pageRef} data-testid='integration-canvas' className={canvasClass}>
+      <section ref={headerRef} data-portal-region='header' className={regionClass}>
         <article
           ref={heroRef}
           data-portal-component-type='part'
           data-testid='header-hero'
-          style={blockStyle('rgba(236, 72, 153, 0.06)', 'rgba(236, 72, 153, 0.2)')}
+          className={`${blockBaseClass} bg-surface-warn`}
         >
-          <p style={{margin: 0, fontSize: '12px', fontWeight: 600, opacity: 0.6}}>HEADER / PART</p>
-          <h3 style={{margin: '4px 0 0', fontSize: '18px'}}>Hero Banner</h3>
+          <p className={labelClass}>HEADER / PART</p>
+          <h3 className='mt-1 text-lg text-main'>Hero Banner</h3>
         </article>
       </section>
 
-      <section ref={mainRef} data-portal-region='main' style={regionStyle}>
+      <section ref={mainRef} data-portal-region='main' className={regionClass}>
         <div
           ref={textRef}
           data-portal-component-type='text'
           data-testid='main-text'
-          style={blockStyle('rgba(34, 197, 94, 0.05)', 'rgba(34, 197, 94, 0.25)')}
+          className={`${blockBaseClass} bg-surface-success`}
         >
-          <p style={{margin: 0, fontSize: '12px', fontWeight: 600, opacity: 0.6}}>TEXT</p>
-          <p style={{margin: '4px 0 0', fontSize: '14px'}}>
+          <p className={labelClass}>TEXT</p>
+          <p className='mt-1 text-sm text-main'>
             Drag this block to reorder inside main, or drop it into another region.
           </p>
         </div>
@@ -335,43 +304,48 @@ function IntegrationDemo({variant}: DemoProps): JSX.Element {
           ref={layoutRef}
           data-portal-component-type='layout'
           data-testid='main-layout'
-          style={blockStyle('rgba(15, 23, 42, 0.02)', 'rgba(33, 52, 75, 0.14)')}
+          className={`${blockBaseClass} bg-surface-secondary`}
         >
-          <p style={{margin: '0 0 10px', fontSize: '12px', fontWeight: 600, opacity: 0.6}}>LAYOUT · 2 columns</p>
-          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
-            <section ref={leftRef} data-portal-region='left' style={subRegionStyle}>
+          <p className={`mb-2.5 ${labelClass}`}>LAYOUT · 2 columns</p>
+          <div className='grid grid-cols-2 gap-2.5'>
+            <section ref={leftRef} data-portal-region='left' className={subRegionClass}>
               <article
                 ref={cardRef}
                 data-portal-component-type='part'
                 data-testid='layout-card'
-                style={blockStyle('rgba(66, 153, 225, 0.06)', 'rgba(66, 153, 225, 0.25)')}
+                className={`${blockBaseClass} bg-surface-info`}
               >
-                <p style={{margin: 0, fontSize: '12px', fontWeight: 600, opacity: 0.6}}>PART</p>
-                <p style={{margin: '4px 0 0', fontSize: '14px'}}>Card in left column</p>
+                <p className={labelClass}>PART</p>
+                <p className='mt-1 text-sm text-main'>Card in left column</p>
               </article>
             </section>
-            <section ref={rightRef} data-portal-region='right' style={emptyRegionStyle} />
+            <section ref={rightRef} data-portal-region='right' className={emptyRegionClass} />
           </div>
         </div>
 
-        <div ref={errorRef} data-portal-component-type='part' data-testid='main-error' style={placeholderHostStyle} />
+        <div
+          ref={errorRef}
+          data-portal-component-type='part'
+          data-testid='main-error'
+          className={placeholderHostClass}
+        />
 
         <div
           ref={loadingRef}
           data-portal-component-type='part'
           data-testid='main-loading'
-          style={placeholderHostStyle}
+          className={placeholderHostClass}
         />
 
         <div
           ref={fragmentRef}
           data-portal-component-type='fragment'
           data-testid='main-fragment'
-          style={placeholderHostStyle}
+          className={placeholderHostClass}
         />
       </section>
 
-      <section ref={footerRef} data-portal-region='footer' style={emptyRegionStyle} />
+      <section ref={footerRef} data-portal-region='footer' className={emptyRegionClass} />
     </div>
   );
 }
@@ -381,9 +355,8 @@ function IntegrationDemo({variant}: DemoProps): JSX.Element {
 //
 
 const meta = {
-  title: 'v2/Integration',
+  title: 'Integration',
   parameters: {layout: 'centered'},
-  tags: ['autodocs'],
 } satisfies Meta;
 
 export default meta;

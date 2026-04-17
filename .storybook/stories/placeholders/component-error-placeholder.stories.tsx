@@ -3,8 +3,8 @@ import {useEffect, useRef} from 'preact/hooks';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {ComponentEmptyPlaceholder} from '../../src/main/resources/assets/js/v2/components/ComponentEmptyPlaceholder';
-import {createPlaceholderIsland} from '../../src/main/resources/assets/js/v2/rendering';
+import {ComponentErrorPlaceholder} from '../../../src/main/resources/assets/js/v2/components/ComponentErrorPlaceholder';
+import {createPlaceholderIsland} from '../../../src/main/resources/assets/js/v2/rendering';
 
 //
 // * Helpers
@@ -32,7 +32,7 @@ function IslandMount({children, className}: IslandMountProps): JSX.Element {
 //
 
 const meta = {
-  title: 'Page Editor v2/Component Empty Placeholder',
+  title: 'Placeholders/Component Error Placeholder',
   parameters: {layout: 'centered'},
   tags: ['autodocs'],
 } satisfies Meta;
@@ -44,20 +44,20 @@ type Story = StoryObj<typeof meta>;
 // * Examples
 //
 
-export const Basic: Story = {
-  name: 'Examples / Basic',
+export const WithMessage: Story = {
+  name: 'Examples / With Message',
   render: () => (
     <IslandMount className='w-96'>
-      <ComponentEmptyPlaceholder descriptor='My Part Component' />
+      <ComponentErrorPlaceholder descriptor='com.example:broken-widget — Failed to render: java.lang.NullPointerException' />
     </IslandMount>
   ),
 };
 
-export const DescriptorKey: Story = {
-  name: 'Examples / Descriptor Key',
+export const DefaultMessage: Story = {
+  name: 'Examples / Default Message',
   render: () => (
     <IslandMount className='w-96'>
-      <ComponentEmptyPlaceholder descriptor='com.example:my-widget' />
+      <ComponentErrorPlaceholder />
     </IslandMount>
   ),
 };
@@ -82,7 +82,7 @@ export const Sizing: Story = {
             {label} — {className}
           </p>
           <IslandMount className={className}>
-            <ComponentEmptyPlaceholder descriptor='Article Component' />
+            <ComponentErrorPlaceholder descriptor='Rendering failed for unknown reason.' />
           </IslandMount>
         </div>
       ))}

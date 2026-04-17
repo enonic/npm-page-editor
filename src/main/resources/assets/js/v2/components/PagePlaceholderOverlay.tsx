@@ -18,7 +18,7 @@ export const PagePlaceholderOverlay = (): JSX.Element | null => {
   return (
     <div
       data-component={PAGE_PLACEHOLDER_OVERLAY_NAME}
-      className='bg-neutral pointer-events-auto fixed inset-0 flex items-center justify-center p-6'
+      className='pointer-events-auto fixed inset-0 z-20 flex items-center justify-center bg-surface-neutral p-6'
     >
       <PageDescriptorSelector className='w-full max-w-sm' />
     </div>

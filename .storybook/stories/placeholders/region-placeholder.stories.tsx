@@ -1,12 +1,12 @@
 import {useEffect, useRef} from 'preact/hooks';
 
-import type {ComponentPath} from '../../src/main/resources/assets/js/v2/protocol';
+import type {ComponentPath} from '../../../src/main/resources/assets/js/v2/protocol';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {RegionPlaceholder} from '../../src/main/resources/assets/js/v2/components/RegionPlaceholder';
-import {createPlaceholderIsland} from '../../src/main/resources/assets/js/v2/rendering';
-import {$dragState} from '../../src/main/resources/assets/js/v2/state';
+import {RegionPlaceholder} from '../../../src/main/resources/assets/js/v2/components/RegionPlaceholder';
+import {createPlaceholderIsland} from '../../../src/main/resources/assets/js/v2/rendering';
+import {$dragState} from '../../../src/main/resources/assets/js/v2/state';
 
 //
 // * Helpers
@@ -36,7 +36,7 @@ const REGION_PATH = '/main' as ComponentPath;
 //
 
 const meta = {
-  title: 'Page Editor v2/Region Placeholder',
+  title: 'Placeholders/Region Placeholder',
   parameters: {layout: 'centered'},
   tags: ['autodocs'],
 } satisfies Meta;

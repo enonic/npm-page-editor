@@ -1,15 +1,15 @@
 import {ContextMenu} from '@enonic/ui';
 import {useEffect} from 'preact/hooks';
 
-import type {ComponentPath, PageConfig} from '../../src/main/resources/assets/js/v2/protocol';
-import type {ComponentRecord} from '../../src/main/resources/assets/js/v2/state';
+import type {ComponentPath, PageConfig} from '../../../src/main/resources/assets/js/v2/protocol';
+import type {ComponentRecord} from '../../../src/main/resources/assets/js/v2/state';
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {JSX} from 'preact';
 
-import {ContextMenuItems} from '../../src/main/resources/assets/js/v2/components/ContextMenu';
-import {DEFAULT_PHRASES} from '../../src/main/resources/assets/js/v2/i18n';
-import {$config, $dragState, setRegistry} from '../../src/main/resources/assets/js/v2/state';
-import {setChannel} from '../../src/main/resources/assets/js/v2/transport';
+import {ContextMenuItems} from '../../../src/main/resources/assets/js/v2/components/ContextMenu';
+import {DEFAULT_PHRASES} from '../../../src/main/resources/assets/js/v2/i18n';
+import {$config, $dragState, setRegistry} from '../../../src/main/resources/assets/js/v2/state';
+import {setChannel} from '../../../src/main/resources/assets/js/v2/transport';
 
 //
 // * Helpers
@@ -108,7 +108,7 @@ const LAYOUT_PATH = '/main/1' as ComponentPath;
 //
 
 const meta = {
-  title: 'Page Editor v2/Context Menu',
+  title: 'Overlays/Context Menu',
   parameters: {layout: 'centered'},
 } satisfies Meta;
 

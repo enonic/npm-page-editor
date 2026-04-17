@@ -1,5 +1,5 @@
 import {cn, Skeleton} from '@enonic/ui';
-import {Package, PanelLeft, PenLine, Puzzle} from 'lucide-preact';
+import {Box, Columns2, FileChartPie, PenLine} from 'lucide-preact';
 
 import type {ComponentType} from '../protocol';
 import type {LucideIcon} from 'lucide-preact';
@@ -14,9 +14,9 @@ const COMPONENT_PLACEHOLDER_NAME = 'ComponentPlaceholder';
 
 const TYPE_ICONS: Partial<Record<ComponentType, LucideIcon>> = {
   text: PenLine,
-  part: Package,
-  layout: PanelLeft,
-  fragment: Puzzle,
+  part: Box,
+  layout: Columns2,
+  fragment: FileChartPie,
 };
 
 //

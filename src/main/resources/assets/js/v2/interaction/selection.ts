@@ -52,7 +52,7 @@ export function initSelectionDetection(channel: Channel): () => void {
 
     suppressNativeEvent(event);
     setSelectedPath(path);
-    openContextMenu({kind: 'component', path, x: event.pageX, y: event.pageY});
+    openContextMenu({kind: 'component', path, x: event.clientX, y: event.clientY});
     channel.send({type: 'select', path, position: {x: event.pageX, y: event.pageY}, rightClicked: true});
   };
 
