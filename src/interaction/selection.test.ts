@@ -1,6 +1,7 @@
 import type {ComponentPath} from '../protocol';
 import type {ComponentRecord} from '../state';
 
+import {parsePage} from '../parse/parse-page';
 import {fromString} from '../protocol';
 import {$contextMenu, $selectedPath, rebuildIndex, resetDragState, setDragState, setSelectedPath} from '../state';
 import {initSelectionDetection} from './selection';
@@ -229,6 +230,34 @@ describe('selection', () => {
 
       expect($selectedPath.get()).toBeUndefined();
       expect(channel.messages).toEqual([]);
+    });
+
+    //
+    // * Fragments
+    //
+
+    it('selects the fragment wrapper when clicking inner fragment content', () => {
+      document.body.innerHTML = `
+        <section data-portal-region="main">
+          <div data-portal-component-type="fragment" id="frag">
+            <div data-portal-region="inner">
+              <article data-portal-component-type="part" id="inner"></article>
+            </div>
+          </div>
+        </section>
+      `;
+
+      const records = parsePage(document.body);
+      rebuildIndex(records);
+
+      cleanup = initSelectionDetection(channel);
+
+      const inner = document.getElementById('inner');
+      inner?.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+
+      const fragPath = path('/main/0');
+      expect($selectedPath.get()).toBe(fragPath);
+      expect(channel.messages).toEqual([expect.objectContaining({type: 'select', path: fragPath})]);
     });
   });
 });

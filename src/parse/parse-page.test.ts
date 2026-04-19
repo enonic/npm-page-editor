@@ -173,4 +173,64 @@ describe('parsePage', () => {
     expect(records['/'].descriptor).toBeUndefined();
     expect(records['/main'].descriptor).toBeUndefined();
   });
+
+  it('strips tracking attributes from descendants of a fragment component', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <div data-portal-component-type="fragment" id="frag">
+          <div data-portal-region="inner">
+            <article data-portal-component-type="part" id="inner-part"></article>
+          </div>
+        </div>
+      </section>
+    `;
+
+    parsePage(document.body);
+
+    const fragEl = document.getElementById('frag');
+    const innerPart = document.getElementById('inner-part');
+    const innerRegion = document.querySelector('[data-portal-region="inner"]');
+
+    expect(fragEl?.getAttribute('data-portal-component-type')).toBe('fragment');
+    expect(innerPart?.hasAttribute('data-portal-component-type')).toBe(false);
+    expect(innerRegion).toBeNull();
+  });
+
+  it('preserves inner tracking attributes when the fragment root is a layout', () => {
+    document.body.innerHTML = `
+      <main>
+        <section data-portal-component-type="layout">
+          <div data-portal-region="content">
+            <article data-portal-component-type="part" id="layout-part"></article>
+          </div>
+        </section>
+      </main>
+    `;
+
+    parsePage(document.body, {fragment: true});
+
+    const innerPart = document.getElementById('layout-part');
+    const innerRegion = document.querySelector('[data-portal-region="content"]');
+
+    expect(innerPart?.getAttribute('data-portal-component-type')).toBe('part');
+    expect(innerRegion?.getAttribute('data-portal-region')).toBe('content');
+  });
+
+  it('registers a fragment as a leaf component with no children', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <div data-portal-component-type="fragment">
+          <div data-portal-region="inner">
+            <article data-portal-component-type="part"></article>
+          </div>
+        </div>
+      </section>
+    `;
+
+    const records = parsePage(document.body);
+
+    expect(records['/main/0']).toMatchObject({type: 'fragment', children: []});
+    expect(records['/main/0/inner']).toBeUndefined();
+    expect(records['/main/0/inner/0']).toBeUndefined();
+  });
 });

@@ -114,6 +114,14 @@ function parseComponent(
     }
   }
 
+  if (type === 'fragment') {
+    const innerTracked = element.querySelectorAll('[data-portal-component-type], [data-portal-region]');
+    innerTracked.forEach(el => {
+      el.removeAttribute('data-portal-component-type');
+      el.removeAttribute('data-portal-region');
+    });
+  }
+
   const record = makeRecord(path, type, element, parentPath, children, descriptors);
   records[path] = record;
 
