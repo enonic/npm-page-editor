@@ -3,6 +3,8 @@ catalog:
   vite-plus: ^0.1.18
   vitest: npm:@voidzero-dev/vite-plus-test@^0.1.18
 minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - '@enonic/ui'
 overrides:
   vite: 'catalog:'
   vitest: 'catalog:'

@@ -30,11 +30,31 @@ export const SelectionHighlighter = (): JSX.Element | null => {
       data-component={SELECTION_HIGHLIGHTER_NAME}
       className='pointer-events-none fixed inset-0 h-full w-full overflow-visible'
     >
-      <line x1={left} y1='0' x2={left} y2='100%' className='stroke-info/65 stroke-1' />
-      <line x1={left + width} y1='0' x2={left + width} y2='100%' className='stroke-info/65 stroke-1' />
-      <line x1='0' y1={top} x2='100%' y2={top} className='stroke-info/65 stroke-1' />
-      <line x1='0' y1={top + height} x2='100%' y2={top + height} className='stroke-info/65 stroke-1' />
-      <rect x={left} y={top} width={width} height={height} rx='3' className='fill-info/8 stroke-info stroke-2' />
+      <line x1={left} y1='0' x2={left} y2='100%' strokeDasharray='4 4' className='stroke-bdr-select/30 stroke-1' />
+      <line
+        x1={left + width}
+        y1='0'
+        x2={left + width}
+        y2='100%'
+        strokeDasharray='4 4'
+        className='stroke-bdr-select/30 stroke-1'
+      />
+      <line x1='0' y1={top} x2='100%' y2={top} strokeDasharray='4 4' className='stroke-bdr-select/30 stroke-1' />
+      <line
+        x1='0'
+        y1={top + height}
+        x2='100%'
+        y2={top + height}
+        strokeDasharray='4 4'
+        className='stroke-bdr-select/30 stroke-1'
+      />
+      <rect
+        x={left}
+        y={top}
+        width={width}
+        height={height}
+        className='fill-bdr-select/8 stroke-bdr-select stroke-1 transition-[x,y,width,height] duration-[50ms]'
+      />
     </svg>
   );
 };

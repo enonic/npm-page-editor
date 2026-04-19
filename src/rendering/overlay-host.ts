@@ -1,5 +1,6 @@
 import {render, type ReactNode} from 'react';
 
+import {installDragCursorStyle} from './drag-cursor';
 import {injectStyles} from './inject-styles';
 import {registerThemeHost, unregisterThemeHost} from './theme-sync';
 
@@ -20,6 +21,8 @@ export function createOverlayHost(app: ReactNode): OverlayHost {
   host.style.zIndex = '2147483646';
   document.body.appendChild(host);
 
+  const uninstallDragCursor = installDragCursorStyle();
+
   const shadow = host.attachShadow({mode: 'open'});
   injectStyles(shadow);
   registerThemeHost(host);
@@ -35,6 +38,7 @@ export function createOverlayHost(app: ReactNode): OverlayHost {
       unregisterThemeHost(host);
       render(null, mount);
       host.remove();
+      uninstallDragCursor();
     },
   };
 }

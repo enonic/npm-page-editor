@@ -99,6 +99,23 @@ const badVariants = cva('base', {
 </div>
 ```
 
+### Arbitrary Values
+
+Drop the `[...]` brackets whenever the utility accepts a bare value or theme key. Tailwind 4 accepts bare numbers for most numeric utilities (duration, delay, z-index, opacity, grid spans, etc.), treating them as their natural unit (ms, %, etc.).
+
+```typescript
+// ✅ Bare value — no brackets needed
+<div className="duration-50 delay-100 opacity-75" />
+
+// ❌ Arbitrary value when a bare one works
+<div className="duration-[50ms] delay-[100ms] opacity-[75%]" />
+
+// ✅ Arbitrary values are fine when no bare/preset value covers the case
+<div className="grid-cols-[auto_1fr_auto] w-[calc(100%-2rem)]" />
+```
+
+Only reach for `[...]` when the value genuinely can't be expressed with a bare number, theme key, or design token.
+
 ## Class Name Management
 
 ### When to Extract Classes to Variables

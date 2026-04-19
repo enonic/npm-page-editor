@@ -5,6 +5,7 @@ import {markDirty} from '../geometry';
 import {translate} from '../i18n';
 import {insertAt} from '../protocol/path';
 import {syncDragEmptyRegions} from '../reconcile';
+import {setDragCursor} from '../rendering/drag-cursor';
 import {
   closeContextMenu,
   getPathForElement,
@@ -89,6 +90,7 @@ export function initComponentDrag(channel: Channel): () => void {
     });
 
     syncDragEmptyRegions(p);
+    setDragCursor(true);
     channel.send({type: 'drag-started', path: p});
     updateDropTarget(x, y);
   }
@@ -144,6 +146,7 @@ export function initComponentDrag(channel: Channel): () => void {
   function endDrag(canceled: boolean): void {
     if (active == null) return;
 
+    setDragCursor(false);
     const dragPath = active.path;
     active.sourceElement.style.display = active.sourceDisplay;
     clearPlaceholder(active.placeholderAnchor);

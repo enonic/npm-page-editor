@@ -324,10 +324,10 @@ function HorizonPage({locked = false, channel: externalChannel}: HorizonPageProp
 //
 
 const paletteWrapperClass =
-  'flex w-56 flex-col gap-2 rounded-md border border-bdr-soft bg-surface-neutral p-4 select-none';
+  'flex w-56 flex-col gap-2 rounded-md border border-bdr-soft bg-surface-primary p-4 select-none';
 const paletteTitleClass = 'text-xs font-semibold tracking-wide text-subtle uppercase';
 const paletteTileClass =
-  'flex items-center gap-2 rounded-md border border-bdr-soft bg-surface-primary px-3 py-2 text-sm text-main cursor-grab active:cursor-grabbing';
+  'flex items-center gap-2 rounded-md border border-bdr-soft bg-surface-neutral px-3 py-2 text-sm font-semibold text-main shadow-sm cursor-grab active:cursor-grabbing';
 const logWrapperClass = 'flex w-72 flex-col gap-1 rounded-md border border-bdr-soft bg-surface-neutral p-4';
 const logLineClass = 'font-mono text-xs text-subtle';
 const demoWrapperClass = 'flex min-h-screen w-full items-start justify-center gap-4 p-4';
@@ -345,26 +345,9 @@ const PALETTE_TILES: PaletteTile[] = [
 type PalettePanelProps = {channel: StoryChannel};
 
 function PalettePanel({channel}: PalettePanelProps): JSX.Element {
-  const dragRef = useRef<{type: ComponentType; visible: boolean} | undefined>(undefined);
+  const dragRef = useRef<{type: ComponentType} | undefined>(undefined);
 
   useEffect(() => {
-    function handleMouseMove(event: MouseEvent): void {
-      const drag = dragRef.current;
-      if (drag == null) return;
-      const pageElement = document.querySelector<HTMLElement>('[data-testid="horizon-page"]');
-      if (pageElement == null) return;
-      const rect = pageElement.getBoundingClientRect();
-      const inside =
-        event.clientX >= rect.left &&
-        event.clientX <= rect.right &&
-        event.clientY >= rect.top &&
-        event.clientY <= rect.bottom;
-      if (inside !== drag.visible) {
-        drag.visible = inside;
-        channel.dispatch({type: 'set-draggable-visible', visible: inside});
-      }
-    }
-
     function handleMouseUp(): void {
       if (dragRef.current == null) return;
       dragRef.current = undefined;
@@ -373,10 +356,8 @@ function PalettePanel({channel}: PalettePanelProps): JSX.Element {
       channel.dispatch({type: 'destroy-draggable'});
     }
 
-    document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [channel]);
@@ -384,8 +365,9 @@ function PalettePanel({channel}: PalettePanelProps): JSX.Element {
   const startDrag = (event: MouseEvent, type: ComponentType): void => {
     if (event.button !== 0) return;
     event.preventDefault();
-    dragRef.current = {type, visible: false};
+    dragRef.current = {type};
     channel.dispatch({type: 'create-draggable', componentType: type});
+    channel.dispatch({type: 'set-draggable-visible', visible: true});
   };
 
   return (

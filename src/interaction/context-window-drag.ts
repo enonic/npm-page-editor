@@ -4,6 +4,7 @@ import type {Channel} from '../transport';
 import {markDirty} from '../geometry';
 import {translate} from '../i18n';
 import {insertAt} from '../protocol/path';
+import {setDragCursor} from '../rendering/drag-cursor';
 import {closeContextMenu, getRecord, isDragging, setDragState, setHoveredPath, updateDragState} from '../state';
 import {clearPlaceholder, ensurePlaceholderAnchor, inferDropTarget, validateDrop} from './drop-target';
 
@@ -34,6 +35,7 @@ export function initContextWindowDrag(channel: Channel): () => void {
   function destroySession(canceled: boolean): void {
     if (session == null) return;
 
+    setDragCursor(false);
     clearPlaceholder(session.placeholderAnchor);
     session = undefined;
 
@@ -77,6 +79,7 @@ export function initContextWindowDrag(channel: Channel): () => void {
           y: undefined,
         });
 
+        setDragCursor(true);
         channel.send({type: 'drag-started'});
         break;
       }
