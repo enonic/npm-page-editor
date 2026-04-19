@@ -46,12 +46,21 @@ function restoreSelection(contentId: string, allowRootSelection: boolean): void 
   getChannel().send({type: 'select', path});
 }
 
+let pendingRestore: {contentId: string; allowRootSelection: boolean} | undefined;
+
+export function flushSelectionRestore(): void {
+  if (pendingRestore == null) return;
+  const {contentId, allowRootSelection} = pendingRestore;
+  pendingRestore = undefined;
+  restoreSelection(contentId, allowRootSelection);
+}
+
 export function initSelectionPersistence(): () => void {
   let selectionUnsubscribe: (() => void) | undefined;
   let configUnsubscribe: (() => void) | undefined;
 
   const activate = (contentId: string, allowRootSelection: boolean): void => {
-    restoreSelection(contentId, allowRootSelection);
+    pendingRestore = {contentId, allowRootSelection};
     selectionUnsubscribe = $selectedPath.listen(path => {
       writeSelection(contentId, path, allowRootSelection);
     });
@@ -74,5 +83,6 @@ export function initSelectionPersistence(): () => void {
     selectionUnsubscribe = undefined;
     configUnsubscribe?.();
     configUnsubscribe = undefined;
+    pendingRestore = undefined;
   };
 }

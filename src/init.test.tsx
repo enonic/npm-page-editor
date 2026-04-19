@@ -295,6 +295,55 @@ describe('initPageEditor', () => {
     second.destroy();
   });
 
+  it('restores selection in production order and sends select before page-ready', () => {
+    const target = '/main/0';
+    sessionStorage.setItem('pe-selected-path:content-1', target);
+
+    const stage = document.createElement('div');
+    stage.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part"></article>
+      </section>
+    `;
+    document.body.appendChild(stage);
+
+    const {target: wnd, postMessage} = createMockTarget();
+    const instance = initPageEditor(document.body, wnd);
+
+    emitIncoming({type: 'init', config: makeConfig()});
+    postMessage.mockClear();
+    emitIncoming({type: 'page-state', page: {components: {}}});
+
+    const types = postMessage.mock.calls.map(([msg]) => (msg as {type?: string})?.type);
+    const selectIndex = types.indexOf('select');
+    const readyIndex = types.indexOf('page-ready');
+
+    expect(selectIndex).toBeGreaterThanOrEqual(0);
+    expect(readyIndex).toBeGreaterThan(selectIndex);
+    expect(postMessage.mock.calls[selectIndex]?.[0]).toMatchObject({type: 'select', path: target});
+    expect($selectedPath.get()).toBe(target);
+    expect(sessionStorage.getItem('pe-selected-path:content-1')).toBe(target);
+
+    instance.destroy();
+  });
+
+  it('clears stored selection when the path does not resolve after reconcile', () => {
+    sessionStorage.setItem('pe-selected-path:content-1', '/main/99');
+
+    const {target, postMessage} = createMockTarget();
+    const instance = initPageEditor(document.body, target);
+
+    emitIncoming({type: 'init', config: makeConfig()});
+    postMessage.mockClear();
+    emitIncoming({type: 'page-state', page: {components: {}}});
+
+    expect(postMessage.mock.calls.some(([msg]) => (msg as {type?: string})?.type === 'select')).toBe(false);
+    expect($selectedPath.get()).toBeUndefined();
+    expect(sessionStorage.getItem('pe-selected-path:content-1')).toBeNull();
+
+    instance.destroy();
+  });
+
   //
   // * G13 — reconcile-phase error
   //

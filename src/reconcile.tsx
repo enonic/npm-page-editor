@@ -11,6 +11,7 @@ import {ComponentPlaceholder} from './components/ComponentPlaceholder';
 import {RegionPlaceholder} from './components/RegionPlaceholder';
 import {markDirty} from './geometry';
 import {parsePage, parseSubtree} from './parse';
+import {flushSelectionRestore} from './persistence';
 import {regionName as getRegionName} from './protocol/path';
 import {createPlaceholderIsland} from './rendering';
 import {
@@ -169,6 +170,7 @@ export function reconcilePage(root: HTMLElement, descriptors: DescriptorMap): vo
   finalizeReconcile(records);
 
   if (!pageReadyEmitted) {
+    flushSelectionRestore();
     pageReadyEmitted = true;
     tryGetChannel()?.send({type: 'page-ready'});
   }

@@ -2,7 +2,7 @@ import type {ComponentPath, PageConfig} from './protocol';
 import type {ComponentRecord} from './state';
 import type {Channel, MessageHandler} from './transport';
 
-import {initSelectionPersistence} from './persistence';
+import {flushSelectionRestore, initSelectionPersistence} from './persistence';
 import {fromString} from './protocol/path';
 import {$registry, $selectedPath, setPageConfig, setSelectedPath, clearPageConfig} from './state';
 import {resetChannel, setChannel} from './transport';
@@ -91,10 +91,11 @@ describe('initSelectionPersistence', () => {
     const {channel} = createMockChannel();
     setChannel(channel);
 
-    sessionStorage.setItem(KEY, '/main/0');
     const stop = initSelectionPersistence();
-    setSelectedPath(undefined);
+    setSelectedPath(path('/main/0'));
+    expect(sessionStorage.getItem(KEY)).toBe('/main/0');
 
+    setSelectedPath(undefined);
     expect(sessionStorage.getItem(KEY)).toBeNull();
     stop();
   });
@@ -133,6 +134,7 @@ describe('initSelectionPersistence', () => {
     setChannel(channel);
 
     const stop = initSelectionPersistence();
+    flushSelectionRestore();
 
     expect($selectedPath.get()).toBe(target);
     expect(send).toHaveBeenCalledWith({type: 'select', path: target});
@@ -147,6 +149,7 @@ describe('initSelectionPersistence', () => {
     setChannel(channel);
 
     const stop = initSelectionPersistence();
+    flushSelectionRestore();
 
     expect(sessionStorage.getItem(KEY)).toBeNull();
     expect($selectedPath.get()).toBeUndefined();
@@ -163,16 +166,19 @@ describe('initSelectionPersistence', () => {
     setChannel(channel);
 
     const stop = initSelectionPersistence();
+    flushSelectionRestore();
 
     expect($selectedPath.get()).toBeUndefined();
     expect(send).not.toHaveBeenCalled();
 
     setPageConfig(makeConfig());
+    flushSelectionRestore();
 
     expect($selectedPath.get()).toBe(target);
     expect(send).toHaveBeenCalledTimes(1);
 
     setPageConfig(makeConfig({pageName: 'changed'}));
+    flushSelectionRestore();
     expect(send).toHaveBeenCalledTimes(1);
 
     stop();
@@ -199,10 +205,29 @@ describe('initSelectionPersistence', () => {
     setChannel(channel);
 
     const stop = initSelectionPersistence();
+    flushSelectionRestore();
 
     expect(sessionStorage.getItem(KEY)).toBeNull();
     expect($selectedPath.get()).toBeUndefined();
     expect(send).not.toHaveBeenCalled();
     stop();
+  });
+
+  it('disposer cancels a pending restore that has not been flushed', () => {
+    const target = path('/main/0');
+    $registry.set({[target]: makeRecord(target)});
+    sessionStorage.setItem(KEY, target);
+    setPageConfig(makeConfig());
+
+    const {channel, send} = createMockChannel();
+    setChannel(channel);
+
+    const stop = initSelectionPersistence();
+    stop();
+    flushSelectionRestore();
+
+    expect($selectedPath.get()).toBeUndefined();
+    expect(send).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem(KEY)).toBe(target);
   });
 });

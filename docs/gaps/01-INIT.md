@@ -165,35 +165,20 @@ Legacy (per `docs/legacy-spec/modules/inbound-router.md:86–87`) runs `restoreS
 
 **Invariant.** When `sessionStorage` holds a valid selection path for the current content, v2 emits the restored `select` outgoing **before** `page-ready` on the same page. CS can treat `page-ready` as a final signal — any `select` preceding it on the same page is a restored selection, not a user action. If no stored path exists, or the stored path does not resolve to a record after reconcile, no `select` fires before `page-ready`.
 
-### Known bug: `initSelectionPersistence` activates too early
+### Selection-restore ordering
 
-`src/persistence.ts` activates selection restore on first `$config` set (on the `init` message). At that point `$registry` is still empty — reconcile only runs when the subsequent `page-state` message arrives. `restoreSelection` hits the `getRecord(path) == null` branch at `src/persistence.ts:41`, silently deletes the stored path from `sessionStorage`, and never fires `select`. Verified empirically against the current `master` by a production-order test:
+`initSelectionPersistence` registers the `$selectedPath` writer on `$config` arrival but defers the `restoreSelection` call until the first successful reconcile. `src/reconcile.tsx` calls `flushSelectionRestore()` immediately before emitting `page-ready`, so the restored `select` outgoing is queued on the channel first. On subsequent reconciles the pending-restore slot is empty, so `flushSelectionRestore()` is a no-op.
 
-- `registry after reconcile: [ '/main/0', '/main', '/' ]` — registry populates correctly
-- `$selectedPath: undefined` — selection NOT restored
-- `select outgoing calls: 0` — no `select` outgoing fired
-- `sessionStorage after: null` — stored path silently deleted
-
-The existing tests at `src/persistence.test.ts:126–179` pass only because they pre-seed `$registry.set({...})` before calling `initSelectionPersistence` — a synthetic order that does not occur in production.
-
-**Root-cause trace.**
-
-1. `src/init.tsx:113` calls `initSelectionPersistence()` before any messages arrive. `$config` is `undefined`; `src/persistence.ts:64–70` subscribes to `$config`.
-2. `src/init.tsx:116` sends `ready`.
-3. CS sends `init`. `src/transport/adapter.ts:33–40` dispatches → `setPageConfig(config)` synchronously fires the `$config` listener → `activate(contentId)` → `restoreSelection` runs with empty `$registry`. Stored path is deleted.
-4. CS sends `page-state`. `src/transport/adapter.ts:67–69` → `onPageState` → `reconcilePage` populates `$registry` → `page-ready` emitted. But the stored path is gone; no `select` fires.
-
-**Fix required.** Defer `restoreSelection` to the first successful reconcile (the `page-ready` moment), not the first `$config` set. Ensure the restored `select` outgoing is sent before `channel.send({type: 'page-ready'})` at `src/reconcile.tsx:173`. Keep the `$selectedPath.listen` writer registration on config arrival — it only runs on subsequent writes, so empty registry is irrelevant for the write side.
+If the stored path does not resolve against the reconciled registry, `restoreSelection` clears the `sessionStorage` entry and no `select` is sent — consistent with the invariant above.
 
 ### Implementation checklist
 
-1. Add `page-ready` to `OutgoingMessage` in `src/protocol/messages.ts`.
-2. In `src/reconcile.tsx`, on first successful `reconcilePage()` completion, call `getChannel()?.send({type: 'page-ready'})`. Use a module-level flag keyed by adapter lifetime. **Before sending `page-ready`**, run `restoreSelection` if not already attempted, so the restored `select` outgoing precedes `page-ready` on the wire.
-3. Reset the flag when the channel resets (`resetChannel` call site in `src/init.tsx:127`).
-4. `src/persistence.ts` — change activation trigger: on `$config` arrival, register only the `$selectedPath.listen` writer; defer `restoreSelection` to the first registry-populated reconcile. Options: subscribe to `$registry` and fire once on first non-empty snapshot (guarded by a once-flag), or expose a `registry-ready` signal from `reconcile.tsx` that persistence awaits.
-5. Add test coverage in `src/init.test.tsx` and `src/reconcile.test.tsx`:
-   - Production-order restore: seed `sessionStorage`, seed DOM, call `initPageEditor`, emit `init`, emit `page-state`, assert `select` outgoing was posted, `$selectedPath` matches stored path, and `select` preceded `page-ready` in `postMessage.mock.calls`.
-   - Keep the existing `src/persistence.test.ts` tests but annotate that they pre-seed registry in a non-production order and are not sufficient coverage for restore on their own.
+1. `page-ready` in `OutgoingMessage` (`src/protocol/messages.ts`).
+2. `src/reconcile.tsx`: on the first `reconcilePage()` completion (guarded by `pageReadyEmitted`), call `flushSelectionRestore()` and then send `page-ready`. The flag resets on `resetPageReadyFlag()` at destroy time.
+3. `src/persistence.ts`: `activate(contentId, allow)` stores a `pendingRestore` slot and registers the `$selectedPath.listen` writer. `flushSelectionRestore()` consumes the slot and runs `restoreSelection`. The disposer returned by `initSelectionPersistence` clears the slot.
+4. Test coverage:
+   - `src/init.test.tsx` — production-order integration: seed `sessionStorage`, seed DOM, call `initPageEditor`, emit `init` then `page-state`, assert the `select` outgoing precedes `page-ready`.
+   - `src/persistence.test.ts` — unit coverage of `restoreSelection` variants; tests that exercise restoration call `flushSelectionRestore()` explicitly since activation alone no longer runs restore.
 
 ---
 
