@@ -1,4 +1,4 @@
-import {useEffect, useRef} from 'preact/hooks';
+import {useEffect, useMemo, useRef, useState} from 'preact/hooks';
 
 import type {ComponentPath, ComponentType, IncomingMessage, OutgoingMessage, PageConfig} from '../../src/protocol';
 import type {ComponentRecord} from '../../src/state';
@@ -11,7 +11,12 @@ import {OverlayApp} from '../../src/components/OverlayApp';
 import {RegionPlaceholder} from '../../src/components/RegionPlaceholder';
 import {initGeometryScheduler, markDirty} from '../../src/geometry';
 import {DEFAULT_PHRASES} from '../../src/i18n';
-import {initComponentDrag, initHoverDetection, initSelectionDetection} from '../../src/interaction';
+import {
+  initComponentDrag,
+  initContextWindowDrag,
+  initHoverDetection,
+  initSelectionDetection,
+} from '../../src/interaction';
 import {fromString} from '../../src/protocol';
 import {createOverlayHost, createPlaceholderIsland} from '../../src/rendering';
 import {
@@ -88,12 +93,17 @@ function resetState(): void {
   setRegistry({});
 }
 
-function createStoryChannel(): Channel {
+type StoryChannel = Channel & {
+  dispatch(message: IncomingMessage): void;
+};
+
+function createStoryChannel(onSend?: (message: OutgoingMessage) => void): StoryChannel {
   const handlers = new Set<(msg: IncomingMessage) => void>();
   return {
     send(message: OutgoingMessage): void {
       // oxlint-disable-next-line no-console
       console.log('[PageEditor]', message.type, message);
+      onSend?.(message);
     },
     subscribe(handler) {
       handlers.add(handler);
@@ -103,6 +113,9 @@ function createStoryChannel(): Channel {
     },
     destroy() {
       handlers.clear();
+    },
+    dispatch(message: IncomingMessage): void {
+      for (const handler of handlers) handler(message);
     },
   };
 }
@@ -139,9 +152,10 @@ const labelClass = 'mb-1 block text-xs font-semibold tracking-wide text-subtle u
 
 type HorizonPageProps = {
   locked?: boolean;
+  channel?: StoryChannel;
 };
 
-function HorizonPage({locked = false}: HorizonPageProps): JSX.Element {
+function HorizonPage({locked = false, channel: externalChannel}: HorizonPageProps): JSX.Element {
   const pageRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const heroRef = useRef<HTMLElement>(null);
@@ -217,16 +231,18 @@ function HorizonPage({locked = false}: HorizonPageProps): JSX.Element {
       createPlaceholderIsland(fragment, <ComponentEmptyPlaceholder descriptor='Empty fragment' />),
     ];
 
-    const channel = createStoryChannel();
+    const channel = externalChannel ?? createStoryChannel();
     setChannel(channel);
     const stopGeometry = initGeometryScheduler(p => getRecord(p)?.element);
     const stopHover = initHoverDetection();
     const stopSelection = initSelectionDetection(channel);
     const stopDrag = initComponentDrag(channel);
+    const stopContextDrag = initContextWindowDrag(channel);
 
     markDirty();
 
     return () => {
+      stopContextDrag();
       stopDrag();
       stopSelection();
       stopHover();
@@ -236,7 +252,7 @@ function HorizonPage({locked = false}: HorizonPageProps): JSX.Element {
       resetChannel();
       resetState();
     };
-  }, [locked]);
+  }, [locked, externalChannel]);
 
   return (
     <div ref={pageRef} data-testid='horizon-page' className={pageClass}>
@@ -304,6 +320,134 @@ function HorizonPage({locked = false}: HorizonPageProps): JSX.Element {
 }
 
 //
+// * Palette demo
+//
+
+const paletteWrapperClass =
+  'flex w-56 flex-col gap-2 rounded-md border border-bdr-soft bg-surface-neutral p-4 select-none';
+const paletteTitleClass = 'text-xs font-semibold tracking-wide text-subtle uppercase';
+const paletteTileClass =
+  'flex items-center gap-2 rounded-md border border-bdr-soft bg-surface-primary px-3 py-2 text-sm text-main cursor-grab active:cursor-grabbing';
+const logWrapperClass = 'flex w-72 flex-col gap-1 rounded-md border border-bdr-soft bg-surface-neutral p-4';
+const logLineClass = 'font-mono text-xs text-subtle';
+const demoWrapperClass = 'flex min-h-screen w-full items-start justify-center gap-4 p-4';
+const LOG_LIMIT = 20;
+
+type PaletteTile = {type: ComponentType; label: string};
+
+const PALETTE_TILES: PaletteTile[] = [
+  {type: 'part', label: 'Part'},
+  {type: 'layout', label: 'Layout'},
+  {type: 'text', label: 'Text'},
+  {type: 'fragment', label: 'Fragment'},
+];
+
+type PalettePanelProps = {channel: StoryChannel};
+
+function PalettePanel({channel}: PalettePanelProps): JSX.Element {
+  const dragRef = useRef<{type: ComponentType; visible: boolean} | undefined>(undefined);
+
+  useEffect(() => {
+    function handleMouseMove(event: MouseEvent): void {
+      const drag = dragRef.current;
+      if (drag == null) return;
+      const pageElement = document.querySelector<HTMLElement>('[data-testid="horizon-page"]');
+      if (pageElement == null) return;
+      const rect = pageElement.getBoundingClientRect();
+      const inside =
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom;
+      if (inside !== drag.visible) {
+        drag.visible = inside;
+        channel.dispatch({type: 'set-draggable-visible', visible: inside});
+      }
+    }
+
+    function handleMouseUp(): void {
+      if (dragRef.current == null) return;
+      dragRef.current = undefined;
+      // ? context-window-drag may have already destroyed its session on a successful drop;
+      // ? destroy-draggable is idempotent there and ensures CS-side state stays consistent.
+      channel.dispatch({type: 'destroy-draggable'});
+    }
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [channel]);
+
+  const startDrag = (event: MouseEvent, type: ComponentType): void => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    dragRef.current = {type, visible: false};
+    channel.dispatch({type: 'create-draggable', componentType: type});
+  };
+
+  return (
+    <aside data-testid='palette-panel' className={paletteWrapperClass}>
+      <span className={paletteTitleClass}>Palette</span>
+      {PALETTE_TILES.map(tile => (
+        <button
+          key={tile.type}
+          type='button'
+          data-testid={`palette-tile-${tile.type}`}
+          className={paletteTileClass}
+          onMouseDown={event => startDrag(event, tile.type)}
+        >
+          {tile.label}
+        </button>
+      ))}
+    </aside>
+  );
+}
+PalettePanel.displayName = 'PalettePanel';
+
+type MessageLogProps = {messages: string[]};
+
+function MessageLog({messages}: MessageLogProps): JSX.Element {
+  return (
+    <aside data-testid='message-log' className={logWrapperClass}>
+      <span className={paletteTitleClass}>Outgoing messages</span>
+      {messages.length === 0 ? (
+        <span className={logLineClass}>(none yet)</span>
+      ) : (
+        messages.map((line, idx) => (
+          <span key={`${idx}-${line}`} className={logLineClass}>
+            {line}
+          </span>
+        ))
+      )}
+    </aside>
+  );
+}
+MessageLog.displayName = 'MessageLog';
+
+function PaletteDragDemo(): JSX.Element {
+  const [messages, setMessages] = useState<string[]>([]);
+  const channel = useMemo(
+    () =>
+      createStoryChannel(message => {
+        setMessages(prev => [...prev.slice(-(LOG_LIMIT - 1)), message.type]);
+      }),
+    [],
+  );
+
+  return (
+    <div className={demoWrapperClass}>
+      <PalettePanel channel={channel} />
+      <HorizonPage channel={channel} />
+      <MessageLog messages={messages} />
+    </div>
+  );
+}
+PaletteDragDemo.displayName = 'PaletteDragDemo';
+
+//
 // * Meta
 //
 
@@ -329,6 +473,20 @@ export const Locked: Story = {
   render: () => (
     <div className='flex justify-center p-4'>
       <HorizonPage locked />
+    </div>
+  ),
+};
+
+export const PaletteDrag: Story = {
+  name: 'Features / Palette drag',
+  render: () => (
+    <div className='flex flex-col gap-3'>
+      <div className='max-w-160 px-4 pt-4 text-sm text-subtle'>
+        Hold a palette tile and drag it into the page to add a component. Release inside a region to drop, or outside to
+        cancel. The log on the right echoes outgoing messages the editor sends back to Content Studio (
+        <code>drag-started</code>, <code>add</code>, <code>drag-dropped</code>, <code>drag-stopped</code>).
+      </div>
+      <PaletteDragDemo />
     </div>
   ),
 };

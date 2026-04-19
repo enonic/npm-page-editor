@@ -76,6 +76,7 @@ export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): (
         setTheme(message.theme);
         break;
 
+      // ? Handled by context-window-drag.ts via a parallel channel.subscribe — adapter only needs exhaustiveness here.
       case 'create-draggable':
       case 'destroy-draggable':
       case 'set-draggable-visible':

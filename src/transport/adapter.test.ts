@@ -2,16 +2,19 @@ import type {ComponentPath, IncomingMessage, PageConfig, PageDescriptor} from '.
 import type {ComponentRecord} from '../state';
 import type {Channel, MessageHandler} from './channel';
 
+import {initContextWindowDrag} from '../interaction/context-window-drag';
 import {fromString} from '../protocol';
 import {
   $config,
   $contextMenu,
+  $dragState,
   $locked,
   $modifyAllowed,
   $pageControllers,
   $registry,
   $selectedPath,
   $theme,
+  resetDragState,
 } from '../state';
 import {createAdapter} from './adapter';
 
@@ -93,6 +96,7 @@ describe('adapter', () => {
     $registry.set({});
     $contextMenu.set(undefined);
     $theme.set('light');
+    resetDragState();
   });
 
   describe('init gating', () => {
@@ -333,6 +337,18 @@ describe('adapter', () => {
         fakeChannel.emit({type: 'destroy-draggable'});
         fakeChannel.emit({type: 'set-draggable-visible', visible: false});
       }).not.toThrow();
+    });
+
+    it('draggable messages: adapter and context-window-drag coexist on the same channel', () => {
+      createAdapter(fakeChannel);
+      const stopDrag = initContextWindowDrag(fakeChannel);
+      fakeChannel.emit({type: 'init', config: makeConfig()});
+
+      fakeChannel.emit({type: 'create-draggable', componentType: 'part'});
+
+      expect($dragState.get()?.itemType).toBe('part');
+
+      stopDrag();
     });
 
     it('page-controllers: sets controllers', () => {
