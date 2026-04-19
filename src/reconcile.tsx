@@ -38,6 +38,12 @@ type PlaceholderEntry = {island: PlaceholderIsland; stateKey: string};
 const placeholderEntries = new Map<string, PlaceholderEntry>();
 const dragPlaceholderEntries = new Map<string, PlaceholderIsland>();
 
+let pageReadyEmitted = false;
+
+export function resetPageReadyFlag(): void {
+  pageReadyEmitted = false;
+}
+
 function placeholderStateKey(record: ComponentRecord): string {
   if (record.type === 'region') return 'region';
   if (record.loading) return 'loading';
@@ -161,6 +167,11 @@ export function reconcilePage(root: HTMLElement, descriptors: DescriptorMap): vo
   const records = parsePage(root, {descriptors, fragment});
 
   finalizeReconcile(records);
+
+  if (!pageReadyEmitted) {
+    pageReadyEmitted = true;
+    tryGetChannel()?.send({type: 'page-ready'});
+  }
 }
 
 export function reconcileSubtree(element: HTMLElement, parentPath: ComponentPath, descriptors: DescriptorMap): void {

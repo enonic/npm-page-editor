@@ -9,7 +9,13 @@ vi.mock('./components/ComponentPlaceholder', () => ({ComponentPlaceholder: () =>
 vi.mock('./components/RegionPlaceholder', () => ({RegionPlaceholder: () => null}));
 
 import {fromString} from './protocol';
-import {reconcilePage, reconcileSubtree, destroyPlaceholders, syncDragEmptyRegions} from './reconcile';
+import {
+  reconcilePage,
+  reconcileSubtree,
+  destroyPlaceholders,
+  resetPageReadyFlag,
+  syncDragEmptyRegions,
+} from './reconcile';
 import {$registry, $selectedPath, $hoveredPath, $config, $contextMenu, getPathForElement} from './state';
 import {$dragState, resetDragState} from './state/drag';
 import {setChannel, resetChannel} from './transport';
@@ -83,6 +89,7 @@ beforeEach(() => {
   $config.set(undefined);
   $contextMenu.set(undefined);
   resetDragState();
+  resetPageReadyFlag();
 
   sendSpy = vi.fn<Channel['send']>();
   setChannel({
@@ -161,6 +168,7 @@ describe('reconcilePage', () => {
 
     reconcilePage(document.body, {});
     $selectedPath.set(path('/main/0'));
+    sendSpy.mockClear();
 
     reconcilePage(document.body, {});
 
@@ -250,6 +258,52 @@ describe('reconcilePage', () => {
     reconcilePage(document.body, {});
 
     expect($registry.get()['/']).toMatchObject({type: 'text'});
+  });
+});
+
+//
+// * page-ready
+//
+
+describe('page-ready', () => {
+  it('emits page-ready on first successful reconcile', () => {
+    document.body.innerHTML = '<section data-portal-region="main"></section>';
+
+    reconcilePage(document.body, {});
+
+    expect(sendSpy).toHaveBeenCalledWith({type: 'page-ready'});
+  });
+
+  it('emits page-ready only once across repeated reconciles', () => {
+    document.body.innerHTML = '<section data-portal-region="main"></section>';
+
+    reconcilePage(document.body, {});
+    reconcilePage(document.body, {});
+    reconcilePage(document.body, {});
+
+    const readyCalls = sendSpy.mock.calls.filter(([msg]) => msg?.type === 'page-ready');
+    expect(readyCalls).toHaveLength(1);
+  });
+
+  it('resetPageReadyFlag re-arms the one-shot emit', () => {
+    document.body.innerHTML = '<section data-portal-region="main"></section>';
+
+    reconcilePage(document.body, {});
+    resetPageReadyFlag();
+    sendSpy.mockClear();
+
+    reconcilePage(document.body, {});
+
+    expect(sendSpy).toHaveBeenCalledWith({type: 'page-ready'});
+  });
+
+  it('does not emit page-ready when reconcile is skipped due to drag', () => {
+    document.body.innerHTML = '<section data-portal-region="main"></section>';
+    $dragState.set(makeDrag());
+
+    reconcilePage(document.body, {});
+
+    expect(sendSpy).not.toHaveBeenCalledWith({type: 'page-ready'});
   });
 });
 

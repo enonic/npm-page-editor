@@ -21,6 +21,13 @@ export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): (
   let initialized = false;
   const queue: IncomingMessage[] = [];
 
+  function reportError(phase: 'init' | 'handle', error: unknown): void {
+    const message = error instanceof Error ? error.message : String(error);
+    // oxlint-disable-next-line no-console
+    console.error(`[page-editor] ${phase} handler failed:`, error);
+    channel.send({type: 'error', phase, message});
+  }
+
   function dispatch(message: IncomingMessage): void {
     switch (message.type) {
       case 'init':
@@ -95,25 +102,32 @@ export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): (
   function handleMessage(message: IncomingMessage): void {
     if (!initialized) {
       if (message.type === 'init') {
-        dispatch(message);
+        try {
+          dispatch(message);
+        } catch (error) {
+          reportError('init', error);
+          return;
+        }
         initialized = true;
-        let firstError: Error | undefined;
         for (const queued of queue) {
           try {
             dispatch(queued);
           } catch (error) {
-            firstError ??= error instanceof Error ? error : new Error(String(error));
+            reportError('handle', error);
           }
         }
         queue.length = 0;
-        if (firstError != null) throw firstError;
       } else {
         queue.push(message);
       }
       return;
     }
 
-    dispatch(message);
+    try {
+      dispatch(message);
+    } catch (error) {
+      reportError('handle', error);
+    }
   }
 
   return channel.subscribe(handleMessage);

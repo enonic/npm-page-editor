@@ -78,6 +78,8 @@ export type IncomingMessage =
 
 export type OutgoingMessage =
   | {type: 'ready'}
+  | {type: 'page-ready'}
+  | {type: 'error'; phase: 'init' | 'reconcile' | 'handle'; message: string}
   | {type: 'select'; path: ComponentPath; position?: {x: number; y: number}; rightClicked?: boolean}
   | {type: 'deselect'; path: ComponentPath}
   | {type: 'move'; from: ComponentPath; to: ComponentPath}

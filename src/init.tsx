@@ -11,7 +11,7 @@ import {initNavigationInterception} from './interaction/navigation';
 import {initSelectionDetection} from './interaction/selection';
 import {isEditorInjectedElement} from './parse/emptiness';
 import {initSelectionPersistence} from './persistence';
-import {destroyPlaceholders, reconcilePage} from './reconcile';
+import {destroyPlaceholders, reconcilePage, resetPageReadyFlag} from './reconcile';
 import {createOverlayHost} from './rendering/overlay-host';
 import {
   clearPageConfig,
@@ -37,6 +37,8 @@ export type PageEditorInstance = {
   notifyComponentLoadFailed: (path: ComponentPath, reason: string) => void;
   requestPageReload: () => void;
 };
+
+let currentInstance: PageEditorInstance | undefined;
 
 function hasMeaningfulMutation(mutation: MutationRecord): boolean {
   return [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)].some(
@@ -65,6 +67,12 @@ function startDomObserver(root: HTMLElement, onReconcile: () => void): () => voi
 }
 
 export function initPageEditor(root: HTMLElement, target: Window, callbacks?: RendererCallbacks): PageEditorInstance {
+  if (currentInstance != null) {
+    // oxlint-disable-next-line no-console
+    console.warn('[page-editor] initPageEditor called while already initialized; returning existing instance.');
+    return currentInstance;
+  }
+
   const channel = createChannel(target);
   setChannel(channel);
 
@@ -74,10 +82,21 @@ export function initPageEditor(root: HTMLElement, target: Window, callbacks?: Re
 
   let currentDescriptors: DescriptorMap = {};
 
+  const safeReconcile = (): void => {
+    try {
+      reconcilePage(root, currentDescriptors);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      // oxlint-disable-next-line no-console
+      console.error('[page-editor] reconcile failed:', error);
+      channel.send({type: 'error', phase: 'reconcile', message});
+    }
+  };
+
   const stopAdapter = createAdapter(channel, {
     onPageState: page => {
       currentDescriptors = page.components;
-      reconcilePage(root, currentDescriptors);
+      safeReconcile();
     },
     onComponentLoadRequest: callbacks?.onComponentLoadRequest,
   });
@@ -89,7 +108,7 @@ export function initPageEditor(root: HTMLElement, target: Window, callbacks?: Re
   const stopComponentDrag = initComponentDrag(channel);
   const stopContextDrag = initContextWindowDrag(channel);
   const stopPersistence = initSelectionPersistence();
-  const stopObserver = startDomObserver(root, () => reconcilePage(root, currentDescriptors));
+  const stopObserver = startDomObserver(root, safeReconcile);
 
   channel.send({type: 'ready'});
 
@@ -124,13 +143,18 @@ export function initPageEditor(root: HTMLElement, target: Window, callbacks?: Re
     resetDragState();
     closeContextMenu();
 
+    resetPageReadyFlag();
     resetChannel();
+    currentInstance = undefined;
   };
 
-  return {
+  const instance: PageEditorInstance = {
     destroy,
     notifyComponentLoaded: path => channel.send({type: 'component-loaded', path}),
     notifyComponentLoadFailed: (path, reason) => channel.send({type: 'component-load-failed', path, reason}),
     requestPageReload: () => channel.send({type: 'page-reload-request'}),
   };
+
+  currentInstance = instance;
+  return instance;
 }

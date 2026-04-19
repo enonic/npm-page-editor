@@ -54,12 +54,17 @@ function makeRecord(p: ComponentPath, overrides?: Partial<ComponentRecord>): Com
   };
 }
 
-type FakeChannel = Channel & {emit(msg: IncomingMessage): void};
+type FakeChannel = Channel & {
+  emit(msg: IncomingMessage): void;
+  sendMock: ReturnType<typeof vi.fn<Channel['send']>>;
+};
 
 function createFakeChannel(): FakeChannel {
   const handlers = new Set<MessageHandler>();
+  const sendMock = vi.fn<Channel['send']>();
   return {
-    send: vi.fn<Channel['send']>(),
+    send: sendMock,
+    sendMock,
     subscribe(handler) {
       handlers.add(handler);
       return () => {
@@ -349,6 +354,69 @@ describe('adapter', () => {
 
       fakeChannel.emit({type: 'init', config: makeConfig()});
       expect($config.get()).toBeUndefined();
+    });
+  });
+
+  //
+  // * G13 — error reporting
+  //
+
+  describe('error reporting', () => {
+    beforeEach(() => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('posts init-phase error and keeps adapter uninitialized when init handler throws', () => {
+      createAdapter(fakeChannel);
+
+      vi.spyOn($config, 'set').mockImplementationOnce(() => {
+        throw new Error('bad config');
+      });
+
+      fakeChannel.emit({type: 'init', config: makeConfig()});
+
+      expect(fakeChannel.sendMock).toHaveBeenCalledWith({type: 'error', phase: 'init', message: 'bad config'});
+
+      // Adapter remained uninitialized; a subsequent select stays queued.
+      fakeChannel.emit({type: 'select', path: path('/main/0')});
+      expect($selectedPath.get()).toBeUndefined();
+
+      // A second init succeeds and drains the queue.
+      fakeChannel.emit({type: 'init', config: makeConfig()});
+      expect($selectedPath.get()).toEqual(path('/main/0'));
+    });
+
+    it('reports handle-phase errors per-message while draining the queue', () => {
+      const onPageState = vi.fn<(page: PageDescriptor) => void>().mockImplementationOnce(() => {
+        throw new Error('queued boom');
+      });
+      createAdapter(fakeChannel, {onPageState});
+
+      fakeChannel.emit({type: 'page-state', page: {components: {}}});
+      fakeChannel.emit({type: 'select', path: path('/main/0')});
+      fakeChannel.emit({type: 'init', config: makeConfig()});
+
+      expect(fakeChannel.sendMock).toHaveBeenCalledWith({type: 'error', phase: 'handle', message: 'queued boom'});
+      expect($selectedPath.get()).toEqual(path('/main/0'));
+    });
+
+    it('reports handle-phase error for post-init message without re-throwing', () => {
+      const onPageState = vi.fn<(page: PageDescriptor) => void>().mockImplementation(() => {
+        throw new Error('post-init boom');
+      });
+      createAdapter(fakeChannel, {onPageState});
+
+      fakeChannel.emit({type: 'init', config: makeConfig()});
+
+      expect(() => {
+        fakeChannel.emit({type: 'page-state', page: {components: {}}});
+      }).not.toThrow();
+
+      expect(fakeChannel.sendMock).toHaveBeenCalledWith({type: 'error', phase: 'handle', message: 'post-init boom'});
     });
   });
 });
