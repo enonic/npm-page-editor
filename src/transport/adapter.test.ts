@@ -186,19 +186,6 @@ describe('adapter', () => {
       expect($contextMenu.get()).toBeUndefined();
     });
 
-    it('add/remove/move/duplicate/reset: no-op', () => {
-      createAdapter(fakeChannel);
-      fakeChannel.emit({type: 'init', config: makeConfig()});
-
-      expect(() => {
-        fakeChannel.emit({type: 'add', path: path('/main/0'), componentType: 'part'});
-        fakeChannel.emit({type: 'remove', path: path('/main/0')});
-        fakeChannel.emit({type: 'move', from: path('/main/0'), to: path('/main/1')});
-        fakeChannel.emit({type: 'duplicate', path: path('/main/0')});
-        fakeChannel.emit({type: 'reset', path: path('/main/0')});
-      }).not.toThrow();
-    });
-
     it('load: sets loading true and forwards existing=true to onComponentLoadRequest', () => {
       const p = path('/main/0');
       $registry.set({[p]: makeRecord(p)});

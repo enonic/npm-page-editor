@@ -39,12 +39,7 @@ export const INCOMING_MESSAGE_TYPES: ReadonlySet<IncomingMessage['type']> = new 
   'init',
   'select',
   'deselect',
-  'add',
-  'remove',
-  'move',
   'load',
-  'duplicate',
-  'reset',
   'set-component-state',
   'page-state',
   'set-lock',
@@ -60,12 +55,7 @@ export type IncomingMessage =
   | {type: 'init'; config: PageConfig}
   | {type: 'select'; path: ComponentPath; silent?: boolean}
   | {type: 'deselect'; path?: ComponentPath}
-  | {type: 'add'; path: ComponentPath; componentType: ComponentType}
-  | {type: 'remove'; path: ComponentPath}
-  | {type: 'move'; from: ComponentPath; to: ComponentPath}
   | {type: 'load'; path: ComponentPath; existing: boolean}
-  | {type: 'duplicate'; path: ComponentPath}
-  | {type: 'reset'; path: ComponentPath}
   | {type: 'set-component-state'; path: ComponentPath; processing: boolean}
   | {type: 'page-state'; page: PageDescriptor}
   | {type: 'set-lock'; locked: boolean}

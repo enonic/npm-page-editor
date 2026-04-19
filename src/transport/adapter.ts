@@ -48,13 +48,6 @@ export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): (
         closeContextMenu();
         break;
 
-      case 'add':
-      case 'remove':
-      case 'move':
-      case 'duplicate':
-      case 'reset':
-        break;
-
       case 'load':
         updateRecord(message.path, {loading: true});
         callbacks?.onComponentLoadRequest?.(message.path, message.existing);

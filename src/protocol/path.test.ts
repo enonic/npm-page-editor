@@ -9,6 +9,7 @@ import {
   isComponent,
   isDescendantOf,
   isRegion,
+  isRoot,
   parent,
   regionName,
   root,
@@ -36,6 +37,24 @@ describe('ComponentPath', () => {
   describe('root', () => {
     it('returns the root path "/"', () => {
       expect(root()).toBe('/');
+    });
+  });
+
+  describe('isRoot', () => {
+    it('returns true for root', () => {
+      expect(isRoot(root())).toBe(true);
+    });
+
+    it('returns false for a top-level region', () => {
+      expect(isRoot(unwrap('/main'))).toBe(false);
+    });
+
+    it('returns false for a component path', () => {
+      expect(isRoot(unwrap('/main/0'))).toBe(false);
+    });
+
+    it('returns false for a deeply nested component', () => {
+      expect(isRoot(unwrap('/main/0/left/2'))).toBe(false);
     });
   });
 

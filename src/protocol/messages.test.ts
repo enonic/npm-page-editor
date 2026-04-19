@@ -26,17 +26,12 @@ describe('IncomingMessage', () => {
     }
   });
 
-  it('includes all 18 variants', () => {
+  it('includes all 13 variants', () => {
     const types: IncomingMessage['type'][] = [
       'init',
       'select',
       'deselect',
-      'add',
-      'remove',
-      'move',
       'load',
-      'duplicate',
-      'reset',
       'set-component-state',
       'page-state',
       'set-lock',
@@ -47,7 +42,7 @@ describe('IncomingMessage', () => {
       'set-draggable-visible',
       'page-controllers',
     ];
-    expect(types).toHaveLength(18);
+    expect(types).toHaveLength(13);
   });
 });
 

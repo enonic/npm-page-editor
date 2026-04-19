@@ -1,6 +1,7 @@
 export {
   type ComponentPath,
   root,
+  isRoot,
   fromString,
   parent,
   regionName,

@@ -6,6 +6,10 @@ export function root(): ComponentPath {
   return '/' as ComponentPath;
 }
 
+export function isRoot(path: ComponentPath): boolean {
+  return path === '/';
+}
+
 export function fromString(raw: string): Result<ComponentPath> {
   if (raw === '') return err('Path must not be empty');
   if (!raw.startsWith('/')) return err("Path must start with '/'");
