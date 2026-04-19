@@ -38,13 +38,13 @@ Rollup of every gap identified in `docs/compatibility.md` with its final verdict
 | G21 | `getContent()` replacement | 🔴 FIX | [03-LOAD-COMPONENT](03-LOAD-COMPONENT.md) |
 | G22 | Idempotent init | 🔴 FIX | [01-INIT](01-INIT.md) |
 | G23 | INLINE / preview-only mode | 🔴 FIX | [02-PREVIEW-MODE](02-PREVIEW-MODE.md) |
-| G24 | `CustomizePageEvent` outgoing | 🔴 FIX | [04-MUTATIONS](04-MUTATIONS.md) |
-| G25 | `SetFragmentComponentEvent` outgoing | 🔴 FIX | [07-FRAGMENTS](07-FRAGMENTS.md) |
+| G24 | `CustomizePageEvent` outgoing | ⚫ CLOSED (no iframe emitter) | [04-MUTATIONS](04-MUTATIONS.md) |
+| G25 | `SetFragmentComponentEvent` outgoing | ⚫ CLOSED (no iframe emitter, no drag contentId) | [07-FRAGMENTS](07-FRAGMENTS.md) |
 | G26 | `TextEditModeChangedEvent` outgoing | ⚫ WONT-FIX | [06-TEXT-UPDATE](06-TEXT-UPDATE.md) |
 | G27 | `ShowWarningLiveEditEvent` outgoing | ⚫ WONT-FIX | [08-RESIDUALS](08-RESIDUALS.md) |
 | G28 | Keyboard event shape | 🟢 DONE (CS translates) | [08-RESIDUALS](08-RESIDUALS.md) |
 
-**Totals:** 15 FIX · 2 VERIFY · 4 DONE · 7 WONT-FIX
+**Totals:** 13 FIX · 2 VERIFY · 4 DONE · 9 CLOSED/WONT-FIX
 
 ## Per-topic summary
 
@@ -62,7 +62,7 @@ New `initPreview(target, options?)` export for the preview iframe — small bund
 
 ### 04 — Page & Component Mutations (G4, G11, G24)
 
-Incoming protocol loses `add`/`remove`/`move`/`duplicate`/`reset` (5 no-ops → 12 variants). Outgoing counterparts stay — they're user-intent signals. `reset` unified (`isRoot(path)` helper added for CS discrimination). New outgoing `customize-page` (menu wiring in topic 8).
+Incoming protocol loses `add`/`remove`/`move`/`duplicate`/`reset` (5 no-ops → 12 variants). Outgoing counterparts stay — they're user-intent signals. `reset` unified (`isRoot(path)` helper added for CS discrimination). G24 (`customize-page` outgoing) closed — no legacy iframe emitter; CS handles customize parent-side.
 
 ### 05 — Palette Drag (G5)
 
@@ -74,7 +74,7 @@ Iframe owns no text editing. Double-click → `edit-text` outgoing → CS opens 
 
 ### 07 — Fragments (G18, G25)
 
-`parseComponent` strips inner `data-portal-component-type`/`data-portal-region` when type is fragment (matches legacy; fixes click-on-inner-content). `create-draggable` gains optional `contentId`; new outgoing `{type: 'set-fragment-component', path, contentId}` fires alongside `add` on drop when `contentId` present.
+`parseComponent` strips inner `data-portal-component-type`/`data-portal-region` when type is fragment (matches legacy; fixes click-on-inner-content). G25 (`set-fragment-component` outgoing) closed — no legacy iframe emitter and CS's palette drag API has no `contentId` source; fragment content binding stays in the parent-side inspect panel.
 
 ### 08 — Residuals (G3, G7, G8, G9, G12, G15, G16, G17, G19, G20, G27, G28)
 
@@ -88,7 +88,6 @@ Three real fixes (silent select, Delete-key-removes, link classification). Two v
 |---|---|
 | Added | `update-text-component` (G6) |
 | Changed | `load` gains required `existing: boolean` (G1) |
-| Changed | `create-draggable` gains optional `contentId?: string` (G25) |
 | Removed | `add`, `remove`, `move`, `duplicate`, `reset` no-ops (G4) |
 | Honored | `select.silent` flag (G3) |
 
@@ -98,8 +97,6 @@ Three real fixes (silent select, Delete-key-removes, link classification). Two v
 |---|---|
 | Added | `page-ready` after first reconcile (G14) |
 | Added | `error` with phase + message (G13) |
-| Added | `customize-page` (G24) |
-| Added | `set-fragment-component` (G25) |
 
 ### Public API changes
 
@@ -123,9 +120,9 @@ Ordered by dependency — later items assume earlier items landed.
 
 1. **Init / lifecycle foundation** — topic 1 + topic 2. New options shape, instance API, `page-ready`, error channel. Everything downstream depends on it.
 2. **Load-component data access** — topic 3. Unblocks CS migration of `EditorEventHandler`.
-3. **Mutation protocol** — topic 4. Drop dead messages, add `isRoot`, add `customize-page`.
+3. **Mutation protocol** — topic 4. Drop dead messages, add `isRoot`.
 4. **Text update fast path** — topic 6. Single incoming addition.
-5. **Fragments** — topic 7. Parse fix + set-fragment message.
+5. **Fragments** — topic 7. Parse fix (inner-element strip).
 6. **Residuals** — topic 8. Three fixes (G3, G15, G20), two verifications (G16, G19). Can parallelize.
 7. **Palette drag cleanup** — topic 5. Adapter comment + CS-side rename.
 8. **CS migration PR** — swap `PageEditor.init(true/false)` for `initPageEditor`/`initPreview`; rewire outgoing listeners.

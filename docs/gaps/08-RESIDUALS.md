@@ -48,7 +48,17 @@ if (event.type === 'keydown' && isDelete && selected != null && !isRoot(selected
 
 **Problem.** `src/interaction/navigation.ts:13–18` fires `{type: 'navigate', path: href}` for every non-hash, non-javascript anchor — including external URLs and same-page fragments with an absolute href. Legacy used `UriHelper.isNavigatingOutsideOfXP`, `isNavigatingWithinSamePage`, `isDownloadLink` to classify before firing (`PageEditor.ts:155–172`).
 
-**Fix.** Extend `initNavigationInterception` to accept `hostDomain` (from `EditorOptions` / `PreviewOptions` per topic 2) and classify:
+Legacy also resolved the navigation target using **`data-content-path` with `href` fallback**, not `href` alone. XP's portal rewrites internal-content anchors so they carry an SEO-friendly public `href` plus a canonical `data-content-path` attribute holding the internal XP path. Legacy's `findPath` (`PageEditor.ts:174–177`) preferred `data-content-path`:
+
+```ts
+const findPath = (a: HTMLLinkElement): string | undefined => {
+  return a.dataset.contentPath || a.href;
+};
+```
+
+v2's current implementation reads only `href`, so anchors with an external-looking `href` but an internal `data-content-path` are miscategorized as external and skip interception. The `navigate` payload also loses the canonical internal path CS needs to open the target in the wizard.
+
+**Fix.** Extend `initNavigationInterception` to accept `hostDomain` (from `EditorOptions` / `PreviewOptions` per topic 2), resolve the path via `data-content-path || href`, and classify on the resolved path:
 
 ```ts
 export type NavigationOptions = {
@@ -58,21 +68,27 @@ export type NavigationOptions = {
 export function initNavigationInterception(channel: Channel, options?: NavigationOptions): () => void {
   const hostDomain = options?.hostDomain;
 
-  const shouldIntercept = (anchor: HTMLAnchorElement, href: string): boolean => {
-    if (href.startsWith('#') || href.startsWith('javascript:')) return false;
+  const resolvePath = (anchor: HTMLAnchorElement): string => {
+    return anchor.dataset.contentPath || anchor.href;
+  };
+
+  const shouldIntercept = (anchor: HTMLAnchorElement): boolean => {
     if (anchor.hasAttribute('download')) return false;
-    if (href.startsWith('/')) return true;
-    if (hostDomain != null && href.startsWith(hostDomain)) return true;
+    const path = resolvePath(anchor);
+    if (path.startsWith('#') || path.startsWith('javascript:')) return false;
+    if (path.startsWith('/')) return true;
+    if (hostDomain != null && path.startsWith(hostDomain)) return true;
     return false;
   };
 
-  // ...rest unchanged, but gate the channel.send behind shouldIntercept
+  // ...rest unchanged; when intercepting, send channel.send({type: 'navigate', path: resolvePath(anchor)})
 }
 ```
 
 - `<a download>` links skip interception (browser downloads them).
-- Relative hrefs starting with `/` are always internal.
-- Absolute hrefs are internal iff they begin with `hostDomain`.
+- `data-content-path` wins over `href` — matches legacy and gives CS the canonical internal path.
+- Relative paths starting with `/` are always internal.
+- Absolute paths are internal iff they begin with `hostDomain`.
 - Everything else (other hosts, data URIs, mailto) skips.
 
 If `hostDomain` is absent, only the relative-path case is treated as internal; absolute URLs pass through to the browser. Dev-mode `console.warn` on the first skipped absolute URL when `hostDomain` is missing — helps catch a missing `EditorOptions.hostDomain` during integration.

@@ -1,6 +1,6 @@
 # 04 — Page & Component Mutations
 
-Covers how Content Studio communicates page mutations to the editor (drop the per-event messages, keep `page-state` as the single source of truth), how page-level reset is discriminated from component-level reset, and the missing `customize-page` outgoing action.
+Covers how Content Studio communicates page mutations to the editor (drop the per-event messages, keep `page-state` as the single source of truth) and how page-level reset is discriminated from component-level reset. G24 (`customize-page` outgoing) was investigated and closed — the legacy event has no iframe emitter, so no v2 surface is needed.
 
 Scope: gaps **G4**, **G11**, **G24** from `docs/compatibility.md`.
 
@@ -146,37 +146,28 @@ Splitting back to `reset-page` and `reset-component` bloats the protocol for a d
 
 ---
 
-## G24 — `customize-page` outgoing
+## G24 — `customize-page` outgoing → CLOSED (no iframe emitter)
 
-### Problem
+### Verification result
 
-Legacy CS listens to `CustomizePageEvent` at `LiveEditPageProxy.ts:511–513` → `PageEventsManager.notifyCustomizePageRequested()`. The editor fires it when a user clicks "Customize" on a template-driven page, converting it from a template-bound page to a manually-edited one. CS also invokes the customize flow internally when adding a component to a locked (template-driven) page — `LiveEditPageProxy.ts:470–475`.
+Grep across `~/repo/app-contentstudio/modules/lib/src`, `~/repo/app-contentstudio/modules/app/src`, `~/repo/lib-admin-ui/src`, and `.worktrees/master` returns **zero** matches for `new CustomizePageEvent(`. The listener at `~/repo/app-contentstudio/modules/lib/src/main/resources/assets/js/app/wizard/page/LiveEditPageProxy.ts:511–513` is dead code — the event is registered on `IframeEventBus` but never fired from any iframe-side code.
 
-v2 has no equivalent outgoing message, no action definition, no menu wiring.
+The real entry points for the customize flow are all **parent-side**:
+
+- `~/repo/app-contentstudio/modules/lib/src/main/resources/assets/js/app/wizard/PageEventsManager.ts:541` — `notifyCustomizePageRequested()` is the actual trigger.
+- `~/repo/app-contentstudio/modules/lib/src/main/resources/assets/js/app/wizard/page/LiveEditPageProxy.ts:474` — auto-synthesized parent-side when `AddComponentEvent` arrives on a locked page (auto-customize-before-add).
+- `~/repo/app-contentstudio/modules/lib/src/main/resources/assets/js/app/wizard/page/contextwindow/inspect/page/PageTemplateAndControllerForm.ts:40` — inspect-panel "Yes" callback in the template-switch dialog.
+- `~/repo/app-contentstudio/modules/lib/src/main/resources/assets/js/v6/features/store/page-editor/commands.ts:39` — v6 `requestCustomizePage()` invoked from `PageInspectionPanel.tsx:31` confirmation dialog.
+
+CS never needed an iframe→parent customize signal. Customize is always initiated parent-side (dialog, inspect panel, or inferred from a locked-page add).
 
 ### Decision
 
-Add the message:
+**No v2 outgoing needed.** Do not add `customize-page` to `OutgoingMessage`, no action definition, no menu entry.
 
-```ts
-// src/protocol/messages.ts — OutgoingMessage
-| {type: 'customize-page'}
-```
+### CS migration
 
-No payload. The action is page-scoped; the page is always the current page.
-
-Add a matching action definition in `src/actions/definitions.ts` that fires the message:
-
-```ts
-case 'customize-page': {
-  channel.send({type: 'customize-page'});
-  break;
-}
-```
-
-### Scope of topic 4 vs topic 8
-
-This topic defines the message. Menu placement and enabled-state logic (show "Customize" only on locked, template-driven, non-fragment pages) lives in the context-menu topic — that's topic 8 (G17, context menu actions). Once topic 8 lands, `customize-page` becomes a first-class page-level menu entry alongside `save-as-template` and `inspect`.
+The dead `CustomizePageEvent.on()` listener at `LiveEditPageProxy.ts:511–513` can be removed during CS migration along with the `IframeEventBus.registerClass('CustomizePageEvent', …)` call at `LiveEditPageProxy.ts:161`-adjacent. None of the parent-side `notifyCustomizePageRequested()` callers are affected.
 
 ---
 
@@ -185,15 +176,12 @@ This topic defines the message. Menu placement and enabled-state logic (show "Cu
 1. `src/protocol/messages.ts`
    - Remove `add`, `remove`, `move`, `duplicate`, `reset` from `IncomingMessage`.
    - Remove them from `INCOMING_MESSAGE_TYPES`.
-   - Add `customize-page` to `OutgoingMessage`.
 2. `src/transport/adapter.ts:44–48` — delete the no-op cases. TypeScript's exhaustiveness check at `adapter.ts:87–90` catches any we forget.
 3. `src/protocol/path.ts` — add `export function isRoot(path)`.
-4. `src/actions/definitions.ts` — add `customize-page` action sender.
-5. Tests:
+4. Tests:
    - `src/transport/adapter.test.ts` — drop tests that assert no-op behavior for the removed messages; they should no longer compile against `IncomingMessage`.
    - `src/protocol/path.test.ts` — cover `isRoot('/')`, `isRoot('/region/0')`, edge cases.
-   - `src/actions/definitions.test.ts` — assert `customize-page` action sends the outgoing message.
-6. Update integration stories and the `OutgoingMessage` documentation in `README.md`.
+5. Update integration stories and the `OutgoingMessage` documentation in `README.md`.
 
 ---
 
@@ -201,8 +189,7 @@ This topic defines the message. Menu placement and enabled-state logic (show "Cu
 
 - **Dropping incoming `add`/`remove`/`move`/`duplicate`/`reset` is a breaking change** to the incoming protocol. Blast radius is zero because no shipped consumer uses v2 yet; CS migration is a single-PR collapse of three subscriptions into one. If a future feature wants per-mutation hints (animation sequencing, perf optimizations), reintroducing is trivial — but keeping them as dead no-ops today invites consumers to implement handlers that do nothing, which is worse than silence.
 - **Unified `reset` with `isRoot` discrimination** instead of split messages keeps the protocol lean. Tradeoff: CS must know about `isRoot` — but it's a named export, easy to discover.
-- **`customize-page` as a payload-less message** assumes the iframe never customizes pages other than "its own". That's true today; CS mounts a new iframe per content item. If that changes, we'd need a content identifier in the payload.
-- **Menu wiring deferred to topic 8** leaves `customize-page` defined but unreachable from the UI until then. That's intentional — topic 4 is about protocol shape; topic 8 is about menu composition.
+- **`customize-page` outgoing closed** — verification found no iframe emitter in the current codebase. Customize is a parent-side flow (inspect panel, template dialog, auto-triggered on locked-page add). If a future feature needs the iframe to request a customize (e.g., a right-click "Customize" entry), reintroducing is straightforward: one message, one action, one CS listener wire-up.
 
 ---
 

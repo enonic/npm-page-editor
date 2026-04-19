@@ -1,6 +1,6 @@
 # 07 — Fragments
 
-Covers fragment-specific behavior parity with legacy (inner-content selection, fragment-containing-layout drop guard, top-fragment action restrictions) and the missing outgoing message for binding a specific fragment content to a dropped fragment slot.
+Covers fragment-specific behavior parity with legacy (inner-content selection, fragment-containing-layout drop guard, top-fragment action restrictions). G25 (`set-fragment-component` outgoing) was investigated and closed — the legacy event has no iframe emitter and the palette drag API has no source for a fragment contentId, so no v2 surface is needed.
 
 Scope: gaps **G18** and **G25** from `docs/compatibility.md`.
 
@@ -52,122 +52,45 @@ Edge case: a fragment whose root element has `data-portal-component-type="fragme
 
 ---
 
-## G25 — `set-fragment-component` outgoing
+## G25 — `set-fragment-component` outgoing → CLOSED (no iframe emitter, no drag contentId)
 
-### Problem
+### Verification result
 
-Legacy CS listens to `SetFragmentComponentEvent` at `LiveEditPageProxy.ts:495–499` with payload `{path, contentId}`. The editor fires it when a user drags a **specific existing fragment content** from the CS content tree/browser into the page — "bind this path to fragment-content X."
+Same pattern as G24 — the legacy listener has no corresponding emitter. Grep across `~/repo/app-contentstudio/modules/lib/src`, `~/repo/app-contentstudio/modules/app/src`, `~/repo/lib-admin-ui/src`, and `.worktrees/master` returns **zero** matches for `new SetFragmentComponentEvent(`. The listener at `~/repo/app-contentstudio/modules/lib/src/main/resources/assets/js/app/wizard/page/LiveEditPageProxy.ts:495–499` is dead code.
 
-v2 has no equivalent outgoing message. `create-draggable` carries only `componentType: string`, so the iframe has no way to distinguish a drag-in of a specific fragment from a drag-in of a generic fragment slot.
+Further, CS's palette drag API cannot carry a `contentId` in the first place. `LiveEditPageProxy.createDraggable` at `~/repo/app-contentstudio/modules/lib/src/main/resources/assets/js/app/wizard/page/LiveEditPageProxy.ts:205` accepts only `{ type: string }` and fires `CreateOrDestroyDraggableEvent(data.type, true)` — there is no source anywhere in the CS codebase for a fragment-specific contentId at drag start. The only drag payload is a generic component-type string.
+
+The real entry points for binding a specific fragment content are all **parent-side**:
+
+- `~/repo/app-contentstudio/modules/lib/src/main/resources/assets/js/app/wizard/page/contextwindow/inspect/region/FragmentInspectionPanel.ts:212,217` — user picks a fragment from the inspect panel's fragment-selector dropdown.
+- `~/repo/app-contentstudio/modules/lib/src/main/resources/assets/js/v6/features/store/page-editor/commands.ts:64` — v6 `requestSetFragmentComponent()` invoked from the inspect UI.
+
+Actual flow today:
+
+1. User drags a generic **`fragment` component-type** from the palette into a region. v2 fires `add` (existing behavior). CS creates an empty fragment slot.
+2. CS auto-opens the fragment inspect panel.
+3. User picks a specific fragment content from the selector dropdown → parent-side `notifySetFragmentComponentRequested(path, contentId)`.
+
+No `SetFragmentComponentEvent` ever crosses the iframe boundary.
 
 ### Decision
 
-Two protocol changes:
+**No v2 outgoing needed.** Do not add `set-fragment-component` to `OutgoingMessage`, and do not extend `create-draggable` with `contentId`. The existing generic-fragment drag (`add` → empty fragment slot → parent-side inspect-panel binding) already covers the shipped UX.
 
-**1. Extend `create-draggable` with optional `contentId`:**
+### CS migration
 
-```ts
-// src/protocol/messages.ts — IncomingMessage
-| {type: 'create-draggable'; componentType: string; contentId?: string}
-```
-
-When CS starts a palette drag for a specific fragment content, it passes the content's ID. The iframe's `context-window-drag` session holds the `contentId` through the drag.
-
-**2. Add the outgoing message:**
-
-```ts
-// OutgoingMessage
-| {type: 'set-fragment-component'; path: ComponentPath; contentId: string}
-```
-
-### Drop behavior
-
-`src/interaction/context-window-drag.ts` sends a two-message sequence on valid drop when the session carries a `contentId`:
-
-```ts
-// on valid drop:
-const to = insertAt(target.regionPath, target.index);
-
-channel.send({type: 'add', path: to, componentType: session.itemType});
-if (session.contentId != null) {
-  channel.send({type: 'set-fragment-component', path: to, contentId: session.contentId});
-}
-channel.send({type: 'drag-dropped', to});
-```
-
-- `add` creates the fragment slot structurally.
-- `set-fragment-component` binds the slot to the specific fragment content.
-- `drag-dropped` reports the completion.
-
-Matches legacy's sequence of `AddComponentEvent` followed by `SetFragmentComponentEvent`. CS already has separate handlers for these in `PageEventsManager` (`notifyComponentAddRequested` and `notifySetFragmentComponentRequested`), so CS migration is a two-line find-and-replace.
-
-### Session state change
-
-Extend the `ContextDragSession` type in `context-window-drag.ts`:
-
-```ts
-type ContextDragSession = {
-  itemType: ComponentType;
-  itemLabel: string;
-  visible: boolean;
-  placeholderAnchor: HTMLElement | undefined;
-  contentId: string | undefined;  // new
-};
-```
-
-Initialized from `message.contentId` in the `create-draggable` handler; otherwise `undefined`.
-
----
-
-## CS migration
-
-### Palette drag for a specific fragment content
-
-```ts
-// Before — CS builds an event-bus draggable with extra tracker
-new CreateOrDestroyDraggableEvent('fragment', true).fire();
-// CS-side tracks the contentId separately and fires SetFragmentComponentEvent on drop
-
-// After — single message with contentId
-postToIframe({type: 'create-draggable', componentType: 'fragment', contentId});
-// On drop, v2 fires both 'add' and 'set-fragment-component' automatically
-```
-
-### Listening to `set-fragment-component` outgoing
-
-```ts
-// parent-side handler
-if (msg.type === 'set-fragment-component') {
-  PageEventsManager.get().notifySetFragmentComponentRequested(msg.path, msg.contentId);
-}
-```
-
-### Generic fragment drop (no pre-selected content) still works
-
-When CS fires `create-draggable` without `contentId`, the drop produces only `add` and `drag-dropped` — no `set-fragment-component`. CS's existing "empty fragment slot" handling (if any) remains intact.
+The dead `SetFragmentComponentEvent.on()` listener at `LiveEditPageProxy.ts:495–499` can be removed during CS migration, along with the `IframeEventBus.registerClass('SetFragmentComponentEvent', …)` call at `LiveEditPageProxy.ts:161`. None of the parent-side `notifySetFragmentComponentRequested()` callers are affected.
 
 ---
 
 ## Implementation checklist
 
 1. `src/parse/parse-page.ts` — add the fragment-strip branch in `parseComponent` after the layout branch.
-2. `src/protocol/messages.ts`:
-   - Extend `create-draggable` with `contentId?: string`.
-   - Add `set-fragment-component` to `OutgoingMessage`.
-3. `src/interaction/context-window-drag.ts`:
-   - Extend `ContextDragSession` with `contentId: string | undefined`.
-   - Read `message.contentId` in the `create-draggable` handler; store on session.
-   - On valid drop, conditionally send `set-fragment-component` between `add` and `drag-dropped`.
-4. Tests:
+2. Tests:
    - `src/parse/parse-page.test.ts` — assert inner `data-portal-*` attrs stripped for fragment-in-page; preserved for layout-rooted fragments (which are parsed as layouts).
    - `src/interaction/selection.test.ts` — assert click on inner fragment content selects the fragment.
-   - `src/interaction/context-window-drag.test.ts` — assert the two-message drop sequence when `contentId` present; single-message when absent.
-   - `src/protocol/messages.test.ts` — shape assertions.
-5. Update integration stories with a "drop specific fragment" scenario.
-6. CS migration (not in this repo):
-   - `LiveEditPageProxy.createDraggable` — pass `contentId` when the drag source is a specific fragment content.
-   - Remove CS-side `SetFragmentComponentEvent` firing on drop; rely on v2's outgoing message.
-   - Parent-side listener for `set-fragment-component` outgoing.
+3. CS migration (not in this repo):
+   - Remove the dead `SetFragmentComponentEvent.on()` listener at `LiveEditPageProxy.ts:495–499` and the matching `registerClass` call.
 
 ---
 
@@ -175,8 +98,7 @@ When CS fires `create-draggable` without `contentId`, the drop produces only `ad
 
 - **DOM mutation during parse** — Legacy stripped the same attributes; shipping model for years without incident. Risk is low but present: custom renderer code that reads `data-portal-component-type` on inner fragment elements (non-editor consumers?) would see them stripped. Not a known consumer today.
 - **Layout-rooted fragments escape the strip** — intentional. Their inner regions/components need to stay tracked and editable. The type-discrimination at parse happens because `parseComponent` evaluates `element.dataset.portalComponentType` first; a fragment content rendered as a layout parses as a layout.
-- **Optional `contentId` on `create-draggable`** — keeps backward compat for generic-fragment drops (empty slot). If CS never uses the generic case after migration, tighten to required (drop the `?`).
-- **Two outgoing messages on drop instead of one fat one** — matches legacy split and CS's existing two-handler shape. A unified `add-with-fragment-content` would be prettier but requires CS to refactor two PageEventsManager entry points. Not worth it.
+- **`set-fragment-component` outgoing closed** — verification found no iframe emitter, and CS's palette drag API has no source for a per-content `contentId`. If a future feature adds a "drag a specific fragment content from the content tree" entry point, reintroducing is straightforward: one outgoing message, `contentId` on `create-draggable`, a two-message drop sequence.
 
 ---
 

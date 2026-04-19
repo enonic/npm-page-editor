@@ -93,6 +93,24 @@ Setting `innerHTML` is a well-known XSS vector. Accepted here because:
 
 If CS's sanitization ever weakens or v2 is used with an untrusted sender, add DOMPurify as a defensive layer in the adapter handler. Not needed today.
 
+### URL rewriting is CS's responsibility
+
+The content model stores image references as **pseudo-URLs**, not HTTP URLs:
+
+- `image://<id>` — rendered image
+- `media://<id>` — original media
+
+Defined in `ImageUrlResolver.ts:12–13`. Browsers cannot load these; they must be rewritten to proper portal paths (`/_/image/...`) before being set as `<img src>`, otherwise every image in every text component fails silently.
+
+Legacy handled this iframe-side: `TextComponentView.setText` (`.worktrees/master/.../text/TextComponentView.ts:119`) and `FragmentComponentView.processTextElement` (`.worktrees/master/.../fragment/FragmentComponentView.ts:123`) both called `HTMLAreaHelper.convertRenderSrcToPreviewSrc(text, contentId)` before assigning HTML. Legacy CS also called it parent-side when loading text *into* the HTMLArea editor, and the reverse (`convertPreviewSrcToRenderSrc`) on save to put pseudo-URLs back into storage.
+
+v2 keeps the conversion **parent-side only**. The adapter performs a raw `el.innerHTML = message.html`; it does not pull in `ImageUrlResolver`, `Project`, or content-id machinery. CS is the sole owner of preview↔render rewriting:
+
+- **On save** (unchanged from today): HTMLArea editor runs `convertPreviewSrcToRenderSrc` → stores pseudo-URLs in the model. See `TextEditor.tsx:402` and `TextInspectionPanel.ts:112`.
+- **On push to iframe** (new in v2): CS must run `convertRenderSrcToPreviewSrc(text, contentId, project)` on `event.getText()` before `postToIframe`. Without this, the iframe receives pseudo-URLs and images go blank.
+
+**Invariant:** v2's adapter assumes HTML arrives with browser-loadable URLs. CS owns the conversion; the iframe never touches `image://` / `media://` schemes.
+
 ---
 
 ## CS migration
@@ -113,7 +131,12 @@ PageState.getEvents().onComponentUpdated((event: ComponentUpdatedEvent) => {
   if (!this.isFrameLoaded) return;
   postToIframe({type: 'page-state', page: PageState.getState().toJson()});
   if (event instanceof ComponentTextUpdatedEvent && event.getText()) {
-    postToIframe({type: 'update-text-component', path: event.getPath(), html: event.getText()});
+    const previewHtml = HTMLAreaHelper.convertRenderSrcToPreviewSrc(
+      event.getText(),
+      content.getId(),
+      this.context?.project,
+    );
+    postToIframe({type: 'update-text-component', path: event.getPath(), html: previewHtml});
   }
 });
 ```
@@ -145,6 +168,7 @@ postToIframe({type: 'update-text-component', path, html: sanitizedHtml});
 4. Update `README.md` and integration stories.
 5. CS migration (parent-side, not in this repo):
    - `LiveEditPageProxy.ts:574–582` — swap event-bus firing for `postToIframe({type: 'update-text-component', ...})`; drop `origin`.
+   - Run `HTMLAreaHelper.convertRenderSrcToPreviewSrc(text, contentId, project)` on `event.getText()` before posting (see "URL rewriting is CS's responsibility").
    - Wire the inspect panel's `edit-text` receiver + HTMLArea save → `update-text-component` sender.
 
 ---
@@ -155,6 +179,7 @@ postToIframe({type: 'update-text-component', path, html: sanitizedHtml});
 - **No `origin` flag** — Simpler shape; relies on the invariant that v2 never emits text updates. If that invariant ever breaks (e.g. future in-iframe text feature), we'd reintroduce origin then.
 - **Dedicated message breaks "single mutation channel"** — Topic 4 committed to `page-state` as the structural-mutation channel. This is a *content* channel, not structural. Different data, different channel. Acceptable separation.
 - **`innerHTML` trust** — Relies on CS-side sanitization. Single boundary, documented.
+- **URL rewriting is parent-side** — v2 keeps `ImageUrlResolver` / pseudo-URL knowledge out of the published package. CS converts `image://` / `media://` → portal paths before posting. Tradeoff: every CS-side emitter of `update-text-component` must remember to convert, or text images silently break. Single emitter today (`LiveEditPageProxy.onComponentUpdated`), so risk is bounded.
 
 ---
 
