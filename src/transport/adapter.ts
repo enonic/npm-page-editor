@@ -41,7 +41,7 @@ export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): (
         break;
 
       case 'select':
-        setSelectedPath(message.path);
+        setSelectedPath(message.path, {silent: message.silent === true});
         break;
 
       case 'deselect':

@@ -4,7 +4,7 @@ import type {JSX} from 'preact';
 
 import {useStoreValue} from '../hooks/use-store';
 import {useTrackedRect} from '../hooks/use-tracked-rect';
-import {$dragState, $selectedPath, getRecord} from '../state';
+import {$dragState, $selectedPath, $silentSelection, getRecord} from '../state';
 
 const SELECTION_HIGHLIGHTER_NAME = 'SelectionHighlighter';
 
@@ -15,6 +15,7 @@ export const SelectionHighlighter = (): JSX.Element | null => {
 
   useEffect(() => {
     if (selectedPath == null) return;
+    if ($silentSelection.get()) return;
 
     const element = getRecord(selectedPath)?.element;
     element?.scrollIntoView({block: 'nearest'});

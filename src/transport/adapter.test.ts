@@ -13,6 +13,7 @@ import {
   $pageControllers,
   $registry,
   $selectedPath,
+  $silentSelection,
   $theme,
   resetDragState,
 } from '../state';
@@ -89,6 +90,7 @@ describe('adapter', () => {
   beforeEach(() => {
     fakeChannel = createFakeChannel();
     $selectedPath.set(undefined);
+    $silentSelection.set(false);
     $locked.set(false);
     $modifyAllowed.set(true);
     $config.set(undefined);
@@ -175,6 +177,30 @@ describe('adapter', () => {
       fakeChannel.emit({type: 'select', path: path('/main/0')});
 
       expect($selectedPath.get()).toEqual(path('/main/0'));
+      expect($silentSelection.get()).toBe(false);
+    });
+
+    it('select: sets silent flag when message.silent is true', () => {
+      createAdapter(fakeChannel);
+      fakeChannel.emit({type: 'init', config: makeConfig()});
+
+      fakeChannel.emit({type: 'select', path: path('/main/0'), silent: true});
+
+      expect($selectedPath.get()).toEqual(path('/main/0'));
+      expect($silentSelection.get()).toBe(true);
+    });
+
+    it('select: clears silent flag on a subsequent non-silent select', () => {
+      createAdapter(fakeChannel);
+      fakeChannel.emit({type: 'init', config: makeConfig()});
+
+      fakeChannel.emit({type: 'select', path: path('/main/0'), silent: true});
+      expect($silentSelection.get()).toBe(true);
+
+      fakeChannel.emit({type: 'select', path: path('/main/1')});
+
+      expect($selectedPath.get()).toEqual(path('/main/1'));
+      expect($silentSelection.get()).toBe(false);
     });
 
     it('deselect: clears selected path and closes context menu', () => {

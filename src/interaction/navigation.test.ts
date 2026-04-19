@@ -97,7 +97,7 @@ describe('navigation', () => {
       expect(navigateMessages).toEqual([]);
     });
 
-    it('accepts hostDomain option without changing behavior', () => {
+    it('intercepts internal relative path even without hostDomain', () => {
       const anchor = document.createElement('a');
       anchor.setAttribute('href', '/content/site/page');
       document.body.appendChild(anchor);
@@ -107,6 +107,81 @@ describe('navigation', () => {
       anchor.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
 
       expect(channel.messages).toContainEqual({type: 'navigate', path: '/content/site/page'});
+    });
+
+    //
+    // * hostDomain Classifier
+    //
+
+    it('intercepts absolute URL when it matches hostDomain', () => {
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'https://example.com/content/page');
+      document.body.appendChild(anchor);
+
+      cleanup = initNavigationInterception(channel, {hostDomain: 'https://example.com'});
+
+      anchor.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
+
+      expect(channel.messages).toContainEqual({type: 'navigate', path: 'https://example.com/content/page'});
+    });
+
+    it('ignores absolute URL that does not match hostDomain', () => {
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'https://other.example/page');
+      document.body.appendChild(anchor);
+
+      cleanup = initNavigationInterception(channel, {hostDomain: 'https://example.com'});
+
+      const event = new MouseEvent('click', {bubbles: true, cancelable: true});
+      anchor.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(channel.messages.filter(m => m.type === 'navigate')).toEqual([]);
+    });
+
+    it('ignores download link regardless of href', () => {
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', '/files/report.pdf');
+      anchor.setAttribute('download', '');
+      document.body.appendChild(anchor);
+
+      cleanup = initNavigationInterception(channel);
+
+      const event = new MouseEvent('click', {bubbles: true, cancelable: true});
+      anchor.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(channel.messages.filter(m => m.type === 'navigate')).toEqual([]);
+    });
+
+    it('uses data-content-path instead of href when present', () => {
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'https://public.example/slug');
+      anchor.setAttribute('data-content-path', '/content/site/target');
+      document.body.appendChild(anchor);
+
+      cleanup = initNavigationInterception(channel, {hostDomain: 'https://example.com'});
+
+      anchor.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
+
+      expect(channel.messages).toContainEqual({type: 'navigate', path: '/content/site/target'});
+    });
+
+    it('ignores absolute URL and warns once when hostDomain is missing', () => {
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'https://example.com/page');
+      document.body.appendChild(anchor);
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      cleanup = initNavigationInterception(channel);
+
+      anchor.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
+      anchor.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
+
+      expect(channel.messages.filter(m => m.type === 'navigate')).toEqual([]);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0]?.[0]).toContain('hostDomain');
     });
 
     //

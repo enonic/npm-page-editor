@@ -1,7 +1,6 @@
 import type {Channel} from '../transport';
 
 export type NavigationOptions = {
-  // ? Consumed by the link classifier in gap G20; accepted now to lock the public shape.
   hostDomain?: string;
 };
 
@@ -10,17 +9,48 @@ function findAnchorElement(target: EventTarget | null): HTMLAnchorElement | unde
   return target.closest('a') ?? undefined;
 }
 
-export function initNavigationInterception(channel: Channel, _options?: NavigationOptions): () => void {
+function resolvePath(anchor: HTMLAnchorElement): string {
+  return anchor.dataset.contentPath ?? anchor.getAttribute('href') ?? '';
+}
+
+function shouldIntercept(path: string, hostDomain: string | undefined): boolean {
+  if (path === '' || path.startsWith('#') || path.startsWith('javascript:')) return false;
+  if (path.startsWith('/')) return true;
+  if (hostDomain != null && path.startsWith(hostDomain)) return true;
+  return false;
+}
+
+export function initNavigationInterception(channel: Channel, options?: NavigationOptions): () => void {
+  const hostDomain = options?.hostDomain;
+  let warnedMissingHostDomain = false;
+
   const handleClick = (event: MouseEvent): void => {
     const anchor = findAnchorElement(event.target);
     if (anchor == null) return;
+    if (anchor.hasAttribute('download')) return;
 
-    const href = anchor.getAttribute('href');
-    if (href == null || href === '' || href.startsWith('#') || href.startsWith('javascript:')) return;
+    const path = resolvePath(anchor);
+    if (!shouldIntercept(path, hostDomain)) {
+      if (
+        hostDomain == null &&
+        !warnedMissingHostDomain &&
+        path !== '' &&
+        !path.startsWith('#') &&
+        !path.startsWith('javascript:') &&
+        !path.startsWith('/')
+      ) {
+        warnedMissingHostDomain = true;
+        // oxlint-disable-next-line no-console
+        console.warn(
+          `[page-editor] Navigation interception skipped absolute URL "${path}" — pass EditorOptions.hostDomain to classify it as internal.`,
+        );
+      }
+      return;
+    }
 
     event.preventDefault();
     event.stopPropagation();
-    channel.send({type: 'navigate', path: href});
+    channel.send({type: 'navigate', path});
   };
 
   const sendIframeLoaded = (): void => {

@@ -1,7 +1,8 @@
 export type {ComponentRecord} from './registry';
 export {$registry, setRegistry, getRecord, updateRecord, removeRecord, findRecordsByDescriptor} from './registry';
 
-export {$selectedPath, setSelectedPath, getSelectedPath} from './selection';
+export {$selectedPath, $silentSelection, setSelectedPath, getSelectedPath} from './selection';
+export type {SetSelectedPathOptions} from './selection';
 
 export {$hoveredPath, setHoveredPath, getHoveredPath} from './hover';
 

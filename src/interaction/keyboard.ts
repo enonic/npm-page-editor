@@ -1,7 +1,8 @@
 import type {Modifiers} from '../protocol';
 import type {Channel} from '../transport';
 
-import {isDragging} from '../state';
+import {isRoot} from '../protocol';
+import {getSelectedPath, isDragging} from '../state';
 
 // Known editor combos that should not reach the browser
 const EDITOR_COMBOS: {key: string; mod?: boolean; alt?: boolean}[] = [
@@ -29,9 +30,22 @@ function hasModifier(event: KeyboardEvent): boolean {
   return event.ctrlKey || event.metaKey || event.altKey || event.shiftKey;
 }
 
+function isDeleteKey(event: KeyboardEvent): boolean {
+  return event.key === 'Delete' || event.key === 'Backspace';
+}
+
 export function initKeyboardHandling(channel: Channel): () => void {
   const handleKeyEvent = (event: KeyboardEvent): void => {
     if (isDragging()) return;
+
+    if (event.type === 'keydown' && isDeleteKey(event) && !hasModifier(event)) {
+      const selected = getSelectedPath();
+      if (selected != null && !isRoot(selected)) {
+        event.preventDefault();
+        channel.send({type: 'remove', path: selected});
+        return;
+      }
+    }
 
     const isCombo = isEditorCombo(event);
     if (!hasModifier(event) && !isCombo) return;
