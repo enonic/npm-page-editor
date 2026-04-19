@@ -11,17 +11,17 @@ function path(raw: string): ComponentPath {
   return result.value;
 }
 
-function setDragTarget(targetRegion: ComponentPath | undefined): void {
+function setDragTarget(targetRegion: ComponentPath | undefined, variant: 'slot' | 'region' | undefined = 'slot'): void {
   $dragState.set({
     itemType: 'part',
     itemLabel: 'Part',
     sourcePath: undefined,
     targetRegion,
     targetIndex: undefined,
-    dropAllowed: true,
+    dropAllowed: variant === 'slot',
     message: undefined,
     placeholderElement: undefined,
-    placeholderVariant: undefined,
+    placeholderVariant: variant,
     x: undefined,
     y: undefined,
   });
@@ -77,6 +77,18 @@ describe('RegionPlaceholder', () => {
     await new Promise(resolve => setTimeout(resolve, 50));
 
     expect(island.host.style.display).toBe('none');
+  });
+
+  it('keeps the host visible on region rejection so the column does not collapse', async () => {
+    const region = document.createElement('section');
+    document.body.appendChild(region);
+
+    const island = createPlaceholderIsland(region, <RegionPlaceholder path={path('/main')} regionName='main' />);
+
+    setDragTarget(path('/main'), 'region');
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    expect(island.host.style.display).toBe('block');
   });
 
   it('restores host visibility when the drag target moves away', async () => {

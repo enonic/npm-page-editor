@@ -23,6 +23,10 @@ export const RegionPlaceholder = ({path}: RegionPlaceholderProps): JSX.Element =
   // ! conditionally rendering null. The host keeps inline `width:100%;
   // ! height:100%`, so without this it keeps reserving flex space in the
   // ! region and squashes the drag anchor.
+  // ? Only hide on the 'slot' variant (valid drop with injected anchor).
+  // ? On 'region' rejection nothing is inserted, so keeping the placeholder
+  // ? visible stops the column from collapsing to its sibling's height.
+  const hideHost = dragState?.targetRegion === path && dragState?.placeholderVariant === 'slot';
   useLayoutEffect(() => {
     const el = rootRef.current;
     if (el == null) return;
@@ -30,8 +34,8 @@ export const RegionPlaceholder = ({path}: RegionPlaceholderProps): JSX.Element =
     if (!(root instanceof ShadowRoot)) return;
     const host = root.host;
     if (!(host instanceof HTMLElement)) return;
-    host.style.display = dragState?.targetRegion === path ? 'none' : 'block';
-  }, [dragState?.targetRegion, path]);
+    host.style.display = hideHost ? 'none' : 'block';
+  }, [hideHost]);
 
   return (
     <div
