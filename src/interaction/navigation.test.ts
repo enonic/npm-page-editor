@@ -97,6 +97,18 @@ describe('navigation', () => {
       expect(navigateMessages).toEqual([]);
     });
 
+    it('accepts hostDomain option without changing behavior', () => {
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', '/content/site/page');
+      document.body.appendChild(anchor);
+
+      cleanup = initNavigationInterception(channel, {hostDomain: 'https://example.com'});
+
+      anchor.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
+
+      expect(channel.messages).toContainEqual({type: 'navigate', path: '/content/site/page'});
+    });
+
     //
     // * Iframe Loaded
     //

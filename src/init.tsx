@@ -1,3 +1,5 @@
+import './rendering/editor-fonts.css';
+import './rendering/editor-ui.css';
 import type {DescriptorMap} from './parse';
 import type {ComponentPath} from './protocol';
 
@@ -27,7 +29,8 @@ import {
 } from './state';
 import {createAdapter, createChannel, resetChannel, setChannel} from './transport';
 
-export type RendererCallbacks = {
+export type EditorOptions = {
+  hostDomain?: string;
   onComponentLoadRequest?: (path: ComponentPath) => void;
 };
 
@@ -66,7 +69,7 @@ function startDomObserver(root: HTMLElement, onReconcile: () => void): () => voi
   return () => observer.disconnect();
 }
 
-export function initPageEditor(root: HTMLElement, target: Window, callbacks?: RendererCallbacks): PageEditorInstance {
+export function initPageEditor(root: HTMLElement, target: Window, options?: EditorOptions): PageEditorInstance {
   if (currentInstance != null) {
     // oxlint-disable-next-line no-console
     console.warn('[page-editor] initPageEditor called while already initialized; returning existing instance.');
@@ -98,13 +101,13 @@ export function initPageEditor(root: HTMLElement, target: Window, callbacks?: Re
       currentDescriptors = page.components;
       safeReconcile();
     },
-    onComponentLoadRequest: callbacks?.onComponentLoadRequest,
+    onComponentLoadRequest: options?.onComponentLoadRequest,
   });
   const stopGeometry = initGeometryScheduler(path => getRecord(path)?.element);
   const stopHover = initHoverDetection();
   const stopSelection = initSelectionDetection(channel);
   const stopKeyboard = initKeyboardHandling(channel);
-  const stopNavigation = initNavigationInterception(channel);
+  const stopNavigation = initNavigationInterception(channel, {hostDomain: options?.hostDomain});
   const stopComponentDrag = initComponentDrag(channel);
   const stopContextDrag = initContextWindowDrag(channel);
   const stopPersistence = initSelectionPersistence();

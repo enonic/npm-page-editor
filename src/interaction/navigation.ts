@@ -1,11 +1,16 @@
 import type {Channel} from '../transport';
 
+export type NavigationOptions = {
+  // ? Consumed by the link classifier in gap G20; accepted now to lock the public shape.
+  hostDomain?: string;
+};
+
 function findAnchorElement(target: EventTarget | null): HTMLAnchorElement | undefined {
   if (!(target instanceof HTMLElement)) return undefined;
   return target.closest('a') ?? undefined;
 }
 
-export function initNavigationInterception(channel: Channel): () => void {
+export function initNavigationInterception(channel: Channel, _options?: NavigationOptions): () => void {
   const handleClick = (event: MouseEvent): void => {
     const anchor = findAnchorElement(event.target);
     if (anchor == null) return;

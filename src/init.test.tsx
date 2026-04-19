@@ -325,4 +325,32 @@ describe('initPageEditor', () => {
     errorSpy.mockRestore();
     instance.destroy();
   });
+
+  //
+  // * G23 — EditorOptions
+  //
+
+  it('routes onComponentLoadRequest from options when load message arrives', () => {
+    const {target} = createMockTarget();
+    const onComponentLoadRequest = vi.fn<(p: ComponentPath) => void>();
+
+    const instance = initPageEditor(document.body, target, {onComponentLoadRequest});
+
+    emitIncoming({type: 'init', config: makeConfig()});
+    emitIncoming({type: 'load', path: '/main/0'});
+
+    expect(onComponentLoadRequest).toHaveBeenCalledWith(path('/main/0'));
+
+    instance.destroy();
+  });
+
+  it('accepts hostDomain in options without throwing', () => {
+    const {target} = createMockTarget();
+
+    const instance = initPageEditor(document.body, target, {hostDomain: 'https://example.com'});
+
+    expect(instance).toBeDefined();
+
+    instance.destroy();
+  });
 });
