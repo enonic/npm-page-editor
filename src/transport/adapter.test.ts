@@ -199,18 +199,31 @@ describe('adapter', () => {
       }).not.toThrow();
     });
 
-    it('load: sets loading true and calls onComponentLoadRequest', () => {
+    it('load: sets loading true and forwards existing=true to onComponentLoadRequest', () => {
       const p = path('/main/0');
       $registry.set({[p]: makeRecord(p)});
 
-      const onComponentLoadRequest = vi.fn<(path: ComponentPath) => void>();
+      const onComponentLoadRequest = vi.fn<(path: ComponentPath, existing: boolean) => void>();
       createAdapter(fakeChannel, {onComponentLoadRequest});
       fakeChannel.emit({type: 'init', config: makeConfig()});
 
-      fakeChannel.emit({type: 'load', path: p});
+      fakeChannel.emit({type: 'load', path: p, existing: true});
 
       expect($registry.get()[p]?.loading).toBe(true);
-      expect(onComponentLoadRequest).toHaveBeenCalledWith(p);
+      expect(onComponentLoadRequest).toHaveBeenCalledWith(p, true);
+    });
+
+    it('load: forwards existing=false for newly-added components', () => {
+      const p = path('/main/0');
+      $registry.set({[p]: makeRecord(p)});
+
+      const onComponentLoadRequest = vi.fn<(path: ComponentPath, existing: boolean) => void>();
+      createAdapter(fakeChannel, {onComponentLoadRequest});
+      fakeChannel.emit({type: 'init', config: makeConfig()});
+
+      fakeChannel.emit({type: 'load', path: p, existing: false});
+
+      expect(onComponentLoadRequest).toHaveBeenCalledWith(p, false);
     });
 
     it('load: works without callback', () => {
@@ -221,7 +234,7 @@ describe('adapter', () => {
       fakeChannel.emit({type: 'init', config: makeConfig()});
 
       expect(() => {
-        fakeChannel.emit({type: 'load', path: p});
+        fakeChannel.emit({type: 'load', path: p, existing: true});
       }).not.toThrow();
 
       expect($registry.get()[p]?.loading).toBe(true);

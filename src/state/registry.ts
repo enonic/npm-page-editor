@@ -39,3 +39,7 @@ export function removeRecord(path: ComponentPath): void {
   const {[path]: _, ...rest} = records;
   $registry.set(rest);
 }
+
+export function findRecordsByDescriptor(descriptor: string): readonly ComponentRecord[] {
+  return Object.values($registry.get()).filter(record => record.descriptor === descriptor);
+}

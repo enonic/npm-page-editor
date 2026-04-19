@@ -379,16 +379,18 @@ describe('initPageEditor', () => {
   // * G23 — EditorOptions
   //
 
-  it('routes onComponentLoadRequest from options when load message arrives', () => {
+  it('routes onComponentLoadRequest from options with existing flag when load message arrives', () => {
     const {target} = createMockTarget();
-    const onComponentLoadRequest = vi.fn<(p: ComponentPath) => void>();
+    const onComponentLoadRequest = vi.fn<(p: ComponentPath, existing: boolean) => void>();
 
     const instance = initPageEditor(document.body, target, {onComponentLoadRequest});
 
     emitIncoming({type: 'init', config: makeConfig()});
-    emitIncoming({type: 'load', path: '/main/0'});
+    emitIncoming({type: 'load', path: '/main/0', existing: true});
+    emitIncoming({type: 'load', path: '/main/1', existing: false});
 
-    expect(onComponentLoadRequest).toHaveBeenCalledWith(path('/main/0'));
+    expect(onComponentLoadRequest).toHaveBeenNthCalledWith(1, path('/main/0'), true);
+    expect(onComponentLoadRequest).toHaveBeenNthCalledWith(2, path('/main/1'), false);
 
     instance.destroy();
   });
@@ -399,6 +401,130 @@ describe('initPageEditor', () => {
     const instance = initPageEditor(document.body, target, {hostDomain: 'https://example.com'});
 
     expect(instance).toBeDefined();
+
+    instance.destroy();
+  });
+
+  //
+  // * G21 — read-only data accessors
+  //
+
+  it('getConfig returns undefined before init and the config after', () => {
+    const {target} = createMockTarget();
+    const instance = initPageEditor(document.body, target);
+
+    expect(instance.getConfig()).toBeUndefined();
+
+    emitIncoming({type: 'init', config: makeConfig()});
+
+    expect(instance.getConfig()?.contentId).toBe('content-1');
+
+    instance.destroy();
+  });
+
+  it('getRecord returns the registered record and undefined for unknown paths', () => {
+    const {target} = createMockTarget();
+    const instance = initPageEditor(document.body, target);
+
+    const p = path('/main/0');
+    $registry.set({
+      [p]: {
+        path: p,
+        type: 'part',
+        element: undefined,
+        parentPath: undefined,
+        children: [],
+        empty: false,
+        error: false,
+        descriptor: 'my.app:widget',
+        fragmentContentId: undefined,
+        loading: false,
+      },
+    });
+
+    expect(instance.getRecord(p)?.descriptor).toBe('my.app:widget');
+    expect(instance.getRecord(path('/main/99'))).toBeUndefined();
+
+    instance.destroy();
+  });
+
+  it('getElement returns the mounted DOM node or undefined', () => {
+    const {target} = createMockTarget();
+    const instance = initPageEditor(document.body, target);
+
+    const node = document.createElement('article');
+    const p = path('/main/0');
+    $registry.set({
+      [p]: {
+        path: p,
+        type: 'part',
+        element: node,
+        parentPath: undefined,
+        children: [],
+        empty: false,
+        error: false,
+        descriptor: undefined,
+        fragmentContentId: undefined,
+        loading: false,
+      },
+    });
+
+    expect(instance.getElement(p)).toBe(node);
+    expect(instance.getElement(path('/main/99'))).toBeUndefined();
+
+    instance.destroy();
+  });
+
+  it('findRecordsByDescriptor returns all records sharing a descriptor', () => {
+    const {target} = createMockTarget();
+    const instance = initPageEditor(document.body, target);
+
+    const p1 = path('/main/0');
+    const p2 = path('/main/1');
+    const p3 = path('/main/2');
+    $registry.set({
+      [p1]: {
+        path: p1,
+        type: 'part',
+        element: undefined,
+        parentPath: undefined,
+        children: [],
+        empty: false,
+        error: false,
+        descriptor: 'my.app:widget',
+        fragmentContentId: undefined,
+        loading: false,
+      },
+      [p2]: {
+        path: p2,
+        type: 'part',
+        element: undefined,
+        parentPath: undefined,
+        children: [],
+        empty: false,
+        error: false,
+        descriptor: 'my.app:widget',
+        fragmentContentId: undefined,
+        loading: false,
+      },
+      [p3]: {
+        path: p3,
+        type: 'part',
+        element: undefined,
+        parentPath: undefined,
+        children: [],
+        empty: false,
+        error: false,
+        descriptor: 'my.app:other',
+        fragmentContentId: undefined,
+        loading: false,
+      },
+    });
+
+    const found = instance.findRecordsByDescriptor('my.app:widget');
+
+    expect(found.map(r => r.path).sort()).toEqual([p1, p2].sort());
+    expect(instance.findRecordsByDescriptor('my.app:missing')).toEqual([]);
 
     instance.destroy();
   });

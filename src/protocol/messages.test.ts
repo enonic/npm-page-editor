@@ -14,6 +14,18 @@ describe('IncomingMessage', () => {
     }
   });
 
+  it('load carries path and required existing flag', () => {
+    const newPart: IncomingMessage = {type: 'load', path: root(), existing: false};
+    const existingPart: IncomingMessage = {type: 'load', path: root(), existing: true};
+
+    if (newPart.type === 'load') {
+      expect(newPart.existing).toBe(false);
+    }
+    if (existingPart.type === 'load') {
+      expect(existingPart.existing).toBe(true);
+    }
+  });
+
   it('includes all 18 variants', () => {
     const types: IncomingMessage['type'][] = [
       'init',

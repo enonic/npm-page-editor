@@ -63,7 +63,7 @@ export type IncomingMessage =
   | {type: 'add'; path: ComponentPath; componentType: ComponentType}
   | {type: 'remove'; path: ComponentPath}
   | {type: 'move'; from: ComponentPath; to: ComponentPath}
-  | {type: 'load'; path: ComponentPath}
+  | {type: 'load'; path: ComponentPath; existing: boolean}
   | {type: 'duplicate'; path: ComponentPath}
   | {type: 'reset'; path: ComponentPath}
   | {type: 'set-component-state'; path: ComponentPath; processing: boolean}

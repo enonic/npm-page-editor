@@ -1,7 +1,8 @@
 import './rendering/editor-fonts.css';
 import './rendering/editor-ui.css';
 import type {DescriptorMap} from './parse';
-import type {ComponentPath} from './protocol';
+import type {ComponentPath, PageConfig} from './protocol';
+import type {ComponentRecord} from './state';
 
 import {OverlayApp} from './components/OverlayApp';
 import {initGeometryScheduler} from './geometry';
@@ -18,6 +19,8 @@ import {createOverlayHost} from './rendering/overlay-host';
 import {
   clearPageConfig,
   closeContextMenu,
+  findRecordsByDescriptor,
+  getPageConfig,
   getRecord,
   resetDragState,
   setHoveredPath,
@@ -31,7 +34,7 @@ import {createAdapter, createChannel, resetChannel, setChannel} from './transpor
 
 export type EditorOptions = {
   hostDomain?: string;
-  onComponentLoadRequest?: (path: ComponentPath) => void;
+  onComponentLoadRequest?: (path: ComponentPath, existing: boolean) => void;
 };
 
 export type PageEditorInstance = {
@@ -39,6 +42,10 @@ export type PageEditorInstance = {
   notifyComponentLoaded: (path: ComponentPath) => void;
   notifyComponentLoadFailed: (path: ComponentPath, reason: string) => void;
   requestPageReload: () => void;
+  getConfig: () => PageConfig | undefined;
+  getRecord: (path: ComponentPath) => ComponentRecord | undefined;
+  getElement: (path: ComponentPath) => HTMLElement | undefined;
+  findRecordsByDescriptor: (descriptor: string) => readonly ComponentRecord[];
 };
 
 let currentInstance: PageEditorInstance | undefined;
@@ -156,6 +163,10 @@ export function initPageEditor(root: HTMLElement, target: Window, options?: Edit
     notifyComponentLoaded: path => channel.send({type: 'component-loaded', path}),
     notifyComponentLoadFailed: (path, reason) => channel.send({type: 'component-load-failed', path, reason}),
     requestPageReload: () => channel.send({type: 'page-reload-request'}),
+    getConfig: () => getPageConfig(),
+    getRecord: path => getRecord(path),
+    getElement: path => getRecord(path)?.element,
+    findRecordsByDescriptor: descriptor => findRecordsByDescriptor(descriptor),
   };
 
   currentInstance = instance;

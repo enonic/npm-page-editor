@@ -14,7 +14,7 @@ import {
 
 export type AdapterCallbacks = {
   onPageState?: (page: PageDescriptor) => void;
-  onComponentLoadRequest?: (path: ComponentPath) => void;
+  onComponentLoadRequest?: (path: ComponentPath, existing: boolean) => void;
 };
 
 export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): () => void {
@@ -57,7 +57,7 @@ export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): (
 
       case 'load':
         updateRecord(message.path, {loading: true});
-        callbacks?.onComponentLoadRequest?.(message.path);
+        callbacks?.onComponentLoadRequest?.(message.path, message.existing);
         break;
 
       case 'set-component-state':

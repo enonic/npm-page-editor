@@ -1,5 +1,5 @@
 export type {ComponentRecord} from './registry';
-export {$registry, setRegistry, getRecord, updateRecord, removeRecord} from './registry';
+export {$registry, setRegistry, getRecord, updateRecord, removeRecord, findRecordsByDescriptor} from './registry';
 
 export {$selectedPath, setSelectedPath, getSelectedPath} from './selection';
 
