@@ -26,7 +26,16 @@ describe('IncomingMessage', () => {
     }
   });
 
-  it('includes all 13 variants', () => {
+  it('update-text-component carries path and html', () => {
+    const msg: IncomingMessage = {type: 'update-text-component', path: root(), html: '<p>hi</p>'};
+
+    if (msg.type === 'update-text-component') {
+      expect(msg.path).toBe('/');
+      expect(msg.html).toBe('<p>hi</p>');
+    }
+  });
+
+  it('includes all 14 variants', () => {
     const types: IncomingMessage['type'][] = [
       'init',
       'select',
@@ -41,8 +50,9 @@ describe('IncomingMessage', () => {
       'destroy-draggable',
       'set-draggable-visible',
       'page-controllers',
+      'update-text-component',
     ];
-    expect(types).toHaveLength(13);
+    expect(types).toHaveLength(14);
   });
 });
 

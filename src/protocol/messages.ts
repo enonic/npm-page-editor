@@ -49,6 +49,7 @@ export const INCOMING_MESSAGE_TYPES: ReadonlySet<IncomingMessage['type']> = new 
   'destroy-draggable',
   'set-draggable-visible',
   'page-controllers',
+  'update-text-component',
 ]);
 
 export type IncomingMessage =
@@ -64,7 +65,8 @@ export type IncomingMessage =
   | {type: 'create-draggable'; componentType: string}
   | {type: 'destroy-draggable'}
   | {type: 'set-draggable-visible'; visible: boolean}
-  | {type: 'page-controllers'; controllers: PageController[]};
+  | {type: 'page-controllers'; controllers: PageController[]}
+  | {type: 'update-text-component'; path: ComponentPath; html: string};
 
 export type OutgoingMessage =
   | {type: 'ready'}

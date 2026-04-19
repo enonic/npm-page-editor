@@ -8,6 +8,7 @@ import {
   setPageConfig,
   setPageControllers,
   setTheme,
+  getRecord,
   updateRecord,
   closeContextMenu,
 } from '../state';
@@ -85,6 +86,13 @@ export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): (
       case 'page-controllers':
         setPageControllers(message.controllers);
         break;
+
+      case 'update-text-component': {
+        const el = getRecord(message.path)?.element;
+        if (el == null) break;
+        el.innerHTML = message.html;
+        break;
+      }
 
       default: {
         const _exhaustive: never = message;

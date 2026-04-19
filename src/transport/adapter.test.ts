@@ -360,6 +360,39 @@ describe('adapter', () => {
 
       expect($pageControllers.get()).toEqual(controllers);
     });
+
+    it('update-text-component: assigns innerHTML on the recorded text element', () => {
+      const p = path('/main/0');
+      const el = document.createElement('div');
+      el.innerHTML = '<p>old</p>';
+      $registry.set({[p]: makeRecord(p, {type: 'text', element: el})});
+
+      createAdapter(fakeChannel);
+      fakeChannel.emit({type: 'init', config: makeConfig()});
+      fakeChannel.emit({type: 'update-text-component', path: p, html: '<p>new</p>'});
+
+      expect(el.innerHTML).toBe('<p>new</p>');
+    });
+
+    it('update-text-component: no-ops when record is missing', () => {
+      createAdapter(fakeChannel);
+      fakeChannel.emit({type: 'init', config: makeConfig()});
+
+      expect(() => {
+        fakeChannel.emit({type: 'update-text-component', path: path('/main/0'), html: '<p>x</p>'});
+      }).not.toThrow();
+    });
+
+    it('update-text-component: no-ops when record has no element', () => {
+      const p = path('/main/0');
+      $registry.set({[p]: makeRecord(p, {type: 'text'})});
+      createAdapter(fakeChannel);
+      fakeChannel.emit({type: 'init', config: makeConfig()});
+
+      expect(() => {
+        fakeChannel.emit({type: 'update-text-component', path: p, html: '<p>x</p>'});
+      }).not.toThrow();
+    });
   });
 
   describe('cleanup', () => {
