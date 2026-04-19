@@ -34,9 +34,13 @@ export const RegionPlaceholder = ({path}: RegionPlaceholderProps): JSX.Element =
   }, [dragState?.targetRegion, path]);
 
   return (
-    <div ref={rootRef} data-component={REGION_PLACEHOLDER_NAME} className='pe-shell overflow-hidden bg-surface-neutral'>
+    <div
+      ref={rootRef}
+      data-component={REGION_PLACEHOLDER_NAME}
+      className='pe-shell h-full overflow-hidden bg-surface-neutral'
+    >
       <div className='h-full p-2.5'>
-        <div className='pe-dash flex min-h-25 items-center justify-center px-4 py-2.5'>
+        <div className='pe-dash flex h-full min-h-25 items-center justify-center px-4 py-2.5'>
           <p className='text-center text-subtle italic'>{t('field.region.empty')}</p>
         </div>
       </div>

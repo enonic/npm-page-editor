@@ -33,7 +33,15 @@ export const DragPlaceholder = ({
   return (
     <div
       data-component={DRAG_PLACEHOLDER_NAME}
-      className={cn('pe-shell overflow-hidden bg-surface-neutral', className)}
+      className={cn(
+        'pe-shell overflow-hidden bg-surface-neutral',
+        // ? Region rejection: the overlay's fixed height matches the region,
+        // ? which can be shorter than the dashed box (min-h-25 + p-2.5 = 120px).
+        // ? min-h-30 floors the shell at 120px so the rejection message is
+        // ? never cropped; the shell extends past the overlay when needed.
+        variant === 'region' && 'min-h-30',
+        className,
+      )}
     >
       <div className='h-full p-2.5'>
         <div className={dashClasses}>{text}</div>
