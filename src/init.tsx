@@ -15,7 +15,7 @@ import {initSelectionDetection} from './interaction/selection';
 import {setComponentLoadCallback} from './load-request';
 import {isEditorInjectedElement} from './parse/emptiness';
 import {initSelectionPersistence} from './persistence';
-import {destroyPlaceholders, reconcilePage, resetPageReadyFlag} from './reconcile';
+import {destroyPlaceholders, markInitReady, reconcilePage, resetPageReadyFlag} from './reconcile';
 import {createOverlayHost} from './rendering/overlay-host';
 import {
   clearPageConfig,
@@ -170,6 +170,7 @@ export function initPageEditor(root: HTMLElement, target: Window, options?: Edit
         clearPendingSync();
       }
       currentDescriptors = page.components;
+      markInitReady();
       safeReconcile();
     },
   });

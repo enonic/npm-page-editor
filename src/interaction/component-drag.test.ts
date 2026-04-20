@@ -216,7 +216,7 @@ describe('component-drag', () => {
       expect(channel.messages.some(m => m.type === 'drag-stopped')).toBe(true);
     });
 
-    it('does not send drag-stopped on successful drop', () => {
+    it('sends drag-stopped on successful drop after drag-dropped', () => {
       const region = makeRegionElement('main');
       const part0 = makeTrackedElement('part');
       const part1 = makeTrackedElement('part');
@@ -239,9 +239,12 @@ describe('component-drag', () => {
       mouseMove(100, 60);
       mouseUp(100, 180);
 
-      expect(channel.messages.some(m => m.type === 'move')).toBe(true);
-      expect(channel.messages.some(m => m.type === 'drag-dropped')).toBe(true);
-      expect(channel.messages.some(m => m.type === 'drag-stopped')).toBe(false);
+      const types = channel.messages.map(m => m.type);
+      expect(types).toContain('move');
+      const droppedIdx = types.indexOf('drag-dropped');
+      const stoppedIdx = types.indexOf('drag-stopped');
+      expect(droppedIdx).toBeGreaterThanOrEqual(0);
+      expect(stoppedIdx).toBeGreaterThan(droppedIdx);
     });
 
     it('clears drag state after drop', () => {

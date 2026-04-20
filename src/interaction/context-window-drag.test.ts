@@ -226,13 +226,12 @@ describe('context-window-drag', () => {
       channel.messages.length = 0;
       mouseUp(100, 100);
 
-      expect(channel.messages).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({type: 'add', componentType: 'part'}),
-          expect.objectContaining({type: 'drag-dropped'}),
-        ]),
-      );
-      expect(channel.messages.some(m => m.type === 'drag-stopped')).toBe(false);
+      const types = channel.messages.map(m => m.type);
+      expect(types).toContain('add');
+      const droppedIdx = types.indexOf('drag-dropped');
+      const stoppedIdx = types.indexOf('drag-stopped');
+      expect(droppedIdx).toBeGreaterThanOrEqual(0);
+      expect(stoppedIdx).toBeGreaterThan(droppedIdx);
       expect($dragState.get()).toBeUndefined();
     });
 

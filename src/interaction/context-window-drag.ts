@@ -40,7 +40,9 @@ function isComponentType(raw: string): raw is ComponentType {
 export function initContextWindowDrag(channel: Channel): () => void {
   let session: ContextDragSession | undefined;
 
-  function destroySession(canceled: boolean): void {
+  // ! Always fire `drag-stopped` — see `component-drag.ts:endDrag` for the full rationale.
+  // ! On success, emit order is `add` → `drag-dropped` → `drag-stopped`; on cancel it fires alone.
+  function destroySession(): void {
     if (session == null) return;
 
     setDragCursor(false);
@@ -49,14 +51,14 @@ export function initContextWindowDrag(channel: Channel): () => void {
 
     setDragState(undefined);
     setElementIndexFrozen(false);
-    if (canceled) channel.send({type: 'drag-stopped'});
+    channel.send({type: 'drag-stopped'});
     markDirty();
   }
 
   function handleMessage(message: IncomingMessage): void {
     switch (message.type) {
       case 'create-draggable': {
-        if (session != null) destroySession(true);
+        if (session != null) destroySession();
         if (isDragging()) return;
 
         if (!isComponentType(message.componentType)) return;
@@ -95,7 +97,7 @@ export function initContextWindowDrag(channel: Channel): () => void {
       }
 
       case 'destroy-draggable':
-        destroySession(true);
+        destroySession();
         break;
 
       case 'set-draggable-visible':
@@ -184,7 +186,6 @@ export function initContextWindowDrag(channel: Channel): () => void {
     event.stopPropagation();
 
     const target = inferDropTarget(event.clientX, event.clientY);
-    let dropped = false;
 
     if (target != null) {
       const validation = validateDrop(undefined, target.regionPath, session.itemType);
@@ -192,11 +193,10 @@ export function initContextWindowDrag(channel: Channel): () => void {
         const to = insertAt(target.regionPath, target.index);
         channel.send({type: 'add', path: to, componentType: session.itemType});
         channel.send({type: 'drag-dropped', to});
-        dropped = true;
       }
     }
 
-    destroySession(!dropped);
+    destroySession();
   };
 
   //
@@ -211,6 +211,6 @@ export function initContextWindowDrag(channel: Channel): () => void {
     unsubscribe();
     document.removeEventListener('mousemove', handleMouseMove, {capture: true});
     document.removeEventListener('mouseup', handleMouseUp, {capture: true});
-    if (session != null) destroySession(true);
+    if (session != null) destroySession();
   };
 }

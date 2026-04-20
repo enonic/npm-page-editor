@@ -1,4 +1,4 @@
-import type {ComponentPath} from './protocol';
+import type {ComponentPath, PageConfig} from './protocol';
 import type {DragState} from './state/drag';
 import type {Channel} from './transport';
 
@@ -14,6 +14,7 @@ import {
   reconcilePage,
   reconcileSubtree,
   destroyPlaceholders,
+  markInitReady,
   resetPageReadyFlag,
   syncDragEmptyRegions,
 } from './reconcile';
@@ -84,14 +85,31 @@ function noop(): void {
 let sendSpy: ReturnType<typeof vi.fn<Channel['send']>>;
 let loadSpy: ReturnType<typeof vi.fn<(path: string, existing: boolean) => void>>;
 
+function makeMinimalConfig(): PageConfig {
+  return {
+    contentId: 'test',
+    pageName: 'Test',
+    pageIconClass: '',
+    locked: false,
+    modifyPermissions: true,
+    pageEmpty: false,
+    pageTemplate: false,
+    fragment: false,
+    fragmentAllowed: true,
+    resetEnabled: false,
+    phrases: {},
+  };
+}
+
 beforeEach(() => {
   $registry.set({});
   $selectedPath.set(undefined);
   $hoveredPath.set(undefined);
-  $config.set(undefined);
+  $config.set(makeMinimalConfig());
   $contextMenu.set(undefined);
   resetDragState();
   resetPageReadyFlag();
+  markInitReady();
 
   sendSpy = vi.fn<Channel['send']>();
   setChannel({
@@ -296,6 +314,7 @@ describe('page-ready', () => {
 
     reconcilePage(document.body, {});
     resetPageReadyFlag();
+    markInitReady();
     sendSpy.mockClear();
 
     reconcilePage(document.body, {});
@@ -310,6 +329,96 @@ describe('page-ready', () => {
     reconcilePage(document.body, {});
 
     expect(sendSpy).not.toHaveBeenCalledWith({type: 'page-ready'});
+  });
+
+  it('does not emit page-ready until markInitReady() has been called', () => {
+    resetPageReadyFlag();
+    document.body.innerHTML = '<section data-portal-region="main"></section>';
+
+    reconcilePage(document.body, {});
+
+    expect(sendSpy).not.toHaveBeenCalledWith({type: 'page-ready'});
+
+    markInitReady();
+    reconcilePage(document.body, {});
+
+    expect(sendSpy).toHaveBeenCalledWith({type: 'page-ready'});
+  });
+
+  it('does not emit page-ready when config is unset', () => {
+    resetPageReadyFlag();
+    markInitReady();
+    $config.set(undefined);
+    document.body.innerHTML = '<section data-portal-region="main"></section>';
+
+    reconcilePage(document.body, {});
+
+    expect(sendSpy).not.toHaveBeenCalledWith({type: 'page-ready'});
+  });
+});
+
+//
+// * Controller switch short-circuit (I3 defensive)
+//
+
+describe('controller switch short-circuit', () => {
+  it('skips ensureStubs and load fan-out when the / descriptor changes', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part" id="stay"></article>
+      </section>
+    `;
+
+    reconcilePage(document.body, {
+      '/': {descriptor: 'app:landing'},
+      '/main/0': {type: 'part', descriptor: 'app:hello'},
+    });
+    loadSpy.mockClear();
+
+    reconcilePage(document.body, {
+      '/': {descriptor: 'app:article'},
+      '/main/0': {type: 'part', descriptor: 'app:hello'},
+      '/main/1': {type: 'part', descriptor: 'app:new'},
+    });
+
+    const region = document.querySelector('[data-portal-region="main"]') as HTMLElement;
+    expect(region.querySelectorAll('[data-portal-component-type]')).toHaveLength(1);
+    expect(loadSpy).not.toHaveBeenCalled();
+  });
+
+  it('stays short-circuited on subsequent reconciles until reset', () => {
+    document.body.innerHTML = '<section data-portal-region="main"></section>';
+
+    reconcilePage(document.body, {'/': {descriptor: 'app:a'}});
+    reconcilePage(document.body, {'/': {descriptor: 'app:b'}});
+    loadSpy.mockClear();
+
+    reconcilePage(document.body, {
+      '/': {descriptor: 'app:b'},
+      '/main/0': {type: 'part', descriptor: 'app:hello'},
+    });
+
+    const region = document.querySelector('[data-portal-region="main"]') as HTMLElement;
+    expect(region.querySelectorAll('[data-portal-component-type]')).toHaveLength(0);
+    expect(loadSpy).not.toHaveBeenCalled();
+  });
+
+  it('resumes normal reconciliation after resetPageReadyFlag (fresh init)', () => {
+    document.body.innerHTML = '<section data-portal-region="main"></section>';
+
+    reconcilePage(document.body, {'/': {descriptor: 'app:a'}});
+    reconcilePage(document.body, {'/': {descriptor: 'app:b'}});
+
+    resetPageReadyFlag();
+    markInitReady();
+    loadSpy.mockClear();
+
+    reconcilePage(document.body, {
+      '/': {descriptor: 'app:b'},
+      '/main/0': {type: 'part', descriptor: 'app:hello'},
+    });
+
+    expect(loadSpy).toHaveBeenCalledWith('/main/0', false);
   });
 });
 

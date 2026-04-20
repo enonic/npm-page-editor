@@ -144,9 +144,9 @@ Without both, page-config edits in CS's InspectPanel update local state and even
 12. **D3–D5** — `[DONE]` fragment strip now covers `data-portal-region-name` (D3); `parseFragmentPage` accepts region roots and preserves the declared region name in the path (D4); `getPathForElement` walks up the DOM to find a registered ancestor (D5).
 
 **Phase 3 — UI consistency (high)**
-13. **E3** — gate selection restore on config+descriptors arrival.
-14. **I9** — `drag-stopped` on success path.
-15. **I3 (defensive half)** — short-circuit reconcile on `/`-descriptor identity change.
+13. **E3** — `[DONE]` `reconcilePage` now gates the `page-ready` emit and `flushSelectionRestore` on both `initReady` (set from `onPageState`) and `$config.get() != null`. Initial-HTML MutationObserver reconciles before `init` / `page-state` land no longer burn the one-shot restore. `reconcile.tsx:markInitReady`, `init.tsx:onPageState`.
+14. **I9** — `[DONE]` `drag-stopped` now fires on both success and cancel paths in `component-drag.ts:endDrag` and `context-window-drag.ts:destroySession`. Outgoing order on success: `move`/`add` → `drag-dropped` → `drag-stopped`. Consumers dedup by session state. CS can now drop the `notifyComponentDragStopped()` compensation inside its `drag-dropped` handler (see I6 coordination).
+15. **I3 (defensive half)** — `[DONE]` `reconcilePage` detects `/`-descriptor identity change and latches `controllerSwitched`; subsequent reconciles short-circuit (no `ensureStubs`, no `load` fan-out) until `resetPageReadyFlag()` fires on destroy / new init. `reconcile.tsx`.
 
 **Phase 4 — correctness polish (medium)**
 16. **D6, D7, E5, E6, E7, F1, F3 (iframe debounce), I10**.

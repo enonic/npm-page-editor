@@ -204,7 +204,12 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
     }
   }
 
-  function endDrag(canceled: boolean): void {
+  // ! Always fire `drag-stopped` (on both success and cancel) — the legacy editor did this
+  // ! and CS relies on it to unwind per-drag compensation state. Firing only on cancel forces
+  // ! CS to mirror the semantics inside its `drag-dropped` handler (see
+  // ! `docs/architectural-regressions.md#I9`). The outgoing order on success is
+  // ! `move` → `drag-dropped` → `drag-stopped`; consumers deduplicate by session state.
+  function endDrag(): void {
     if (active == null) return;
 
     setDragCursor(false);
@@ -216,7 +221,7 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
     syncDragEmptyRegions(undefined);
     setDragState(undefined);
     setElementIndexFrozen(false);
-    if (canceled) channel.send({type: 'drag-stopped', path: dragPath});
+    channel.send({type: 'drag-stopped', path: dragPath});
     markDirty();
   }
 
@@ -269,7 +274,6 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
 
     const dragState = active;
     const target = inferDropTarget(event.clientX, event.clientY, active.path);
-    let dropped = false;
 
     if (target != null) {
       const validation = validateDrop(active.path, target.regionPath, active.itemType);
@@ -288,23 +292,22 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
         const syncId = moved ? options?.onAfterLocalMove?.() : undefined;
         channel.send({type: 'move', from: dragState.path, to, syncId});
         channel.send({type: 'drag-dropped', from: dragState.path, to, syncId});
-        dropped = true;
       }
     }
 
-    endDrag(!dropped);
+    endDrag();
   };
 
   const handleKeyDown = (event: KeyboardEvent): void => {
     if (event.key === 'Escape' && active != null) {
       event.preventDefault();
-      endDrag(true);
+      endDrag();
     }
   };
 
   const handleWindowBlur = (): void => {
     if (pending != null) pending = undefined;
-    if (active != null) endDrag(true);
+    if (active != null) endDrag();
   };
 
   //
@@ -324,7 +327,7 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
     document.removeEventListener('keydown', handleKeyDown);
     window.removeEventListener('blur', handleWindowBlur);
 
-    if (active != null) endDrag(true);
+    if (active != null) endDrag();
     pending = undefined;
   };
 }

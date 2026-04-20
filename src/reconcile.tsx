@@ -41,7 +41,19 @@ const placeholderEntries = new Map<string, PlaceholderEntry>();
 const dragPlaceholderEntries = new Map<string, PlaceholderIsland>();
 
 let pageReadyEmitted = false;
+// ! Both config and at least one `page-state` must have landed before `page-ready` is emitted
+// ! and selection-restore is flushed. Without this gate, a MutationObserver-triggered reconcile
+// ! firing on the raw server HTML — before `init` and `page-state` arrive — would flip
+// ! `pageReadyEmitted` true and then `flushSelectionRestore` would either (a) run against an
+// ! empty registry and wipe `sessionStorage`, or (b) never run because `pendingRestore` only
+// ! populates once `$config` is set. See `docs/architectural-regressions.md#E3`.
+let initReady = false;
 let prevDescriptors: DescriptorMap = {};
+// ! Set when the `/`-descriptor key changes between reconciles (controller switch). While true,
+// ! reconcile is a no-op — no `ensureStubs`, no `load` fan-out — to avoid racing the
+// ! `page-reload-request` → CS reload that follows. Cleared on `resetPageReadyFlag` (destroy /
+// ! new init). See `docs/architectural-regressions.md#I3` (defensive half).
+let controllerSwitched = false;
 
 // ! Per-element stable identity keyed by `data-pe-instance-id`. Used by the `load(existing=true)`
 // ! decision in `computeLoadTargets` so descriptor changes are detected against the SAME DOM
@@ -69,9 +81,15 @@ function getInstanceId(element: HTMLElement): string {
 
 export function resetPageReadyFlag(): void {
   pageReadyEmitted = false;
+  initReady = false;
   prevDescriptors = {};
   prevByInstance = new Map();
   instanceCounter = 0;
+  controllerSwitched = false;
+}
+
+export function markInitReady(): void {
+  initReady = true;
 }
 
 const STUBBABLE_TYPES: ReadonlySet<ComponentType> = new Set(['part', 'layout', 'text', 'fragment']);
@@ -341,6 +359,16 @@ function finalizeReconcile(records: Record<string, ComponentRecord>): void {
 export function reconcilePage(root: HTMLElement, descriptors: DescriptorMap): void {
   if (isDragging()) return;
 
+  const prevRootKey = prevDescriptors['/']?.descriptor;
+  const currRootKey = descriptors['/']?.descriptor;
+  if (prevRootKey != null && currRootKey != null && prevRootKey !== currRootKey) {
+    controllerSwitched = true;
+  }
+  if (controllerSwitched) {
+    prevDescriptors = descriptors;
+    return;
+  }
+
   const fragment = $config.get()?.fragment;
   let records = parsePage(root, {descriptors, fragment});
 
@@ -370,7 +398,7 @@ export function reconcilePage(root: HTMLElement, descriptors: DescriptorMap): vo
     fireComponentLoadRequest(path, existing);
   }
 
-  if (!pageReadyEmitted) {
+  if (!pageReadyEmitted && initReady && $config.get() != null) {
     flushSelectionRestore();
     pageReadyEmitted = true;
     tryGetChannel()?.send({type: 'page-ready'});
