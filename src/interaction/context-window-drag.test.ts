@@ -2,7 +2,16 @@ import type {ComponentPath} from '../protocol';
 import type {ComponentRecord} from '../state';
 
 import {fromString} from '../protocol';
-import {$dragState, rebuildIndex, resetDragState, setDragState, setRegistry} from '../state';
+import {
+  $contextMenu,
+  $dragState,
+  closeContextMenu,
+  openContextMenu,
+  rebuildIndex,
+  resetDragState,
+  setDragState,
+  setRegistry,
+} from '../state';
 import {initContextWindowDrag} from './context-window-drag';
 import {createFakeChannel} from './testing/helpers';
 
@@ -66,6 +75,7 @@ describe('context-window-drag', () => {
     document.body.innerHTML = '';
     resetDragState();
     setRegistry({});
+    closeContextMenu();
   });
 
   describe('initContextWindowDrag', () => {
@@ -103,6 +113,32 @@ describe('context-window-drag', () => {
       channel.dispatch({type: 'create-draggable', componentType: 'invalid'});
 
       expect($dragState.get()).toBeUndefined();
+    });
+
+    it('sets drag state before closing an open context menu (H3 dismiss order)', () => {
+      cleanup = initContextWindowDrag(channel);
+
+      openContextMenu({kind: 'component', path: path('/main/0'), x: 10, y: 10});
+      expect($contextMenu.get()).toBeDefined();
+
+      const order: string[] = [];
+      const unsubDrag = $dragState.subscribe(value => {
+        if (value != null) order.push('dragState');
+      });
+      const unsubMenu = $contextMenu.subscribe(value => {
+        if (value == null) order.push('contextMenu');
+      });
+      // First subscribe callback runs synchronously with current state; drop it.
+      order.length = 0;
+
+      channel.dispatch({type: 'create-draggable', componentType: 'part'});
+
+      unsubDrag();
+      unsubMenu();
+
+      expect($dragState.get()).toBeDefined();
+      expect($contextMenu.get()).toBeUndefined();
+      expect(order).toEqual(['dragState', 'contextMenu']);
     });
 
     it('ignores create-draggable while another drag is already active', () => {

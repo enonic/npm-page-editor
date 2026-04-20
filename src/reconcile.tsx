@@ -360,17 +360,24 @@ function finalizeReconcile(records: Record<string, ComponentRecord>): void {
 export function reconcilePage(root: HTMLElement, descriptors: DescriptorMap): void {
   if (isDragging()) return;
 
-  const prevRootKey = prevDescriptors['/']?.descriptor;
-  const currRootKey = descriptors['/']?.descriptor;
-  if (prevRootKey != null && currRootKey != null && prevRootKey !== currRootKey) {
-    controllerSwitched = true;
-  }
-  if (controllerSwitched) {
-    prevDescriptors = descriptors;
-    return;
+  const fragment = $config.get()?.fragment;
+
+  // ? In standard pages the `/` descriptor identifies the page controller; a change
+  // ? means the user swapped controllers and a clean reload is pending. In fragment
+  // ? mode the `/` descriptor IS the content — edits change it as a normal update,
+  // ? so the controller-switch guard must not latch here (H4).
+  if (!fragment) {
+    const prevRootKey = prevDescriptors['/']?.descriptor;
+    const currRootKey = descriptors['/']?.descriptor;
+    if (prevRootKey != null && currRootKey != null && prevRootKey !== currRootKey) {
+      controllerSwitched = true;
+    }
+    if (controllerSwitched) {
+      prevDescriptors = descriptors;
+      return;
+    }
   }
 
-  const fragment = $config.get()?.fragment;
   let records = parsePage(root, {descriptors, fragment});
 
   const detached = detachOrphans(descriptors, records);

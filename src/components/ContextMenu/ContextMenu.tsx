@@ -40,14 +40,21 @@ export const ContextMenu = ({portalContainer}: ContextMenuProps): JSX.Element | 
   const state = useStoreValue($contextMenu);
   const dragState = useStoreValue($dragState);
 
-  if (dragState != null || state == null) return null;
+  if (state == null) return null;
 
-  const handleOpenChange = (open: boolean): void => {
-    if (!open) closeContextMenu();
+  // ! `open` must be controlled against `dragState` so Radix runs its dismiss lifecycle
+  // ! (pointer-capture release, focus return, portal teardown) when a palette drag starts
+  // ! over an open menu. Unmounting while Radix still thinks the menu is open — the prior
+  // ! behaviour of returning `null` outright — left the overlay in a stuck state on the
+  // ! next render cycle. See `docs/architectural-regressions.md#H3`.
+  const open = dragState == null;
+
+  const handleOpenChange = (nextOpen: boolean): void => {
+    if (!nextOpen) closeContextMenu();
   };
 
   return (
-    <UiContextMenu open onOpenChange={handleOpenChange}>
+    <UiContextMenu open={open} onOpenChange={handleOpenChange}>
       <PositionSetter x={state.x} y={state.y} />
       <UiContextMenu.Portal container={portalContainer}>
         <UiContextMenu.Content className='pointer-events-auto z-50' data-component={CONTEXT_MENU_NAME}>

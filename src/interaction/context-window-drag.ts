@@ -74,9 +74,14 @@ export function initContextWindowDrag(channel: Channel): () => void {
         };
 
         setHoveredPath(undefined);
-        closeContextMenu();
         setElementIndexFrozen(true);
 
+        // ! Set drag state BEFORE closing the context menu so `ContextMenu` gets a
+        // ! render pass with `open=false` (Radix dismiss lifecycle — pointer-capture
+        // ! release, focus return, portal teardown) before the subsequent
+        // ! `closeContextMenu` unmounts it. Clearing state first unmounts the
+        // ! component while Radix still thinks it is open, leaving a stuck overlay
+        // ! on the next render cycle. See `docs/architectural-regressions.md#H3`.
         setDragState({
           itemType,
           itemLabel,
@@ -90,6 +95,7 @@ export function initContextWindowDrag(channel: Channel): () => void {
           x: undefined,
           y: undefined,
         });
+        closeContextMenu();
 
         setDragCursor(true);
         channel.send({type: 'drag-started'});

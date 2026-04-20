@@ -71,8 +71,8 @@ F1 and F2 are iframe-side despite the handler living in the CS repo — they mod
 
 | # | Sev | Symptom | Legacy | Current | Fix direction |
 |---|---|---|---|---|---|
-| H3 | LOW | Context menu not fully dismissed if palette drag starts over it | N/A | `context-window-drag.ts:62-84` calls close but overlay re-renders | Force overlay-render-cycle dismiss on `create-draggable` |
-| H4 | LOW | `FragmentComponentView` inconsistency: page-root fragment `replaceWith` skips `notifyItemViewAdded` (G18 tail) | Legacy spec audit flagged it | Carried through in v2's reconcile | Normalize: emit consistent event for fragment-root replacement |
+| H3 | LOW | Context menu not fully dismissed if palette drag starts over it | N/A | `context-window-drag.ts:62-84` calls close but overlay re-renders | `[DONE]` `ContextMenu`'s `open` prop is now controlled against `dragState`; `create-draggable` (and component-drag `beginDrag`) set `$dragState` BEFORE `closeContextMenu` so Radix runs its dismiss lifecycle cleanly before unmount. |
+| H4 | LOW | `FragmentComponentView` inconsistency: page-root fragment `replaceWith` skips `notifyItemViewAdded` (G18 tail) | Legacy spec audit flagged it | Carried through in v2's reconcile | `[DONE]` v2's registry-update pipeline already treats region-child and root fragments uniformly, but the I3 `controllerSwitched` guard wrongly latched on legitimate root-fragment descriptor edits in fragment mode (the `/` descriptor IS the content there, not a page controller). `reconcilePage` now only evaluates the controller-switch short-circuit when `$config.fragment` is false. |
 
 ---
 
@@ -161,6 +161,8 @@ Without both, page-config edits in CS's InspectPanel update local state and even
 
 **Phase 5 — residuals (low)**
 17. **H3, H4**.
+   - **H3** — `[DONE]` `ContextMenu.tsx` passes `open = dragState == null` so Radix runs its dismiss lifecycle (pointer-capture release, focus return, portal teardown) before the component unmounts. Both drag entry points (`context-window-drag.ts` `create-draggable`, `component-drag.ts` `beginDrag`) now set `$dragState` BEFORE calling `closeContextMenu` so the ContextMenu gets a render pass with `open=false` before state is cleared.
+   - **H4** — `[DONE]` Root-fragment descriptor edits were being swallowed by the I3 `controllerSwitched` short-circuit in fragment mode — the guard is meaningful only for standard pages where `/` identifies the controller. `reconcilePage` now evaluates the guard only when `$config.fragment !== true`, so a root-fragment descriptor change fires `load(existing=true)` symmetrically with a region-child fragment update. Registry updates on `replaceWith` of the root fragment element already happen uniformly via parsePage + MutationObserver.
 
 ---
 

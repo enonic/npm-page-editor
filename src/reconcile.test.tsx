@@ -915,6 +915,92 @@ describe('stub synthesis and load callback', () => {
 });
 
 //
+// * Fragment-root reconciliation (H4)
+//
+
+describe('fragment-root reconciliation', () => {
+  function setFragmentConfig(): void {
+    $config.set({
+      contentId: 'test',
+      pageName: 'Test',
+      pageIconClass: '',
+      locked: false,
+      modifyPermissions: true,
+      pageEmpty: false,
+      pageTemplate: false,
+      fragment: true,
+      fragmentAllowed: true,
+      resetEnabled: false,
+      phrases: {},
+    });
+  }
+
+  it('registers the root fragment at `/` with descriptor entry', () => {
+    setFragmentConfig();
+    document.body.innerHTML = '<div data-portal-component-type="fragment"></div>';
+
+    reconcilePage(document.body, {'/': {type: 'fragment', descriptor: 'frag:a'}});
+
+    expect($registry.get()['/']).toMatchObject({type: 'fragment', descriptor: 'frag:a'});
+  });
+
+  it('fires load(existing=true) when the root-fragment descriptor changes', () => {
+    setFragmentConfig();
+    document.body.innerHTML = '<div data-portal-component-type="fragment"></div>';
+
+    reconcilePage(document.body, {'/': {type: 'fragment', descriptor: 'frag:a'}});
+    loadSpy.mockClear();
+
+    reconcilePage(document.body, {'/': {type: 'fragment', descriptor: 'frag:b'}});
+
+    expect(loadSpy).toHaveBeenCalledWith('/', true);
+  });
+
+  it('fires load(existing=true) when only configHash changes on the root fragment', () => {
+    setFragmentConfig();
+    document.body.innerHTML = '<div data-portal-component-type="fragment"></div>';
+
+    reconcilePage(document.body, {'/': {type: 'fragment', descriptor: 'frag:a', configHash: 'h1'}});
+    loadSpy.mockClear();
+
+    reconcilePage(document.body, {'/': {type: 'fragment', descriptor: 'frag:a', configHash: 'h2'}});
+
+    expect(loadSpy).toHaveBeenCalledWith('/', true);
+  });
+
+  it('treats region-child fragment and root fragment symmetrically for descriptor changes', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <div data-portal-component-type="fragment"></div>
+      </section>
+    `;
+
+    reconcilePage(document.body, {'/main/0': {type: 'fragment', descriptor: 'frag:a'}});
+    loadSpy.mockClear();
+
+    reconcilePage(document.body, {'/main/0': {type: 'fragment', descriptor: 'frag:b'}});
+
+    expect(loadSpy).toHaveBeenCalledWith('/main/0', true);
+  });
+
+  it('updates the registry on root-fragment element replacement', () => {
+    setFragmentConfig();
+    document.body.innerHTML = '<div data-portal-component-type="fragment" id="first"></div>';
+
+    reconcilePage(document.body, {'/': {type: 'fragment', descriptor: 'frag:a'}});
+    const firstEl = document.getElementById('first');
+    expect($registry.get()['/']?.element).toBe(firstEl);
+
+    // Simulate CS `replaceWith` — a brand new element with no instance id.
+    document.body.innerHTML = '<div data-portal-component-type="fragment" id="second"></div>';
+    reconcilePage(document.body, {'/': {type: 'fragment', descriptor: 'frag:a'}});
+
+    const secondEl = document.getElementById('second');
+    expect($registry.get()['/']?.element).toBe(secondEl);
+  });
+});
+
+//
 // * destroyPlaceholders
 //
 

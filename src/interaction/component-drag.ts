@@ -133,9 +133,11 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
 
     setHoveredPath(undefined);
     setSelectedPath(undefined);
-    closeContextMenu();
     setElementIndexFrozen(true);
 
+    // ! Set drag state before closing the context menu — same rationale as
+    // ! `context-window-drag.ts`. Giving `ContextMenu` a render pass with
+    // ! `open=false` lets Radix run its dismiss lifecycle cleanly.
     setDragState({
       itemType: record.type,
       itemLabel: label,
@@ -149,6 +151,7 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
       x,
       y,
     });
+    closeContextMenu();
 
     syncDragEmptyRegions(p);
     setDragCursor(true);
