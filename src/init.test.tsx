@@ -138,28 +138,62 @@ describe('initPageEditor', () => {
     instance.destroy();
   });
 
-  it('notifyComponentLoaded posts outgoing component-loaded', () => {
+  it('notifyComponentLoaded posts outgoing component-loaded and clears loading flag', () => {
     const {target, postMessage} = createMockTarget();
     const instance = initPageEditor(document.body, target);
 
+    const p = path('/main/0');
+    $registry.set({
+      [p]: {
+        path: p,
+        type: 'part',
+        element: document.createElement('div'),
+        parentPath: path('/main'),
+        children: [],
+        empty: true,
+        error: false,
+        descriptor: 'a',
+        fragmentContentId: undefined,
+        loading: true,
+      },
+    });
+
     postMessage.mockClear();
-    instance.notifyComponentLoaded(path('/main/0'));
+    instance.notifyComponentLoaded(p);
 
     expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({type: 'component-loaded', path: '/main/0'}), '*');
+    expect($registry.get()[p]?.loading).toBe(false);
     instance.destroy();
   });
 
-  it('notifyComponentLoadFailed posts reason', () => {
+  it('notifyComponentLoadFailed posts reason and marks record as error', () => {
     const {target, postMessage} = createMockTarget();
     const instance = initPageEditor(document.body, target);
 
+    const p = path('/main/0');
+    $registry.set({
+      [p]: {
+        path: p,
+        type: 'part',
+        element: document.createElement('div'),
+        parentPath: path('/main'),
+        children: [],
+        empty: true,
+        error: false,
+        descriptor: 'a',
+        fragmentContentId: undefined,
+        loading: true,
+      },
+    });
+
     postMessage.mockClear();
-    instance.notifyComponentLoadFailed(path('/main/0'), 'boom');
+    instance.notifyComponentLoadFailed(p, 'boom');
 
     expect(postMessage).toHaveBeenCalledWith(
       expect.objectContaining({type: 'component-load-failed', path: '/main/0', reason: 'boom'}),
       '*',
     );
+    expect($registry.get()[p]).toMatchObject({loading: false, error: true});
     instance.destroy();
   });
 

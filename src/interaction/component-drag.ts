@@ -3,6 +3,7 @@ import type {Channel} from '../transport';
 
 import {markDirty} from '../geometry';
 import {translate} from '../i18n';
+import {collectTrackedDescendants, isComponentElement} from '../parse';
 import {insertAt} from '../protocol/path';
 import {syncDragEmptyRegions} from '../reconcile';
 import {setDragCursor} from '../rendering/drag-cursor';
@@ -18,6 +19,14 @@ import {
 } from '../state';
 import {clearPlaceholder, ensurePlaceholderAnchor, inferDropTarget, validateDrop} from './drop-target';
 import {getTrackedTarget, isOverlayChromeEvent} from './guards';
+
+export type ComponentDragOptions = {
+  // ! Called once the drag has mutated the DOM locally (successful drop) so the host can
+  // ! suppress reconcile until the corresponding `page-state` round-trip lands. Without
+  // ! this, the MutationObserver-triggered reconcile runs against still-old descriptors
+  // ! and mis-stubs the shifted path, clobbering the moved element with stale server HTML.
+  onAfterLocalMove?: () => void;
+};
 
 //
 // * Constants
@@ -48,9 +57,28 @@ type ActiveDrag = {
 // * Init
 //
 
-export function initComponentDrag(channel: Channel): () => void {
+export function initComponentDrag(channel: Channel, options?: ComponentDragOptions): () => void {
   let pending: PendingDrag | undefined;
   let active: ActiveDrag | undefined;
+
+  function relocateInDom(sourceElement: HTMLElement, targetRegionPath: ComponentPath, targetIndex: number): boolean {
+    const regionRecord = getRecord(targetRegionPath);
+    const regionEl = regionRecord?.element;
+    if (regionEl == null) return false;
+
+    // ? Component siblings are resolved fresh: the source element is about to be spliced out
+    // ? and re-inserted, so an index captured before removal is only valid against the live list.
+    const siblings = collectTrackedDescendants(regionEl, isComponentElement);
+    const filtered = siblings.filter(el => el !== sourceElement);
+    const anchor = targetIndex < filtered.length ? filtered[targetIndex] : undefined;
+
+    if (anchor != null) {
+      regionEl.insertBefore(sourceElement, anchor);
+    } else {
+      regionEl.appendChild(sourceElement);
+    }
+    return true;
+  }
 
   function beginDrag(p: ComponentPath, x: number, y: number): void {
     if (isDragging()) return;
@@ -213,6 +241,13 @@ export function initComponentDrag(channel: Channel): () => void {
       const validation = validateDrop(active.path, target.regionPath, active.itemType);
       if (validation.allowed) {
         const to = insertAt(target.regionPath, target.index);
+        // ! Move the DOM element locally BEFORE notifying CS. The v2 protocol treats
+        // ! page-state as the source of truth, but reconcile cannot relocate existing
+        // ! elements — it only stubs new paths and fires `load(existing=true)` on type
+        // ! changes, which fetches pre-move server HTML. Moving the DOM here means the
+        // ! subsequent CS page-state round-trip describes exactly what is already in DOM.
+        const moved = relocateInDom(dragState.sourceElement, target.regionPath, target.index);
+        if (moved) options?.onAfterLocalMove?.();
         channel.send({type: 'move', from: dragState.path, to});
         channel.send({type: 'drag-dropped', from: dragState.path, to});
         dropped = true;

@@ -1,10 +1,10 @@
-import type {ComponentPath, ComponentType} from '../protocol';
+import type {ComponentPath, ComponentType, PageDescriptorEntry} from '../protocol';
 import type {ComponentRecord} from '../state/registry';
 
 import {append, insertAt, root} from '../protocol';
 import {isNodeEmpty} from './emptiness';
 
-export type DescriptorMap = Record<string, {descriptor?: string; fragment?: string; name?: string}>;
+export type DescriptorMap = Record<string, PageDescriptorEntry>;
 
 type ParsePageOptions = {
   fragment?: boolean;

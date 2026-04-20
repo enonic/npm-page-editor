@@ -20,6 +20,7 @@ export {
   type Modifiers,
   type PageConfig,
   type PageDescriptor,
+  type PageDescriptorEntry,
   type PageController,
   type IncomingMessage,
   type OutgoingMessage,

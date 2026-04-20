@@ -8,6 +8,7 @@ vi.mock('./components/ComponentLoadingPlaceholder', () => ({ComponentLoadingPlac
 vi.mock('./components/ComponentPlaceholder', () => ({ComponentPlaceholder: () => null}));
 vi.mock('./components/RegionPlaceholder', () => ({RegionPlaceholder: () => null}));
 
+import {setComponentLoadCallback} from './load-request';
 import {fromString} from './protocol';
 import {
   reconcilePage,
@@ -81,6 +82,7 @@ function noop(): void {
 }
 
 let sendSpy: ReturnType<typeof vi.fn<Channel['send']>>;
+let loadSpy: ReturnType<typeof vi.fn<(path: string, existing: boolean) => void>>;
 
 beforeEach(() => {
   $registry.set({});
@@ -97,11 +99,15 @@ beforeEach(() => {
     subscribe: vi.fn<Channel['subscribe']>().mockReturnValue(noop),
     destroy: vi.fn<Channel['destroy']>(),
   });
+
+  loadSpy = vi.fn<(path: string, existing: boolean) => void>();
+  setComponentLoadCallback((path, existing) => loadSpy(path, existing));
 });
 
 afterEach(() => {
   destroyPlaceholders();
   resetChannel();
+  setComponentLoadCallback(undefined);
   document.body.innerHTML = '';
 });
 
@@ -510,6 +516,248 @@ describe('reconcileSubtree', () => {
     reconcileSubtree(main, path('/main'), {});
 
     expect($registry.get()).toBe(registryBefore);
+  });
+});
+
+//
+// * Stub synthesis & component-load-request
+//
+
+describe('stub synthesis and load callback', () => {
+  it('synthesizes a stub and fires the load callback for a descriptor without a DOM element', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part"></article>
+      </section>
+    `;
+
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'app:hello'},
+      '/main/1': {type: 'part', descriptor: 'app:new'},
+    });
+
+    const region = document.querySelector('[data-portal-region="main"]') as HTMLElement;
+    const components = region.querySelectorAll('[data-portal-component-type]');
+    expect(components).toHaveLength(2);
+    expect($registry.get()['/main/1']).toMatchObject({type: 'part', loading: true});
+
+    expect(loadSpy).toHaveBeenCalledWith('/main/1', false);
+  });
+
+  it('appends stub at the end when descriptor path is beyond existing DOM children', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part" id="first"></article>
+        <article data-portal-component-type="part" id="second"></article>
+      </section>
+    `;
+
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'a'},
+      '/main/1': {type: 'part', descriptor: 'b'},
+      '/main/2': {type: 'part', descriptor: 'c'},
+    });
+
+    const region = document.querySelector('[data-portal-region="main"]') as HTMLElement;
+    const elements = Array.from(region.querySelectorAll('[data-portal-component-type]'));
+    expect(elements).toHaveLength(3);
+    expect(elements[0].id).toBe('first');
+    expect(elements[1].id).toBe('second');
+    expect(elements[2].id).toBe('');
+    expect(loadSpy).toHaveBeenCalledWith('/main/2', false);
+  });
+
+  it('fires load callback with existing=true when descriptor changes on an existing element', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part"></article>
+      </section>
+    `;
+
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'a'},
+    });
+    loadSpy.mockClear();
+
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'b'},
+    });
+
+    expect(loadSpy).toHaveBeenCalledWith('/main/0', true);
+    expect($registry.get()['/main/0']).toMatchObject({loading: true, descriptor: 'b'});
+  });
+
+  it('does not fire load for surviving siblings after a delete shifts their paths', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part" id="a"></article>
+        <article data-portal-component-type="part" id="b"></article>
+        <article data-portal-component-type="part" id="c"></article>
+      </section>
+    `;
+
+    // First reconcile: three tracked components.
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'desc-a'},
+      '/main/1': {type: 'part', descriptor: 'desc-b'},
+      '/main/2': {type: 'part', descriptor: 'desc-c'},
+    });
+
+    // Delete the middle component in DOM and describe the survivors.
+    // Their indices have now shifted: what was `/main/2` is now `/main/1`.
+    document.getElementById('b')?.remove();
+    loadSpy.mockClear();
+
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'desc-a'},
+      '/main/1': {type: 'part', descriptor: 'desc-c'},
+    });
+
+    // ! Surviving siblings must NOT trigger `load(existing=true)` — their DOM content
+    // ! is already correct; the only change is the path index assigned by the parser.
+    expect(loadSpy).not.toHaveBeenCalled();
+  });
+
+  it('fires load callback with existing=true when only configHash changes', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part"></article>
+      </section>
+    `;
+
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'a', configHash: 'h1'},
+    });
+    loadSpy.mockClear();
+
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'a', configHash: 'h2'},
+    });
+
+    expect(loadSpy).toHaveBeenCalledWith('/main/0', true);
+    expect($registry.get()['/main/0']).toMatchObject({loading: true});
+  });
+
+  it('does not fire the load callback when descriptors are unchanged', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part"></article>
+      </section>
+    `;
+
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'a'},
+    });
+    loadSpy.mockClear();
+
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'a'},
+    });
+
+    expect(loadSpy).not.toHaveBeenCalled();
+  });
+
+  it('skips stub creation when parent region is missing', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="layout"></article>
+      </section>
+    `;
+
+    reconcilePage(document.body, {
+      '/main/0': {type: 'layout', descriptor: 'layout:a'},
+      '/main/0/body/0': {type: 'part', descriptor: 'nested'},
+    });
+
+    expect($registry.get()['/main/0/body/0']).toBeUndefined();
+    expect(loadSpy).not.toHaveBeenCalledWith('/main/0/body/0', expect.anything());
+  });
+
+  it('does not re-fire for paths already marked loading', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part"></article>
+      </section>
+    `;
+
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'a'},
+      '/main/1': {type: 'part', descriptor: 'b'},
+    });
+    loadSpy.mockClear();
+
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'a'},
+      '/main/1': {type: 'part', descriptor: 'b'},
+    });
+
+    expect(loadSpy).not.toHaveBeenCalled();
+  });
+
+  it('uses descriptor entry type when synthesizing stub element', () => {
+    document.body.innerHTML = '<section data-portal-region="main"></section>';
+
+    reconcilePage(document.body, {
+      '/main/0': {type: 'layout', descriptor: 'layout:a'},
+    });
+
+    const region = document.querySelector('[data-portal-region="main"]') as HTMLElement;
+    const stub = region.querySelector('[data-portal-component-type]') as HTMLElement;
+    expect(stub.getAttribute('data-portal-component-type')).toBe('layout');
+  });
+
+  it('detaches DOM when a previously-tracked path disappears from descriptors', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part" id="first"></article>
+        <article data-portal-component-type="part" id="second"></article>
+      </section>
+    `;
+
+    // First reconcile: both components are tracked.
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'a'},
+      '/main/1': {type: 'part', descriptor: 'b'},
+    });
+
+    // Second reconcile: `/main/1` has been removed from descriptors (delete).
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'a'},
+    });
+
+    const region = document.querySelector('[data-portal-region="main"]') as HTMLElement;
+    const remaining = region.querySelectorAll('[data-portal-component-type]');
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].id).toBe('first');
+    expect($registry.get()['/main/1']).toBeUndefined();
+  });
+
+  it('does not detach server-rendered components on first reconcile when descriptors are empty', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <article data-portal-component-type="part" id="server"></article>
+      </section>
+    `;
+
+    reconcilePage(document.body, {});
+
+    const region = document.querySelector('[data-portal-region="main"]') as HTMLElement;
+    const remaining = region.querySelectorAll('[data-portal-component-type]');
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].id).toBe('server');
+  });
+
+  it('synthesized stub has a min size so hit-testing lands on it in flex/grid regions', () => {
+    document.body.innerHTML = '<section data-portal-region="main"></section>';
+
+    reconcilePage(document.body, {
+      '/main/0': {type: 'part', descriptor: 'app:hello'},
+    });
+
+    const region = document.querySelector('[data-portal-region="main"]') as HTMLElement;
+    const stub = region.querySelector('[data-portal-component-type]') as HTMLElement;
+    expect(stub.style.minHeight).toBe('40px');
+    expect(stub.style.minWidth).toBe('40px');
   });
 });
 

@@ -25,8 +25,19 @@ export type PageConfig = {
   langDirection?: 'ltr' | 'rtl';
 };
 
+export type PageDescriptorEntry = {
+  type?: ComponentType;
+  descriptor?: string;
+  fragment?: string;
+  name?: string;
+  // ? Stable hash of the component's `config` blob. CS serializes it so the iframe can
+  // ? detect config-only edits (e.g. InspectPanel changes) and fire `load(existing=true)`.
+  // ? Without it, config edits update CS state but never reach the iframe.
+  configHash?: string;
+};
+
 export type PageDescriptor = {
-  components: Record<string, {descriptor?: string; fragment?: string; name?: string}>;
+  components: Record<string, PageDescriptorEntry>;
 };
 
 export type PageController = {

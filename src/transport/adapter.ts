@@ -1,6 +1,7 @@
-import type {ComponentPath, IncomingMessage, PageDescriptor} from '../protocol';
+import type {IncomingMessage, PageDescriptor} from '../protocol';
 import type {Channel} from './channel';
 
+import {fireComponentLoadRequest} from '../load-request';
 import {
   setSelectedPath,
   setLocked,
@@ -15,7 +16,6 @@ import {
 
 export type AdapterCallbacks = {
   onPageState?: (page: PageDescriptor) => void;
-  onComponentLoadRequest?: (path: ComponentPath, existing: boolean) => void;
 };
 
 export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): () => void {
@@ -50,8 +50,7 @@ export function createAdapter(channel: Channel, callbacks?: AdapterCallbacks): (
         break;
 
       case 'load':
-        updateRecord(message.path, {loading: true});
-        callbacks?.onComponentLoadRequest?.(message.path, message.existing);
+        fireComponentLoadRequest(message.path, message.existing);
         break;
 
       case 'set-component-state':

@@ -3,6 +3,7 @@ import type {ComponentRecord} from '../state';
 import type {Channel, MessageHandler} from './channel';
 
 import {initContextWindowDrag} from '../interaction/context-window-drag';
+import {setComponentLoadCallback} from '../load-request';
 import {fromString} from '../protocol';
 import {
   $config,
@@ -99,6 +100,7 @@ describe('adapter', () => {
     $contextMenu.set(undefined);
     $theme.set('light');
     resetDragState();
+    setComponentLoadCallback(undefined);
   });
 
   describe('init gating', () => {
@@ -216,37 +218,40 @@ describe('adapter', () => {
       expect($contextMenu.get()).toBeUndefined();
     });
 
-    it('load: sets loading true and forwards existing=true to onComponentLoadRequest', () => {
+    it('load: sets loading true and forwards existing=true to the load callback', () => {
       const p = path('/main/0');
       $registry.set({[p]: makeRecord(p)});
 
-      const onComponentLoadRequest = vi.fn<(path: ComponentPath, existing: boolean) => void>();
-      createAdapter(fakeChannel, {onComponentLoadRequest});
+      const onLoad = vi.fn<(path: ComponentPath, existing: boolean) => void>();
+      setComponentLoadCallback(onLoad);
+      createAdapter(fakeChannel);
       fakeChannel.emit({type: 'init', config: makeConfig()});
 
       fakeChannel.emit({type: 'load', path: p, existing: true});
 
       expect($registry.get()[p]?.loading).toBe(true);
-      expect(onComponentLoadRequest).toHaveBeenCalledWith(p, true);
+      expect(onLoad).toHaveBeenCalledWith(p, true);
     });
 
     it('load: forwards existing=false for newly-added components', () => {
       const p = path('/main/0');
       $registry.set({[p]: makeRecord(p)});
 
-      const onComponentLoadRequest = vi.fn<(path: ComponentPath, existing: boolean) => void>();
-      createAdapter(fakeChannel, {onComponentLoadRequest});
+      const onLoad = vi.fn<(path: ComponentPath, existing: boolean) => void>();
+      setComponentLoadCallback(onLoad);
+      createAdapter(fakeChannel);
       fakeChannel.emit({type: 'init', config: makeConfig()});
 
       fakeChannel.emit({type: 'load', path: p, existing: false});
 
-      expect(onComponentLoadRequest).toHaveBeenCalledWith(p, false);
+      expect(onLoad).toHaveBeenCalledWith(p, false);
     });
 
     it('load: works without callback', () => {
       const p = path('/main/0');
       $registry.set({[p]: makeRecord(p)});
 
+      setComponentLoadCallback(undefined);
       createAdapter(fakeChannel);
       fakeChannel.emit({type: 'init', config: makeConfig()});
 

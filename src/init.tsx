@@ -12,6 +12,7 @@ import {initHoverDetection} from './interaction/hover';
 import {initKeyboardHandling} from './interaction/keyboard';
 import {initNavigationInterception} from './interaction/navigation';
 import {initSelectionDetection} from './interaction/selection';
+import {setComponentLoadCallback} from './load-request';
 import {isEditorInjectedElement} from './parse/emptiness';
 import {initSelectionPersistence} from './persistence';
 import {destroyPlaceholders, reconcilePage, resetPageReadyFlag} from './reconcile';
@@ -29,11 +30,26 @@ import {
   setPageControllers,
   setRegistry,
   setSelectedPath,
+  updateRecord,
 } from './state';
 import {createAdapter, createChannel, resetChannel, setChannel} from './transport';
 
 export type EditorOptions = {
   hostDomain?: string;
+  /**
+   * Called when the editor needs component HTML — either for a brand-new descriptor
+   * (`existing: false`) or after a descriptor change on an already-rendered element
+   * (`existing: true`).
+   *
+   * The consumer owns the fetch AND the DOM write. It typically reads the target via
+   * `instance.getElement(path)` and calls `element.replaceWith(newElement)`.
+   *
+   * SECURITY CONTRACT — the page editor does NOT sanitize server HTML. Consumers MUST
+   * run the response through a trusted sanitizer (e.g. DOMPurify) before parsing or
+   * injecting it, otherwise server-rendered `onerror` / `onload` attributes and other
+   * active content execute with host-page privileges. See
+   * `docs/architectural-regressions.md#theme-f` for the full contract.
+   */
   onComponentLoadRequest?: (path: ComponentPath, existing: boolean) => void;
 };
 
@@ -44,6 +60,11 @@ export type PageEditorInstance = {
   requestPageReload: () => void;
   getConfig: () => PageConfig | undefined;
   getRecord: (path: ComponentPath) => ComponentRecord | undefined;
+  /**
+   * Returns the current DOM element for a path, or `undefined` if no element is tracked.
+   * Use this before `replaceWith` in the component-load round-trip to re-verify the
+   * element is still mounted (user may have deleted the component mid-fetch).
+   */
   getElement: (path: ComponentPath) => HTMLElement | undefined;
   findRecordsByDescriptor: (descriptor: string) => readonly ComponentRecord[];
 };
@@ -56,7 +77,7 @@ function hasMeaningfulMutation(mutation: MutationRecord): boolean {
   );
 }
 
-function startDomObserver(root: HTMLElement, onReconcile: () => void): () => void {
+function startDomObserver(root: HTMLElement, onReconcile: () => void, shouldSkip: () => boolean): () => void {
   if (typeof MutationObserver === 'undefined') return () => undefined;
 
   let pending = false;
@@ -67,6 +88,11 @@ function startDomObserver(root: HTMLElement, onReconcile: () => void): () => voi
     pending = true;
     queueMicrotask(() => {
       pending = false;
+      // ! Suppress reconcile between an in-iframe DOM mutation (component drag-drop)
+      // ! and the CS page-state round-trip. Running reconcile against the new DOM with
+      // ! the still-old descriptor map mis-stubs the shifted path and triggers a load
+      // ! for stale server HTML, overwriting the moved element.
+      if (shouldSkip()) return;
       onReconcile();
     });
   });
@@ -91,6 +117,10 @@ export function initPageEditor(root: HTMLElement, target: Window, options?: Edit
   const overlay = createOverlayHost(<OverlayApp />);
 
   let currentDescriptors: DescriptorMap = {};
+  // ? Set by a component drag-drop that mutates the DOM locally. Cleared when CS
+  // ? answers with the matching `page-state`, at which point descriptors and DOM
+  // ? agree again and reconcile is safe. See `startDomObserver` for why.
+  let pendingPageStateSync = false;
 
   const safeReconcile = (): void => {
     try {
@@ -103,22 +133,28 @@ export function initPageEditor(root: HTMLElement, target: Window, options?: Edit
     }
   };
 
+  setComponentLoadCallback(options?.onComponentLoadRequest);
+
   const stopAdapter = createAdapter(channel, {
     onPageState: page => {
+      pendingPageStateSync = false;
       currentDescriptors = page.components;
       safeReconcile();
     },
-    onComponentLoadRequest: options?.onComponentLoadRequest,
   });
   const stopGeometry = initGeometryScheduler(path => getRecord(path)?.element);
   const stopHover = initHoverDetection();
   const stopSelection = initSelectionDetection(channel);
   const stopKeyboard = initKeyboardHandling(channel);
   const stopNavigation = initNavigationInterception(channel, {hostDomain: options?.hostDomain});
-  const stopComponentDrag = initComponentDrag(channel);
+  const stopComponentDrag = initComponentDrag(channel, {
+    onAfterLocalMove: () => {
+      pendingPageStateSync = true;
+    },
+  });
   const stopContextDrag = initContextWindowDrag(channel);
   const stopPersistence = initSelectionPersistence();
-  const stopObserver = startDomObserver(root, safeReconcile);
+  const stopObserver = startDomObserver(root, safeReconcile, () => pendingPageStateSync);
 
   channel.send({type: 'ready'});
 
@@ -138,6 +174,7 @@ export function initPageEditor(root: HTMLElement, target: Window, options?: Edit
     stopHover();
     stopGeometry();
     stopAdapter();
+    setComponentLoadCallback(undefined);
 
     destroyPlaceholders();
     overlay.unmount();
@@ -160,8 +197,14 @@ export function initPageEditor(root: HTMLElement, target: Window, options?: Edit
 
   const instance: PageEditorInstance = {
     destroy,
-    notifyComponentLoaded: path => channel.send({type: 'component-loaded', path}),
-    notifyComponentLoadFailed: (path, reason) => channel.send({type: 'component-load-failed', path, reason}),
+    notifyComponentLoaded: path => {
+      updateRecord(path, {loading: false});
+      channel.send({type: 'component-loaded', path});
+    },
+    notifyComponentLoadFailed: (path, reason) => {
+      updateRecord(path, {loading: false, error: true});
+      channel.send({type: 'component-load-failed', path, reason});
+    },
     requestPageReload: () => channel.send({type: 'page-reload-request'}),
     getConfig: () => getPageConfig(),
     getRecord: path => getRecord(path),

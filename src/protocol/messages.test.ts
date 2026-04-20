@@ -1,4 +1,4 @@
-import {type IncomingMessage, type OutgoingMessage} from './messages';
+import {type IncomingMessage, type OutgoingMessage, type PageDescriptor} from './messages';
 import {root} from './path';
 
 describe('IncomingMessage', () => {
@@ -90,5 +90,31 @@ describe('OutgoingMessage', () => {
       'navigate',
     ];
     expect(types).toHaveLength(21);
+  });
+});
+
+describe('PageDescriptor', () => {
+  it('accepts optional type on entries', () => {
+    const page: PageDescriptor = {
+      components: {
+        '/main/0': {type: 'part', descriptor: 'app:hello'},
+        '/main/1': {type: 'layout', descriptor: 'app:two-col'},
+        '/main/2': {type: 'fragment', fragment: 'abc123'},
+        '/main/3': {type: 'text', name: 'caption'},
+      },
+    };
+
+    expect(page.components['/main/0'].type).toBe('part');
+    expect(page.components['/main/1'].type).toBe('layout');
+  });
+
+  it('accepts optional configHash on entries', () => {
+    const page: PageDescriptor = {
+      components: {
+        '/main/0': {type: 'part', descriptor: 'app:hello', configHash: 'abc123'},
+      },
+    };
+
+    expect(page.components['/main/0'].configHash).toBe('abc123');
   });
 });
