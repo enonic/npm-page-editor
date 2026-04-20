@@ -61,7 +61,7 @@
     "typecheck": "tsgo --noEmit"
   },
   "devDependencies": {
-    "@enonic/ui": "^0.47.11",
+    "@enonic/ui": "^0.47.12",
     "@preact/preset-vite": "~2.10.5",
     "@storybook/addon-docs": "~10.3.5",
     "@storybook/addon-themes": "~10.3.5",
