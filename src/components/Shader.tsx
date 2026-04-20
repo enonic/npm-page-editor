@@ -42,7 +42,7 @@ export const Shader = (): JSX.Element | null => {
 
     if (selectedPath !== pagePath || rightClicked) {
       setSelectedPath(pagePath);
-      channel.send({type: 'select', path: pagePath, position: {x, y}, rightClicked});
+      channel.send({type: 'select', path: pagePath, position: {x, y}, rightClicked, newlyCreated: false});
       return;
     }
 

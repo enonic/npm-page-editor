@@ -43,7 +43,7 @@ function restoreSelection(contentId: string, allowRootSelection: boolean): void 
   }
 
   setSelectedPath(path);
-  getChannel().send({type: 'select', path});
+  getChannel().send({type: 'select', path, rightClicked: false, newlyCreated: false});
 }
 
 let pendingRestore: {contentId: string; allowRootSelection: boolean} | undefined;

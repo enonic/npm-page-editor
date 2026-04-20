@@ -34,11 +34,29 @@ function isDeleteKey(event: KeyboardEvent): boolean {
   return event.key === 'Delete' || event.key === 'Backspace';
 }
 
+// ! The page-editor and the edited page share a document, so a plain Delete/Backspace
+// ! while the user is typing inside a `contenteditable` area (rich-text widget, form
+// ! input) MUST fall through to the browser. Without this guard, backspacing a
+// ! character while a component is selected silently removes the whole component.
+// ! See `docs/architectural-regressions.md#D7`.
+function isEditableActiveElement(): boolean {
+  const el = document.activeElement;
+  if (el == null) return false;
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return true;
+  if (!(el instanceof HTMLElement)) return false;
+  if (el.isContentEditable) return true;
+  // ? JSDOM doesn't propagate `isContentEditable` from the attribute in all cases; walking
+  // ? to the nearest `contenteditable` ancestor catches both that and real nested cases
+  // ? where the focused element is a child of the editable root.
+  return el.closest('[contenteditable=""], [contenteditable="true"]') != null;
+}
+
 export function initKeyboardHandling(channel: Channel): () => void {
   const handleKeyEvent = (event: KeyboardEvent): void => {
     if (isDragging()) return;
 
     if (event.type === 'keydown' && isDeleteKey(event) && !hasModifier(event)) {
+      if (isEditableActiveElement()) return;
       const selected = getSelectedPath();
       if (selected != null && !isRoot(selected)) {
         event.preventDefault();

@@ -67,7 +67,9 @@ describe('selection', () => {
       el.dispatchEvent(new MouseEvent('click', {bubbles: true}));
 
       expect($selectedPath.get()).toBe(p);
-      expect(channel.messages).toEqual([expect.objectContaining({type: 'select', path: p})]);
+      expect(channel.messages).toEqual([
+        expect.objectContaining({type: 'select', path: p, rightClicked: false, newlyCreated: false}),
+      ]);
     });
 
     it('deselects on click when already selected', () => {
@@ -120,7 +122,9 @@ describe('selection', () => {
 
       expect($selectedPath.get()).toBe(p);
       expect($contextMenu.get()).toEqual(expect.objectContaining({kind: 'component', path: p}));
-      expect(channel.messages).toEqual([expect.objectContaining({type: 'select', path: p, rightClicked: true})]);
+      expect(channel.messages).toEqual([
+        expect.objectContaining({type: 'select', path: p, rightClicked: true, newlyCreated: false}),
+      ]);
     });
 
     //

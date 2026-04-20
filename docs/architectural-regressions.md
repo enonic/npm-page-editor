@@ -151,6 +151,13 @@ Without both, page-config edits in CS's InspectPanel update local state and even
 **Phase 4 — correctness polish (medium)**
 16. **D6, D7, E5, E6, E7, F1, F3 (iframe debounce), I10**.
    - **D6** — `[DONE]` descriptor entry `type` is propagated verbatim by `stubType` (no silent `part` default).
+   - **D7** — `[DONE]` `keyboard.ts:isEditableActiveElement` short-circuits Delete/Backspace when focus is inside an `<input>`, `<textarea>`, or contenteditable element. The component-remove path and the editor-combo fallthrough are both skipped so the keystroke reaches the browser intact.
+   - **E5** — `[DONE]` `reconcile.tsx:isSubtreeSourceOnly` recursively checks every descendant when deciding whether a region is effectively empty during drag. Grandparent regions that end up containing only the moving subtree (via a nested layout) now receive a drag-time placeholder too.
+   - **E6** — `[DONE]` `syncPlaceholders` reuse check requires `current.island.host.parentElement === record.element`. `replaceWith` (fresh element ref) and in-place `innerHTML` replacement (orphaned host) both force a clean rebuild; no more stale placeholder hosts mounted alongside fresh server content.
+   - **E7** — `[DONE]` `resetRootLinks` removed. `initNavigationInterception` already captures clicks at the document root with `capture: true` and short-circuits anchor navigation via `navigate` messages, so the href mutation was redundant and destroyed legitimate link targets.
+   - **F1** — `[DONE iframe-side]` `EditorOptions.onComponentLoadRequest` and `PageEditorInstance.getElement` JSDoc now document the re-verify-before-replaceWith contract: capture the original element on request, re-call `getElement(path)` before injection, and drop the response if the reference has changed or is disconnected.
+   - **F3 (iframe debounce)** — `[DONE]` `instance.requestPageReload` gates emits behind `reloadRequestPending`; the flag clears on the next animation frame (or microtask when `requestAnimationFrame` is unavailable). Synchronous bursts (fast successive drops) coalesce into one outgoing `page-reload-request`. CS-side debounce still pending.
+   - **I10** — `[DONE]` `OutgoingMessage.select` requires both `rightClicked` and `newlyCreated`; every send site (`selection.ts`, `actions/definitions.ts`, `persistence.ts`, `components/Shader.tsx`) populates them explicitly. Plain left-click now carries `rightClicked: false, newlyCreated: false` instead of omitting them, restoring the legacy discriminator shape.
 
 **Phase 5 — residuals (low)**
 17. **H3, H4**.

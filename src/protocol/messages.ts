@@ -93,7 +93,17 @@ export type OutgoingMessage =
   | {type: 'ready'}
   | {type: 'page-ready'}
   | {type: 'error'; phase: 'init' | 'reconcile' | 'handle'; message: string}
-  | {type: 'select'; path: ComponentPath; position?: {x: number; y: number}; rightClicked?: boolean}
+  | {
+      type: 'select';
+      path: ComponentPath;
+      position?: {x: number; y: number};
+      // ? Plain left-click → `false`; contextmenu → `true`. Always present so consumers
+      // ? don't have to treat `undefined` differently from `false`.
+      rightClicked: boolean;
+      // ? `true` only for auto-selection right after `add` (a newly-created component).
+      // ? Wizards use it to open the inspect panel without the user clicking.
+      newlyCreated: boolean;
+    }
   | {type: 'deselect'; path: ComponentPath}
   | {type: 'move'; from: ComponentPath; to: ComponentPath; syncId?: number}
   | {type: 'add'; path: ComponentPath; componentType: ComponentType; syncId?: number}

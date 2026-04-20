@@ -297,7 +297,17 @@ function syncPlaceholders(records: Record<string, ComponentRecord>): void {
 
     const key = placeholderStateKey(record);
     const current = placeholderEntries.get(path);
-    if (current?.island.container === record.element && current.island.host.isConnected && current.stateKey === key) {
+    // ! Must verify the host's direct parent is still `record.element`. CS's component-load
+    // ! round-trip typically calls `oldElement.replaceWith(newElement)`: `record.element`
+    // ! becomes a fresh ref, the old host lingers in the detached old tree, and a check
+    // ! based only on `isConnected` would wrongly keep reusing the orphaned island. An
+    // ! in-place `innerHTML` replacement wipes the host child, also caught by the parent
+    // ! check. See `docs/architectural-regressions.md#E6`.
+    if (
+      current?.island.container === record.element &&
+      current.island.host.parentElement === record.element &&
+      current.stateKey === key
+    ) {
       continue;
     }
 
@@ -310,14 +320,6 @@ function syncPlaceholders(records: Record<string, ComponentRecord>): void {
   for (const path of placeholderEntries.keys()) {
     if (!nextPaths.has(path)) {
       destroyPlaceholder(path);
-    }
-  }
-}
-
-function resetRootLinks(records: Record<string, ComponentRecord>): void {
-  for (const record of Object.values(records)) {
-    if ((record.type === 'part' || record.type === 'fragment') && record.element?.tagName === 'A') {
-      record.element.setAttribute('href', '#');
     }
   }
 }
@@ -350,7 +352,6 @@ function finalizeReconcile(records: Record<string, ComponentRecord>): void {
     setHoveredPath(undefined);
   }
 
-  resetRootLinks(records);
   applyTextDirection(records);
   syncPlaceholders(records);
   markDirty();
@@ -446,10 +447,42 @@ function destroyDragPlaceholder(path: string): void {
   dragPlaceholderEntries.delete(path);
 }
 
-function isEffectivelyEmptyDuringDrag(record: ComponentRecord, sourcePath: string): boolean {
+// ! A nested region becomes "effectively empty during drag" when every descendant
+// ! component reduces to the source subtree — e.g. dragging the only part out of a
+// ! layout that is itself the only child of the main region should dim the main
+// ! region too. The legacy `RegionView.hasOnlyMovingComponentViews()` walked up the
+// ! tree; v2's original check only inspected immediate children and missed the
+// ! outer levels. See `docs/architectural-regressions.md#E5`.
+function isSubtreeSourceOnly(
+  record: ComponentRecord,
+  sourcePath: string,
+  records: Record<string, ComponentRecord>,
+): boolean {
+  if (record.path === sourcePath) return true;
+  if (record.type === 'part' || record.type === 'text' || record.type === 'fragment') return false;
+  if (record.children.length === 0) return false;
+
+  return record.children.every(childPath => {
+    const child = records[childPath];
+    if (child == null) return true;
+    return isSubtreeSourceOnly(child, sourcePath, records);
+  });
+}
+
+function isEffectivelyEmptyDuringDrag(
+  record: ComponentRecord,
+  sourcePath: string,
+  records: Record<string, ComponentRecord>,
+): boolean {
   if (record.type !== 'region' || record.element == null) return false;
   if (record.empty) return false;
-  return record.children.every(childPath => childPath === sourcePath);
+  if (record.children.length === 0) return false;
+
+  return record.children.every(childPath => {
+    const child = records[childPath];
+    if (child == null) return true;
+    return isSubtreeSourceOnly(child, sourcePath, records);
+  });
 }
 
 export function syncDragEmptyRegions(sourcePath: string | undefined): void {
@@ -463,7 +496,7 @@ export function syncDragEmptyRegions(sourcePath: string | undefined): void {
   const records = $registry.get();
 
   for (const [path, record] of Object.entries(records)) {
-    if (!isEffectivelyEmptyDuringDrag(record, sourcePath)) continue;
+    if (!isEffectivelyEmptyDuringDrag(record, sourcePath, records)) continue;
     if (placeholderEntries.has(path) || dragPlaceholderEntries.has(path)) continue;
     if (record.element == null) continue;
 

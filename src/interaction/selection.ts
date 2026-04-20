@@ -31,7 +31,13 @@ export function initSelectionDetection(channel: Channel): () => void {
       }
 
       setSelectedPath(path);
-      channel.send({type: 'select', path, position: {x: event.pageX, y: event.pageY}});
+      channel.send({
+        type: 'select',
+        path,
+        position: {x: event.pageX, y: event.pageY},
+        rightClicked: false,
+        newlyCreated: false,
+      });
       return;
     }
 
@@ -53,7 +59,13 @@ export function initSelectionDetection(channel: Channel): () => void {
     suppressNativeEvent(event);
     setSelectedPath(path);
     openContextMenu({kind: 'component', path, x: event.clientX, y: event.clientY});
-    channel.send({type: 'select', path, position: {x: event.pageX, y: event.pageY}, rightClicked: true});
+    channel.send({
+      type: 'select',
+      path,
+      position: {x: event.pageX, y: event.pageY},
+      rightClicked: true,
+      newlyCreated: false,
+    });
   };
 
   document.addEventListener('click', handleClick, {capture: true});

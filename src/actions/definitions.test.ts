@@ -142,7 +142,7 @@ describe('definitions', () => {
       const ch = makeChannel();
       executeAction('select-parent', path('/main/0'), ch);
       expect($selectedPath.get()).toBe('/main');
-      expect(ch.messages).toEqual([{type: 'select', path: '/main'}]);
+      expect(ch.messages).toEqual([{type: 'select', path: '/main', rightClicked: false, newlyCreated: false}]);
     });
 
     it('does nothing for select-parent at root', () => {

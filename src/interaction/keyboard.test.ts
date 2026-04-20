@@ -243,6 +243,77 @@ describe('keyboard', () => {
     });
 
     //
+    // * Editable Active Element
+    //
+
+    it('does not send remove when focus is inside an <input>', () => {
+      setSelectedPath(path('/main/0'));
+      cleanup = initKeyboardHandling(channel);
+
+      const input = document.createElement('input');
+      document.body.appendChild(input);
+      input.focus();
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'Backspace',
+        keyCode: 8,
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(channel.messages).toEqual([]);
+
+      input.remove();
+    });
+
+    it('does not send remove when focus is inside a <textarea>', () => {
+      setSelectedPath(path('/main/0'));
+      cleanup = initKeyboardHandling(channel);
+
+      const textarea = document.createElement('textarea');
+      document.body.appendChild(textarea);
+      textarea.focus();
+
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Delete',
+          keyCode: 46,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+
+      expect(channel.messages).toEqual([]);
+
+      textarea.remove();
+    });
+
+    it('does not send remove when focus is inside a contenteditable region', () => {
+      setSelectedPath(path('/main/0'));
+      cleanup = initKeyboardHandling(channel);
+
+      const editable = document.createElement('div');
+      editable.setAttribute('contenteditable', 'true');
+      document.body.appendChild(editable);
+      editable.focus();
+
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Backspace',
+          keyCode: 8,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+
+      expect(channel.messages).toEqual([]);
+
+      editable.remove();
+    });
+
+    //
     // * Guards
     //
 

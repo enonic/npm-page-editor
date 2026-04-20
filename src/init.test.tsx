@@ -210,6 +210,22 @@ describe('initPageEditor', () => {
     instance.destroy();
   });
 
+  it('requestPageReload coalesces synchronous duplicate calls within a frame', () => {
+    const {target, postMessage} = createMockTarget();
+    const instance = initPageEditor(document.body, target);
+
+    postMessage.mockClear();
+    instance.requestPageReload();
+    instance.requestPageReload();
+    instance.requestPageReload();
+
+    const reloadCalls = postMessage.mock.calls.filter(
+      ([msg]) => (msg as {type?: string})?.type === 'page-reload-request',
+    );
+    expect(reloadCalls).toHaveLength(1);
+    instance.destroy();
+  });
+
   it('destroy removes overlay, resets atoms, and clears channel', () => {
     const {target} = createMockTarget();
     const instance = initPageEditor(document.body, target);

@@ -44,6 +44,14 @@ export type EditorOptions = {
    * The consumer owns the fetch AND the DOM write. It typically reads the target via
    * `instance.getElement(path)` and calls `element.replaceWith(newElement)`.
    *
+   * DOM FRESHNESS CONTRACT — fetches are async. Between the request and the response
+   * the user may have deleted or moved the component; the element captured when the
+   * request fired can end up detached or pointing at a different path. Before
+   * `replaceWith`, re-query via `instance.getElement(path)` and compare with the
+   * originally captured element — if they differ (or the current element is
+   * disconnected), drop the response instead of injecting it into a stale subtree.
+   * See `docs/architectural-regressions.md#F1`.
+   *
    * SECURITY CONTRACT — the page editor does NOT sanitize server HTML. Consumers MUST
    * run the response through a trusted sanitizer (e.g. DOMPurify) before parsing or
    * injecting it, otherwise server-rendered `onerror` / `onload` attributes and other
@@ -62,8 +70,14 @@ export type PageEditorInstance = {
   getRecord: (path: ComponentPath) => ComponentRecord | undefined;
   /**
    * Returns the current DOM element for a path, or `undefined` if no element is tracked.
-   * Use this before `replaceWith` in the component-load round-trip to re-verify the
-   * element is still mounted (user may have deleted the component mid-fetch).
+   *
+   * Use this before `replaceWith` in the component-load round-trip:
+   * 1. Capture `const originalElement = instance.getElement(path)` when the request fires.
+   * 2. Before injecting the response, call `instance.getElement(path)` again and bail
+   *    unless it returns the same reference and `originalElement.isConnected` is true.
+   *
+   * This is the defense against the user deleting or rearranging the component while the
+   * fetch is in flight. See `docs/architectural-regressions.md#F1`.
    */
   getElement: (path: ComponentPath) => HTMLElement | undefined;
   findRecordsByDescriptor: (descriptor: string) => readonly ComponentRecord[];
@@ -130,6 +144,31 @@ export function initPageEditor(root: HTMLElement, target: Window, options?: Edit
   let lastSyncId = 0;
 
   const isPendingPageStateSync = (): boolean => pendingSyncId != null;
+
+  // ! Coalesce `page-reload-request` emits. Fast successive operations (e.g. back-to-back
+  // ! palette drops that each set `X-Has-Contributions`) otherwise queue one reload
+  // ! request per operation; CS reloads the iframe multiple times and races itself. The
+  // ! flag clears on the next animation frame, so a *new* user action in a later frame
+  // ! can still request a fresh reload. CS still debounces independently on its side.
+  // ! See `docs/architectural-regressions.md#F3`.
+  let reloadRequestPending = false;
+  let reloadRequestFrameId: number | undefined;
+
+  const clearReloadRequestFlag = (): void => {
+    reloadRequestPending = false;
+    reloadRequestFrameId = undefined;
+  };
+
+  const sendPageReloadRequest = (): void => {
+    if (reloadRequestPending) return;
+    reloadRequestPending = true;
+    channel.send({type: 'page-reload-request'});
+    if (typeof requestAnimationFrame === 'function') {
+      reloadRequestFrameId = requestAnimationFrame(clearReloadRequestFlag);
+    } else {
+      reloadRequestFrameId = setTimeout(clearReloadRequestFlag, 0) as unknown as number;
+    }
+  };
 
   const clearPendingSync = (): void => {
     pendingSyncId = undefined;
@@ -199,6 +238,14 @@ export function initPageEditor(root: HTMLElement, target: Window, options?: Edit
     stopContextDrag();
     stopComponentDrag();
     clearPendingSync();
+    if (reloadRequestFrameId != null) {
+      if (typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(reloadRequestFrameId);
+      } else {
+        clearTimeout(reloadRequestFrameId as unknown as ReturnType<typeof setTimeout>);
+      }
+      reloadRequestFrameId = undefined;
+    }
     stopNavigation();
     stopKeyboard();
     stopSelection();
@@ -236,7 +283,7 @@ export function initPageEditor(root: HTMLElement, target: Window, options?: Edit
       updateRecord(path, {loading: false, error: true});
       channel.send({type: 'component-load-failed', path, reason});
     },
-    requestPageReload: () => channel.send({type: 'page-reload-request'}),
+    requestPageReload: sendPageReloadRequest,
     getConfig: () => getPageConfig(),
     getRecord: path => getRecord(path),
     getElement: path => getRecord(path)?.element,

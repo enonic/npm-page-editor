@@ -578,6 +578,50 @@ describe('syncDragEmptyRegions', () => {
     // The region's direct placeholder host (drag-time) was removed
     expect(region.querySelector(':scope > [data-pe-placeholder-host]')).toBeNull();
   });
+
+  it('dims ancestor region when dragged component is the only descendant of a nested layout', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <div data-portal-component-type="layout">
+          <section data-portal-region="inner">
+            <article data-portal-component-type="part"></article>
+          </section>
+        </div>
+      </section>
+    `;
+
+    reconcilePage(document.body, {});
+
+    const main = document.querySelector('[data-portal-region="main"]') as HTMLElement;
+    const inner = document.querySelector('[data-portal-region="inner"]') as HTMLElement;
+
+    syncDragEmptyRegions(path('/main/0/inner/0'));
+
+    expect(inner.querySelector(':scope > [data-pe-placeholder-host]')).not.toBeNull();
+    expect(main.querySelector(':scope > [data-pe-placeholder-host]')).not.toBeNull();
+  });
+
+  it('does not dim ancestor region when nested layout has a sibling component', () => {
+    document.body.innerHTML = `
+      <section data-portal-region="main">
+        <div data-portal-component-type="layout">
+          <section data-portal-region="inner">
+            <article data-portal-component-type="part"></article>
+          </section>
+        </div>
+        <article data-portal-component-type="part"></article>
+      </section>
+    `;
+
+    reconcilePage(document.body, {});
+
+    const main = document.querySelector('[data-portal-region="main"]') as HTMLElement;
+
+    syncDragEmptyRegions(path('/main/0/inner/0'));
+
+    // Main region still has the sibling part — no drag-time host should mount at its root
+    expect(main.querySelector(':scope > [data-pe-placeholder-host]')).toBeNull();
+  });
 });
 
 //

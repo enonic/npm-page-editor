@@ -68,7 +68,7 @@ export function executeAction(action: ActionId, path: ComponentPath, channel: Ch
       const parentPath = parent(path);
       if (parentPath != null) {
         setSelectedPath(parentPath);
-        channel.send({type: 'select', path: parentPath});
+        channel.send({type: 'select', path: parentPath, rightClicked: false, newlyCreated: false});
       }
       break;
     }

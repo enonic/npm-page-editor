@@ -138,7 +138,7 @@ describe('initSelectionPersistence', () => {
     flushSelectionRestore();
 
     expect($selectedPath.get()).toBe(target);
-    expect(send).toHaveBeenCalledWith({type: 'select', path: target});
+    expect(send).toHaveBeenCalledWith({type: 'select', path: target, rightClicked: false, newlyCreated: false});
     stop();
   });
 
