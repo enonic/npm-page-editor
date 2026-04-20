@@ -324,5 +324,35 @@ describe('context-window-drag', () => {
       expect($dragState.get()).toBeUndefined();
       expect(channel.messages).toEqual([]);
     });
+
+    it('refreshes the drop target on scroll at the last known cursor position', () => {
+      const regionA = document.createElement('section');
+      regionA.setAttribute('data-portal-region', 'a');
+      document.body.appendChild(regionA);
+
+      const regionB = document.createElement('section');
+      regionB.setAttribute('data-portal-region', 'b');
+      document.body.appendChild(regionB);
+
+      setupRegistry({
+        '/a': makeRecord('/a', 'region', regionA, '/'),
+        '/b': makeRecord('/b', 'region', regionB, '/'),
+      });
+
+      cleanup = initContextWindowDrag(channel);
+
+      channel.dispatch({type: 'create-draggable', componentType: 'part'});
+      channel.dispatch({type: 'set-draggable-visible', visible: true});
+
+      const fromPoint = vi.spyOn(document, 'elementsFromPoint').mockReturnValue([regionA]);
+      mouseMove(100, 100);
+      expect($dragState.get()?.targetRegion).toEqual(path('/a'));
+
+      // Scroll shifts region B under the same cursor position.
+      fromPoint.mockReturnValue([regionB]);
+      window.dispatchEvent(new Event('scroll'));
+
+      expect($dragState.get()?.targetRegion).toEqual(path('/b'));
+    });
   });
 });

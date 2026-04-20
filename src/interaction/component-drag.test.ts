@@ -693,5 +693,35 @@ describe('component-drag', () => {
       // Fixed 120px regardless of neighbour size (200px)
       expect(state?.placeholderElement?.style.height).toBe('120px');
     });
+
+    it('refreshes the drop target on scroll at the last known cursor position', () => {
+      // ? Scrolling shifts elements under a stationary cursor. Without a scroll listener
+      // ? the in-flow anchor moves with the page but `$dragState` stops updating — the
+      // ? visual highlighter (fixed-positioned) desyncs from the anchor.
+      const regionA = makeRegionElement('a');
+      const regionB = makeRegionElement('b');
+      const part = makeTrackedElement('part');
+      regionA.appendChild(part);
+
+      setupRegistry({
+        '/a': makeRecord('/a', 'region', regionA, '/', ['/a/0']),
+        '/a/0': makeRecord('/a/0', 'part', part, '/a'),
+        '/b': makeRecord('/b', 'region', regionB, '/', []),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      const fromPoint = vi.spyOn(document, 'elementsFromPoint').mockReturnValue([regionA]);
+
+      mouseDown(part, 100, 50);
+      mouseMove(100, 60);
+      expect($dragState.get()?.targetRegion).toEqual(path('/a'));
+
+      // Scroll shifts region B under the same cursor position.
+      fromPoint.mockReturnValue([regionB]);
+      window.dispatchEvent(new Event('scroll'));
+
+      expect($dragState.get()?.targetRegion).toEqual(path('/b'));
+    });
   });
 });

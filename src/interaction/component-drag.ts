@@ -9,6 +9,7 @@ import {syncDragEmptyRegions} from '../reconcile';
 import {setDragCursor} from '../rendering/drag-cursor';
 import {
   closeContextMenu,
+  getDragState,
   getPathForElement,
   getRecord,
   isDragging,
@@ -59,6 +60,10 @@ type ActiveDrag = {
   // ! the DOM tree it actually lives in.
   sourceRegionElement: HTMLElement;
   placeholderAnchor: HTMLElement | undefined;
+  // ? Cached cursor coords so the scroll handler can re-infer the drop target at the
+  // ? latest known cursor position — scroll moves elements under a stationary pointer.
+  lastX: number;
+  lastY: number;
 };
 
 //
@@ -126,6 +131,8 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
       sourceDisplay: record.element.style.display,
       sourceRegionElement: regionRecord.element,
       placeholderAnchor: undefined,
+      lastX: x,
+      lastY: y,
     };
     pending = undefined;
 
@@ -162,7 +169,11 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
   function updateDropTarget(x: number, y: number): void {
     if (active == null) return;
 
-    const target = inferDropTarget(x, y, active.path);
+    active.lastX = x;
+    active.lastY = y;
+
+    const previousRegion = getDragState()?.targetRegion;
+    const target = inferDropTarget(x, y, active.path, previousRegion);
 
     if (target != null) {
       const validation = validateDrop(active.path, target.regionPath, active.itemType);
@@ -276,7 +287,8 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
     event.stopPropagation();
 
     const dragState = active;
-    const target = inferDropTarget(event.clientX, event.clientY, active.path);
+    const previousRegion = getDragState()?.targetRegion;
+    const target = inferDropTarget(event.clientX, event.clientY, active.path, previousRegion);
 
     if (target != null) {
       const validation = validateDrop(active.path, target.regionPath, active.itemType);
@@ -313,6 +325,15 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
     if (active != null) endDrag();
   };
 
+  // ! Scrolling moves elements beneath a stationary cursor. Without this, the in-flow
+  // ! drop anchor scrolls with the page but `DragTargetHighlighter` (fixed-positioned,
+  // ! reading `getBoundingClientRect()` on re-render) never re-reads — the highlighter
+  // ! keeps pointing at the old viewport slot while the anchor has moved.
+  const handleScroll = (): void => {
+    if (active == null) return;
+    updateDropTarget(active.lastX, active.lastY);
+  };
+
   //
   // * Lifecycle
   //
@@ -322,6 +343,7 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
   document.addEventListener('mouseup', handleMouseUp, {capture: true});
   document.addEventListener('keydown', handleKeyDown);
   window.addEventListener('blur', handleWindowBlur);
+  window.addEventListener('scroll', handleScroll, {capture: true, passive: true});
 
   return () => {
     document.removeEventListener('mousedown', handleMouseDown, {capture: true});
@@ -329,6 +351,7 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
     document.removeEventListener('mouseup', handleMouseUp, {capture: true});
     document.removeEventListener('keydown', handleKeyDown);
     window.removeEventListener('blur', handleWindowBlur);
+    window.removeEventListener('scroll', handleScroll, {capture: true});
 
     if (active != null) endDrag();
     pending = undefined;

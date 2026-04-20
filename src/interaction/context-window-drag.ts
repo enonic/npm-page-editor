@@ -7,6 +7,7 @@ import {insertAt} from '../protocol/path';
 import {setDragCursor} from '../rendering/drag-cursor';
 import {
   closeContextMenu,
+  getDragState,
   getRecord,
   isDragging,
   setDragState,
@@ -25,6 +26,10 @@ type ContextDragSession = {
   itemLabel: string;
   visible: boolean;
   placeholderAnchor: HTMLElement | undefined;
+  // ? Cached cursor coords so the scroll handler can re-infer the drop target at the
+  // ? latest known cursor position — scroll moves elements under a stationary pointer.
+  lastX: number | undefined;
+  lastY: number | undefined;
 };
 
 const VALID_COMPONENT_TYPES: readonly ComponentType[] = ['page', 'region', 'text', 'part', 'layout', 'fragment'];
@@ -71,6 +76,8 @@ export function initContextWindowDrag(channel: Channel): () => void {
           itemLabel,
           visible: false,
           placeholderAnchor: undefined,
+          lastX: undefined,
+          lastY: undefined,
         };
 
         setHoveredPath(undefined);
@@ -134,12 +141,14 @@ export function initContextWindowDrag(channel: Channel): () => void {
   // * Event handlers
   //
 
-  const handleMouseMove = (event: MouseEvent): void => {
+  function refreshDropTarget(x: number, y: number): void {
     if (session == null || !session.visible) return;
 
-    const x = event.clientX;
-    const y = event.clientY;
-    const target = inferDropTarget(x, y);
+    session.lastX = x;
+    session.lastY = y;
+
+    const previousRegion = getDragState()?.targetRegion;
+    const target = inferDropTarget(x, y, undefined, previousRegion);
 
     if (target != null) {
       const validation = validateDrop(undefined, target.regionPath, session.itemType);
@@ -182,6 +191,19 @@ export function initContextWindowDrag(channel: Channel): () => void {
         y,
       });
     }
+  }
+
+  const handleMouseMove = (event: MouseEvent): void => {
+    refreshDropTarget(event.clientX, event.clientY);
+  };
+
+  // ! Scrolling moves elements beneath a stationary cursor. Re-inferring the drop target
+  // ! at the last cursor position keeps the anchor and visual highlighter in sync with
+  // ! whatever region/slot is now under the pointer after the scroll.
+  const handleScroll = (): void => {
+    if (session == null || !session.visible) return;
+    if (session.lastX == null || session.lastY == null) return;
+    refreshDropTarget(session.lastX, session.lastY);
   };
 
   const handleMouseUp = (event: MouseEvent): void => {
@@ -191,7 +213,8 @@ export function initContextWindowDrag(channel: Channel): () => void {
     event.preventDefault();
     event.stopPropagation();
 
-    const target = inferDropTarget(event.clientX, event.clientY);
+    const previousRegion = getDragState()?.targetRegion;
+    const target = inferDropTarget(event.clientX, event.clientY, undefined, previousRegion);
 
     if (target != null) {
       const validation = validateDrop(undefined, target.regionPath, session.itemType);
@@ -212,11 +235,13 @@ export function initContextWindowDrag(channel: Channel): () => void {
   const unsubscribe = channel.subscribe(handleMessage);
   document.addEventListener('mousemove', handleMouseMove, {capture: true});
   document.addEventListener('mouseup', handleMouseUp, {capture: true});
+  window.addEventListener('scroll', handleScroll, {capture: true, passive: true});
 
   return () => {
     unsubscribe();
     document.removeEventListener('mousemove', handleMouseMove, {capture: true});
     document.removeEventListener('mouseup', handleMouseUp, {capture: true});
+    window.removeEventListener('scroll', handleScroll, {capture: true});
     if (session != null) destroySession();
   };
 }

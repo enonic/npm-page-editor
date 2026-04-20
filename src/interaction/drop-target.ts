@@ -31,19 +31,165 @@ const REGION_SELECTOR = '[data-portal-region]';
 const PLACEHOLDER_ATTR = 'data-pe-drag-anchor';
 const PLACEHOLDER_HOST_ATTR = 'data-pe-placeholder-host';
 const DRAG_PLACEHOLDER_SIZE_PX = 120;
+// ? Dead-zone band around a layout's outer edge. Used for two purposes:
+// ? 1. Hysteresis: when crossing between "inside a layout region" and "outside any layout",
+// ?    the target stays on the previous one until the cursor is past the band.
+// ? 2. Escape edges: along the outer region's flow axis (top/bottom for a vertical parent,
+// ?    left/right for horizontal), this band disables proximity snap — hovering there is
+// ?    treated as "drop before/after the layout as a unit" rather than into an inner region.
+const UNSAFE_BAND_PX = 8;
+
+//
+// * Geometry helpers
+//
+
+function rectContainsPoint(rect: DOMRect, x: number, y: number): boolean {
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
+function distanceToRect(x: number, y: number, rect: DOMRect): number {
+  const dx = Math.max(rect.left - x, 0, x - rect.right);
+  const dy = Math.max(rect.top - y, 0, y - rect.bottom);
+  return Math.hypot(dx, dy);
+}
+
+// ? The cursor is in the layout's "escape zone" when it sits within `band` of the edges
+// ? parallel to the outer region's flow. On a vertical parent that's top/bottom; on a
+// ? horizontal parent that's left/right. Intent there is "drop before/after the layout as
+// ? a unit", not "snap into an inner region".
+function isInEscapeZone(x: number, y: number, rect: DOMRect, outerAxis: Axis, band: number): boolean {
+  if (outerAxis === 'y') return y - rect.top <= band || rect.bottom - y <= band;
+  return x - rect.left <= band || rect.right - x <= band;
+}
+
+// ? Near one of the cross-axis edges (perpendicular to the outer flow): left/right for a
+// ? vertical parent, top/bottom for a horizontal parent. Flow-axis edges are governed by
+// ? the escape zone inside the layout and clean transitions outside — hysteresis there
+// ? would conflict with the escape zone's "drop before/after" intent.
+function isNearCrossAxisEdge(x: number, y: number, rect: DOMRect, outerAxis: Axis, band: number): boolean {
+  if (outerAxis === 'y') return Math.min(Math.abs(x - rect.left), Math.abs(x - rect.right)) <= band;
+  return Math.min(Math.abs(y - rect.top), Math.abs(y - rect.bottom)) <= band;
+}
+
+function getContainerFlowAxis(containerRegion: HTMLElement): Axis {
+  const style = window.getComputedStyle(containerRegion);
+  if (style.display === 'flex' || style.display === 'inline-flex') {
+    const dir = style.flexDirection;
+    return dir === 'row' || dir === 'row-reverse' ? 'x' : 'y';
+  }
+  if (style.display === 'grid' || style.display === 'inline-grid') {
+    const cols = style.gridTemplateColumns;
+    if (cols != null && cols !== 'none' && cols.trim().split(/\s+/).length > 1) return 'x';
+  }
+  return 'y';
+}
+
+function getLayoutOuterAxis(layoutRecord: ComponentRecord): Axis {
+  if (layoutRecord.parentPath == null) return 'y';
+  const parent = getRecord(layoutRecord.parentPath);
+  if (parent?.element == null) return 'y';
+  return getContainerFlowAxis(parent.element);
+}
 
 //
 // * Drop target inference
 //
+
+// ? When `elementsFromPoint` lands on a region, the cursor may actually be in a layout's
+// ? gap/padding (the layout itself isn't a region, so `.closest()` walks up to the parent
+// ? region). In that case, snap to the closest inner region of the matching layout so the
+// ? user's drop intent maps to the inner column rather than "before/after the layout".
+function findProximalInnerRegion(containerRegion: HTMLElement, x: number, y: number): HTMLElement | undefined {
+  const containerPath = getPathForElement(containerRegion);
+  if (containerPath == null) return undefined;
+  const containerRecord = getRecord(containerPath);
+  if (containerRecord == null) return undefined;
+
+  const outerAxis = getContainerFlowAxis(containerRegion);
+
+  let bestRegion: HTMLElement | undefined;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const childPath of containerRecord.children) {
+    const child = getRecord(childPath);
+    if (child?.type !== 'layout' || child.element == null) continue;
+
+    const layoutRect = child.element.getBoundingClientRect();
+    if (!rectContainsPoint(layoutRect, x, y)) continue;
+
+    // ? The cursor is inside the layout but sitting on the escape edges — treat as an
+    // ? outer-region drop (before/after the layout) instead of snapping into a column.
+    if (isInEscapeZone(x, y, layoutRect, outerAxis, UNSAFE_BAND_PX)) continue;
+
+    for (const innerPath of child.children) {
+      const inner = getRecord(innerPath);
+      if (inner?.type !== 'region' || inner.element == null) continue;
+
+      const innerRect = inner.element.getBoundingClientRect();
+      const d = distanceToRect(x, y, innerRect);
+      if (d < bestDistance) {
+        bestDistance = d;
+        bestRegion = inner.element;
+      }
+    }
+  }
+
+  return bestRegion;
+}
 
 function findRegionElement(x: number, y: number): HTMLElement | undefined {
   const elements = document.elementsFromPoint(x, y);
   for (const el of elements) {
     if (!(el instanceof HTMLElement)) continue;
     const region = el.matches(REGION_SELECTOR) ? el : el.closest<HTMLElement>(REGION_SELECTOR);
-    if (region != null) return region;
+    if (region == null) continue;
+
+    const proximal = findProximalInnerRegion(region, x, y);
+    return proximal ?? region;
   }
   return undefined;
+}
+
+function getEnclosingLayoutPath(regionPath: ComponentPath): ComponentPath | undefined {
+  const record = getRecord(regionPath);
+  if (record?.parentPath == null) return undefined;
+  const parent = getRecord(record.parentPath);
+  return parent?.type === 'layout' ? parent.path : undefined;
+}
+
+// ? Hysteresis: when crossing a layout boundary cross-axis (perpendicular to the outer
+// ? flow), stay on the previous target within the unsafe band. Flow-axis crossings are
+// ? intentionally excluded so the escape zone's "drop before/after the layout" can fire
+// ? immediately when the cursor reaches the top/bottom edge of a vertical layout.
+function applyHysteresis(
+  candidateRegion: HTMLElement,
+  x: number,
+  y: number,
+  previousRegionPath: ComponentPath | undefined,
+): HTMLElement {
+  if (previousRegionPath == null) return candidateRegion;
+
+  const candidatePath = getPathForElement(candidateRegion);
+  if (candidatePath == null || candidatePath === previousRegionPath) return candidateRegion;
+
+  const previousRecord = getRecord(previousRegionPath);
+  if (previousRecord?.element == null) return candidateRegion;
+
+  const prevLayoutPath = getEnclosingLayoutPath(previousRegionPath);
+  const candLayoutPath = getEnclosingLayoutPath(candidatePath);
+  if (prevLayoutPath === candLayoutPath) return candidateRegion;
+
+  const boundaryLayoutPath = prevLayoutPath ?? candLayoutPath;
+  if (boundaryLayoutPath == null) return candidateRegion;
+
+  const boundaryLayout = getRecord(boundaryLayoutPath);
+  if (boundaryLayout?.element == null) return candidateRegion;
+
+  const outerAxis = getLayoutOuterAxis(boundaryLayout);
+  const rect = boundaryLayout.element.getBoundingClientRect();
+  if (isNearCrossAxisEdge(x, y, rect, outerAxis, UNSAFE_BAND_PX)) return previousRecord.element;
+
+  return candidateRegion;
 }
 
 function getDirectChildren(regionRecord: ComponentRecord, sourcePath?: ComponentPath): ComponentRecord[] {
@@ -90,9 +236,16 @@ function computeInsertionIndex(children: ComponentRecord[], axis: Axis, cursor: 
   return children.length;
 }
 
-export function inferDropTarget(x: number, y: number, sourcePath?: ComponentPath): DropTarget | undefined {
-  const regionElement = findRegionElement(x, y);
-  if (regionElement == null) return undefined;
+export function inferDropTarget(
+  x: number,
+  y: number,
+  sourcePath?: ComponentPath,
+  previousRegionPath?: ComponentPath,
+): DropTarget | undefined {
+  const rawRegion = findRegionElement(x, y);
+  if (rawRegion == null) return undefined;
+
+  const regionElement = applyHysteresis(rawRegion, x, y, previousRegionPath);
 
   const regionPath = getPathForElement(regionElement);
   if (regionPath == null) return undefined;

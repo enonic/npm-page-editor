@@ -218,6 +218,351 @@ describe('drop-target', () => {
 
       expect(inferDropTarget(100, 100)).toBeUndefined();
     });
+
+    //
+    // * Proximity snap: cursor in a layout's gap/padding should target the closest inner region
+    //
+
+    it('snaps to the closest inner region when cursor is in a layout gap', () => {
+      // /main > [layout /main/1 > [region left, region right]]
+      // Cursor at x=215: in the grid gap between left (x: 0-200) and right (x: 260-460),
+      // closer to left (distance 15) than right (distance 45). Expect target = /main/1/left.
+      const main = document.createElement('section');
+      main.setAttribute('data-portal-region', 'main');
+      document.body.appendChild(main);
+
+      const layout = document.createElement('div');
+      layout.setAttribute('data-portal-component-type', 'layout');
+      main.appendChild(layout);
+      setRect(layout, {left: 0, right: 460, top: 0, bottom: 200, width: 460, height: 200});
+
+      const left = document.createElement('section');
+      left.setAttribute('data-portal-region', 'left');
+      layout.appendChild(left);
+      setRect(left, {left: 0, right: 200, top: 0, bottom: 200, width: 200, height: 200});
+
+      const right = document.createElement('section');
+      right.setAttribute('data-portal-region', 'right');
+      layout.appendChild(right);
+      setRect(right, {left: 260, right: 460, top: 0, bottom: 200, width: 200, height: 200});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', main, '/', ['/main/1']),
+        '/main/1': makeRecord('/main/1', 'layout', layout, '/main', ['/main/1/left', '/main/1/right']),
+        '/main/1/left': makeRecord('/main/1/left', 'region', left, '/main/1'),
+        '/main/1/right': makeRecord('/main/1/right', 'region', right, '/main/1'),
+      });
+
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([layout, main]);
+
+      const target = inferDropTarget(215, 100);
+      expect(target?.regionPath).toBe(path('/main/1/left'));
+    });
+
+    it('snaps to the other inner region when cursor is closer to it', () => {
+      const main = document.createElement('section');
+      main.setAttribute('data-portal-region', 'main');
+      document.body.appendChild(main);
+
+      const layout = document.createElement('div');
+      layout.setAttribute('data-portal-component-type', 'layout');
+      main.appendChild(layout);
+      setRect(layout, {left: 0, right: 460, top: 0, bottom: 200, width: 460, height: 200});
+
+      const left = document.createElement('section');
+      left.setAttribute('data-portal-region', 'left');
+      layout.appendChild(left);
+      setRect(left, {left: 0, right: 200, top: 0, bottom: 200, width: 200, height: 200});
+
+      const right = document.createElement('section');
+      right.setAttribute('data-portal-region', 'right');
+      layout.appendChild(right);
+      setRect(right, {left: 260, right: 460, top: 0, bottom: 200, width: 200, height: 200});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', main, '/', ['/main/1']),
+        '/main/1': makeRecord('/main/1', 'layout', layout, '/main', ['/main/1/left', '/main/1/right']),
+        '/main/1/left': makeRecord('/main/1/left', 'region', left, '/main/1'),
+        '/main/1/right': makeRecord('/main/1/right', 'region', right, '/main/1'),
+      });
+
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([layout, main]);
+
+      // Cursor at x=255: still in the gap but closer to the right region (distance 5 vs 55).
+      const target = inferDropTarget(255, 100);
+      expect(target?.regionPath).toBe(path('/main/1/right'));
+    });
+
+    it('treats the layout top/bottom edge as an outer-region escape zone for a vertical parent', () => {
+      // Outer /main is flex-col (y-axis). Cursor near the layout's top inside padding —
+      // within the 8px escape band — should NOT snap into inner regions; it should stay
+      // on /main so "drop before the layout" is the natural outcome.
+      const main = document.createElement('section');
+      main.setAttribute('data-portal-region', 'main');
+      main.style.display = 'flex';
+      main.style.flexDirection = 'column';
+      document.body.appendChild(main);
+
+      const layout = document.createElement('div');
+      layout.setAttribute('data-portal-component-type', 'layout');
+      main.appendChild(layout);
+      setRect(layout, {left: 0, right: 460, top: 0, bottom: 200, width: 460, height: 200});
+
+      const left = document.createElement('section');
+      left.setAttribute('data-portal-region', 'left');
+      layout.appendChild(left);
+      setRect(left, {left: 12, right: 222, top: 12, bottom: 188, width: 210, height: 176});
+
+      const right = document.createElement('section');
+      right.setAttribute('data-portal-region', 'right');
+      layout.appendChild(right);
+      setRect(right, {left: 238, right: 448, top: 12, bottom: 188, width: 210, height: 176});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', main, '/', ['/main/1']),
+        '/main/1': makeRecord('/main/1', 'layout', layout, '/main', ['/main/1/left', '/main/1/right']),
+        '/main/1/left': makeRecord('/main/1/left', 'region', left, '/main/1'),
+        '/main/1/right': makeRecord('/main/1/right', 'region', right, '/main/1'),
+      });
+
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([layout, main]);
+
+      // y=4 sits 4px below the layout's top edge — inside the 8px escape band.
+      const target = inferDropTarget(230, 4);
+      expect(target?.regionPath).toBe(path('/main'));
+    });
+
+    it('applies the escape zone on the left/right edges for a horizontal parent', () => {
+      const main = document.createElement('section');
+      main.setAttribute('data-portal-region', 'main');
+      main.style.display = 'flex';
+      main.style.flexDirection = 'row';
+      document.body.appendChild(main);
+
+      const layout = document.createElement('div');
+      layout.setAttribute('data-portal-component-type', 'layout');
+      main.appendChild(layout);
+      setRect(layout, {left: 0, right: 200, top: 0, bottom: 400, width: 200, height: 400});
+
+      const top = document.createElement('section');
+      top.setAttribute('data-portal-region', 'top');
+      layout.appendChild(top);
+      setRect(top, {left: 12, right: 188, top: 12, bottom: 198, width: 176, height: 186});
+
+      const bottom = document.createElement('section');
+      bottom.setAttribute('data-portal-region', 'bottom');
+      layout.appendChild(bottom);
+      setRect(bottom, {left: 12, right: 188, top: 214, bottom: 388, width: 176, height: 174});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', main, '/', ['/main/1']),
+        '/main/1': makeRecord('/main/1', 'layout', layout, '/main', ['/main/1/top', '/main/1/bottom']),
+        '/main/1/top': makeRecord('/main/1/top', 'region', top, '/main/1'),
+        '/main/1/bottom': makeRecord('/main/1/bottom', 'region', bottom, '/main/1'),
+      });
+
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([layout, main]);
+
+      // x=4 sits in the 8px left escape band of the layout (flex-row parent).
+      const target = inferDropTarget(4, 100);
+      expect(target?.regionPath).toBe(path('/main'));
+    });
+
+    it('still snaps to the inner region when the cursor is past the escape zone', () => {
+      // Same setup as the escape zone test, but y=12 puts the cursor on the layout's inner
+      // grid area — proximity snap should kick in again.
+      const main = document.createElement('section');
+      main.setAttribute('data-portal-region', 'main');
+      main.style.display = 'flex';
+      main.style.flexDirection = 'column';
+      document.body.appendChild(main);
+
+      const layout = document.createElement('div');
+      layout.setAttribute('data-portal-component-type', 'layout');
+      main.appendChild(layout);
+      setRect(layout, {left: 0, right: 460, top: 0, bottom: 200, width: 460, height: 200});
+
+      const left = document.createElement('section');
+      left.setAttribute('data-portal-region', 'left');
+      layout.appendChild(left);
+      setRect(left, {left: 0, right: 200, top: 0, bottom: 200, width: 200, height: 200});
+
+      const right = document.createElement('section');
+      right.setAttribute('data-portal-region', 'right');
+      layout.appendChild(right);
+      setRect(right, {left: 260, right: 460, top: 0, bottom: 200, width: 200, height: 200});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', main, '/', ['/main/1']),
+        '/main/1': makeRecord('/main/1', 'layout', layout, '/main', ['/main/1/left', '/main/1/right']),
+        '/main/1/left': makeRecord('/main/1/left', 'region', left, '/main/1'),
+        '/main/1/right': makeRecord('/main/1/right', 'region', right, '/main/1'),
+      });
+
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([layout, main]);
+
+      // y=100 is far from the top/bottom escape bands; proximity snap applies.
+      const target = inferDropTarget(215, 100);
+      expect(target?.regionPath).toBe(path('/main/1/left'));
+    });
+
+    it('keeps the outer region when the cursor is outside any layout bbox', () => {
+      // Cursor is in /main between the layout and another sibling — no layout contains it,
+      // so proximity snap does not apply and the target is /main.
+      const main = document.createElement('section');
+      main.setAttribute('data-portal-region', 'main');
+      document.body.appendChild(main);
+
+      const layout = document.createElement('div');
+      layout.setAttribute('data-portal-component-type', 'layout');
+      main.appendChild(layout);
+      setRect(layout, {left: 0, right: 460, top: 0, bottom: 200, width: 460, height: 200});
+
+      const inner = document.createElement('section');
+      inner.setAttribute('data-portal-region', 'inner');
+      layout.appendChild(inner);
+      setRect(inner, {left: 0, right: 460, top: 0, bottom: 200, width: 460, height: 200});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', main, '/', ['/main/1']),
+        '/main/1': makeRecord('/main/1', 'layout', layout, '/main', ['/main/1/inner']),
+        '/main/1/inner': makeRecord('/main/1/inner', 'region', inner, '/main/1'),
+      });
+
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([main]);
+
+      // y=300 — below the layout's bbox (0-200). Layout does not contain cursor, no snap.
+      const target = inferDropTarget(100, 300);
+      expect(target?.regionPath).toBe(path('/main'));
+    });
+
+    //
+    // * Hysteresis: near the layout's cross-axis edges, stay on the previous target to
+    // * prevent flicker. Flow-axis edges are intentionally excluded so the escape zone
+    // * can fire cleanly.
+    //
+
+    it('keeps the previous inner target when the cursor crosses the cross-axis edge within the unsafe band', () => {
+      const main = document.createElement('section');
+      main.setAttribute('data-portal-region', 'main');
+      main.style.display = 'flex';
+      main.style.flexDirection = 'column';
+      document.body.appendChild(main);
+
+      const layout = document.createElement('div');
+      layout.setAttribute('data-portal-component-type', 'layout');
+      main.appendChild(layout);
+      setRect(layout, {left: 100, right: 460, top: 0, bottom: 200, width: 360, height: 200});
+
+      const inner = document.createElement('section');
+      inner.setAttribute('data-portal-region', 'inner');
+      layout.appendChild(inner);
+      setRect(inner, {left: 100, right: 460, top: 0, bottom: 200, width: 360, height: 200});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', main, '/', ['/main/1']),
+        '/main/1': makeRecord('/main/1', 'layout', layout, '/main', ['/main/1/inner']),
+        '/main/1/inner': makeRecord('/main/1/inner', 'region', inner, '/main/1'),
+      });
+
+      // Vertical parent → cross-axis is x. Cursor 3px left of layout's left edge = within band.
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([main]);
+      const target = inferDropTarget(97, 100, undefined, path('/main/1/inner'));
+      expect(target?.regionPath).toBe(path('/main/1/inner'));
+    });
+
+    it('does not apply hysteresis on the flow-axis edge — escape zone governs transitions there', () => {
+      const main = document.createElement('section');
+      main.setAttribute('data-portal-region', 'main');
+      main.style.display = 'flex';
+      main.style.flexDirection = 'column';
+      document.body.appendChild(main);
+
+      const layout = document.createElement('div');
+      layout.setAttribute('data-portal-component-type', 'layout');
+      main.appendChild(layout);
+      setRect(layout, {left: 0, right: 460, top: 0, bottom: 200, width: 460, height: 200});
+
+      const inner = document.createElement('section');
+      inner.setAttribute('data-portal-region', 'inner');
+      layout.appendChild(inner);
+      setRect(inner, {left: 0, right: 460, top: 0, bottom: 200, width: 460, height: 200});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', main, '/', ['/main/1']),
+        '/main/1': makeRecord('/main/1', 'layout', layout, '/main', ['/main/1/inner']),
+        '/main/1/inner': makeRecord('/main/1/inner', 'region', inner, '/main/1'),
+      });
+
+      // Cursor 3px below layout's bottom edge (flow-axis). Hysteresis must not delay the
+      // switch — the escape zone + clean outside transition should take over immediately.
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([main]);
+      const target = inferDropTarget(200, 203, undefined, path('/main/1/inner'));
+      expect(target?.regionPath).toBe(path('/main'));
+    });
+
+    it('releases to the outer region once the cursor is past the cross-axis unsafe band', () => {
+      const main = document.createElement('section');
+      main.setAttribute('data-portal-region', 'main');
+      main.style.display = 'flex';
+      main.style.flexDirection = 'column';
+      document.body.appendChild(main);
+
+      const layout = document.createElement('div');
+      layout.setAttribute('data-portal-component-type', 'layout');
+      main.appendChild(layout);
+      setRect(layout, {left: 100, right: 460, top: 0, bottom: 200, width: 360, height: 200});
+
+      const inner = document.createElement('section');
+      inner.setAttribute('data-portal-region', 'inner');
+      layout.appendChild(inner);
+      setRect(inner, {left: 100, right: 460, top: 0, bottom: 200, width: 360, height: 200});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', main, '/', ['/main/1']),
+        '/main/1': makeRecord('/main/1', 'layout', layout, '/main', ['/main/1/inner']),
+        '/main/1/inner': makeRecord('/main/1/inner', 'region', inner, '/main/1'),
+      });
+
+      // Cursor 20px left of layout → clearly past the cross-axis band.
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([main]);
+      const target = inferDropTarget(80, 100, undefined, path('/main/1/inner'));
+      expect(target?.regionPath).toBe(path('/main'));
+    });
+
+    it('does not apply hysteresis between sibling inner regions of the same layout', () => {
+      const main = document.createElement('section');
+      main.setAttribute('data-portal-region', 'main');
+      document.body.appendChild(main);
+
+      const layout = document.createElement('div');
+      layout.setAttribute('data-portal-component-type', 'layout');
+      main.appendChild(layout);
+      setRect(layout, {left: 0, right: 460, top: 0, bottom: 200, width: 460, height: 200});
+
+      const left = document.createElement('section');
+      left.setAttribute('data-portal-region', 'left');
+      layout.appendChild(left);
+      setRect(left, {left: 0, right: 200, top: 0, bottom: 200, width: 200, height: 200});
+
+      const right = document.createElement('section');
+      right.setAttribute('data-portal-region', 'right');
+      layout.appendChild(right);
+      setRect(right, {left: 260, right: 460, top: 0, bottom: 200, width: 200, height: 200});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', main, '/', ['/main/1']),
+        '/main/1': makeRecord('/main/1', 'layout', layout, '/main', ['/main/1/left', '/main/1/right']),
+        '/main/1/left': makeRecord('/main/1/left', 'region', left, '/main/1'),
+        '/main/1/right': makeRecord('/main/1/right', 'region', right, '/main/1'),
+      });
+
+      // Previous target = left, cursor now clearly closer to right; no hysteresis since
+      // both inner regions share the same enclosing layout.
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([right, layout, main]);
+      const target = inferDropTarget(400, 100, undefined, path('/main/1/left'));
+      expect(target?.regionPath).toBe(path('/main/1/right'));
+    });
   });
 
   //
