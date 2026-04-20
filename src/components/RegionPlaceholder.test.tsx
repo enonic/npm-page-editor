@@ -67,7 +67,10 @@ describe('RegionPlaceholder', () => {
     expect(island.host.style.display).toBe('block');
   });
 
-  it('hides the host when the drag target matches the region', async () => {
+  it('hides the host when the drag target matches the region on a valid slot drop', async () => {
+    // ? The in-flow drop anchor takes the host's space in the region's flex flow. If the host
+    // ? stayed `display: block` here it would stack alongside the anchor, doubling the region
+    // ? height and pushing the RegionPlaceholder dashed box below the live drop indicator.
     const region = document.createElement('section');
     document.body.appendChild(region);
 

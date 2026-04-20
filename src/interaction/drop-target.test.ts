@@ -456,33 +456,55 @@ describe('drop-target', () => {
       expect(region.children[1]).toBe(anchor);
     });
 
-    it('applies fixed 120px height on vertical axis for an empty region', () => {
+    it('takes 120px of height on vertical axis so siblings are pushed apart', () => {
       const region = document.createElement('section');
       document.body.appendChild(region);
 
       const anchor = ensurePlaceholderAnchor(undefined, region, 0, undefined, 'y');
       expect(anchor.style.height).toBe('120px');
-      expect(anchor.style.position).toBe('fixed');
+      expect(anchor.style.width).toBe('');
     });
 
-    it('applies fixed 120px width on horizontal axis for an empty region', () => {
+    it('takes 120px of width on horizontal axis so siblings are pushed apart', () => {
       const region = document.createElement('section');
       document.body.appendChild(region);
 
       const anchor = ensurePlaceholderAnchor(undefined, region, 0, undefined, 'x');
       expect(anchor.style.width).toBe('120px');
-      expect(anchor.style.position).toBe('fixed');
+      expect(anchor.style.height).toBe('');
+      expect(anchor.style.alignSelf).toBe('stretch');
     });
 
-    it('stays out of region flow via position:fixed so siblings do not shift', () => {
+    it('participates in region flow with pointer-events disabled', () => {
       const region = document.createElement('section');
       const child = document.createElement('div');
       region.appendChild(child);
       document.body.appendChild(region);
 
       const anchor = ensurePlaceholderAnchor(undefined, region, 0);
-      expect(anchor.style.position).toBe('fixed');
+      // No `position: fixed` — the anchor must stay in flex/grid flow to displace siblings.
+      expect(anchor.style.position).toBe('');
       expect(anchor.style.pointerEvents).toBe('none');
+    });
+
+    it('clears any leftover positional styles when reused from a prior session', () => {
+      // ? `ensurePlaceholderAnchor` may receive an existing element that was previously
+      // ? positioned. Leaving `position: fixed` / `top` / `left` on the node would detach it
+      // ? from the flow on the next insertion.
+      const region = document.createElement('section');
+      document.body.appendChild(region);
+
+      const stale = document.createElement('div');
+      stale.style.position = 'fixed';
+      stale.style.top = '100px';
+      stale.style.left = '50px';
+
+      const anchor = ensurePlaceholderAnchor(stale, region, 0, undefined, 'y');
+      expect(anchor).toBe(stale);
+      expect(anchor.style.position).toBe('');
+      expect(anchor.style.top).toBe('');
+      expect(anchor.style.left).toBe('');
+      expect(anchor.style.height).toBe('120px');
     });
   });
 

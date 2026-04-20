@@ -29,6 +29,7 @@ export type DropValidation = {
 
 const REGION_SELECTOR = '[data-portal-region]';
 const PLACEHOLDER_ATTR = 'data-pe-drag-anchor';
+const PLACEHOLDER_HOST_ATTR = 'data-pe-placeholder-host';
 const DRAG_PLACEHOLDER_SIZE_PX = 120;
 
 //
@@ -194,59 +195,35 @@ export function validateDrop(
 // * Placeholder anchor management
 //
 
-type AnchorRect = {top: number; left: number; width: number; height: number};
-
-// ! The anchor uses `position: fixed` so it is removed from the region's flex/grid flow.
-// ! If it participated in flow, a freshly-inserted anchor would shift its siblings' bounding
-// ! rects by 120px and the next `computeInsertionIndex` call would read a different target —
-// ! producing an oscillation where the anchor dances between positions on every mousemove.
-// ! Viewport coords are computed from the adjacent siblings' rects and kept in sync with the
-// ! `DragTargetHighlighter` overlay, which reads `anchor.getBoundingClientRect()`.
-function midlineY(before: DOMRect | undefined, after: DOMRect | undefined): number {
-  if (before != null && after != null) return (before.bottom + after.top) / 2;
-  if (after != null) return after.top;
-  return before?.bottom ?? 0;
-}
-
-function midlineX(before: DOMRect | undefined, after: DOMRect | undefined): number {
-  if (before != null && after != null) return (before.right + after.left) / 2;
-  if (after != null) return after.left;
-  return before?.right ?? 0;
-}
-
-function computeAnchorRect(regionElement: HTMLElement, siblings: HTMLElement[], index: number, axis: Axis): AnchorRect {
-  if (siblings.length === 0) {
-    const r = regionElement.getBoundingClientRect();
-    if (axis === 'y') {
-      return {top: r.top, left: r.left, width: r.width, height: DRAG_PLACEHOLDER_SIZE_PX};
-    }
-    return {top: r.top, left: r.left, width: DRAG_PLACEHOLDER_SIZE_PX, height: r.height};
-  }
-
-  const clamped = Math.max(0, Math.min(index, siblings.length));
-  const before = clamped > 0 ? siblings[clamped - 1].getBoundingClientRect() : undefined;
-  const after = clamped < siblings.length ? siblings[clamped].getBoundingClientRect() : undefined;
-  const ref = after ?? before;
-  if (ref == null) {
-    return {top: 0, left: 0, width: 0, height: 0};
-  }
-
-  const half = DRAG_PLACEHOLDER_SIZE_PX / 2;
-  if (axis === 'y') {
-    return {top: midlineY(before, after) - half, left: ref.left, width: ref.width, height: DRAG_PLACEHOLDER_SIZE_PX};
-  }
-  return {top: ref.top, left: midlineX(before, after) - half, width: DRAG_PLACEHOLDER_SIZE_PX, height: ref.height};
-}
-
-function applyAnchorStyles(anchor: HTMLElement, rect: AnchorRect): void {
-  anchor.style.position = 'fixed';
+// ! The anchor participates in the region's flex/grid flow, occupying DRAG_PLACEHOLDER_SIZE_PX
+// ! on the primary axis. This displaces adjacent siblings to create a real blank drop zone —
+// ! matching the legacy editor's behavior and giving the user a tangible target instead of an
+// ! overlay that occludes existing content. `DragTargetHighlighter` reads the anchor's rect to
+// ! position the visual indicator on top of the reserved slot.
+// !
+// ! The anchor is marked with `data-pe-drag-anchor` and filtered out of `inferDropTarget`'s
+// ! sibling list, so its presence does not affect the next insertion-index computation:
+// ! `computeInsertionIndex` walks siblings in registry order, compares the cursor against each
+// ! sibling's midpoint, and returns a stable index regardless of whether the anchor has shifted
+// ! those siblings downstream.
+function applyAnchorStyles(anchor: HTMLElement, axis: Axis): void {
   anchor.style.pointerEvents = 'none';
-  anchor.style.top = `${String(rect.top)}px`;
-  anchor.style.left = `${String(rect.left)}px`;
-  anchor.style.width = `${String(rect.width)}px`;
-  anchor.style.height = `${String(rect.height)}px`;
-  anchor.style.removeProperty('align-self');
+  anchor.style.removeProperty('position');
+  anchor.style.removeProperty('top');
+  anchor.style.removeProperty('left');
   anchor.style.removeProperty('flex');
+  if (axis === 'x') {
+    anchor.style.width = `${String(DRAG_PLACEHOLDER_SIZE_PX)}px`;
+    anchor.style.removeProperty('height');
+    // ? In flex-row the default cross-axis is `stretch`, but explicit `align-self: stretch`
+    // ? covers grid cells and other containers where the default would leave the anchor
+    // ? collapsed to zero height.
+    anchor.style.alignSelf = 'stretch';
+  } else {
+    anchor.style.height = `${String(DRAG_PLACEHOLDER_SIZE_PX)}px`;
+    anchor.style.removeProperty('width');
+    anchor.style.removeProperty('align-self');
+  }
 }
 
 export function ensurePlaceholderAnchor(
@@ -259,13 +236,14 @@ export function ensurePlaceholderAnchor(
   const anchor = current ?? document.createElement('div');
   anchor.setAttribute(PLACEHOLDER_ATTR, '');
 
-  // Compute reference child for insertion, excluding source and existing anchors.
-  // Kept in DOM for `inferDropTarget` filtering and DOM-order inspection in tests,
-  // but `position: fixed` keeps it out of the region's layout.
+  // Filter out the source (for component moves), any existing anchors, and the region's
+  // placeholder-island host. The host carries `height: 100%` and would otherwise count as a
+  // sibling when the region is empty, breaking the "empty → append at 0" invariant.
   const domChildren = Array.from(regionElement.children).filter(
     (child): child is HTMLElement =>
       child instanceof HTMLElement &&
       !child.hasAttribute(PLACEHOLDER_ATTR) &&
+      !child.hasAttribute(PLACEHOLDER_HOST_ATTR) &&
       (sourcePath == null || getPathForElement(child) !== sourcePath),
   );
 
@@ -275,7 +253,7 @@ export function ensurePlaceholderAnchor(
     regionElement.insertBefore(anchor, reference);
   }
 
-  applyAnchorStyles(anchor, computeAnchorRect(regionElement, domChildren, index, axis));
+  applyAnchorStyles(anchor, axis);
 
   return anchor;
 }

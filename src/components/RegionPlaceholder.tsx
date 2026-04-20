@@ -19,13 +19,12 @@ export const RegionPlaceholder = ({path}: RegionPlaceholderProps): JSX.Element =
   const t = useI18n();
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // ! Toggle the *host* element (outside this shadow root) rather than
-  // ! conditionally rendering null. The host keeps inline `width:100%;
-  // ! height:100%`, so without this it keeps reserving flex space in the
-  // ! region and squashes the drag anchor.
-  // ? Only hide on the 'slot' variant (valid drop with injected anchor).
-  // ? On 'region' rejection nothing is inserted, so keeping the placeholder
-  // ? visible stops the column from collapsing to its sibling's height.
+  // ! Toggle the *host* element (outside this shadow root) rather than conditionally rendering
+  // ! null. The host carries inline `width:100%; height:100%`, so without this it keeps
+  // ! reserving flex space in the region and stacks next to the in-flow drop anchor.
+  // ? Only hide on the 'slot' variant (valid drop with injected anchor). On 'region' rejection
+  // ? nothing is inserted, so keeping the placeholder visible stops the column from collapsing
+  // ? to its sibling's height and causing layout jitter.
   const hideHost = dragState?.targetRegion === path && dragState?.placeholderVariant === 'slot';
   useLayoutEffect(() => {
     const el = rootRef.current;
