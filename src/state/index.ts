@@ -26,4 +26,4 @@ export {$theme, setTheme, getTheme} from './theme';
 export type {ContextMenuState} from './context-menu';
 export {$contextMenu, openContextMenu, closeContextMenu} from './context-menu';
 
-export {rebuildIndex, getPathForElement} from './element-index';
+export {rebuildIndex, getPathForElement, setElementIndexFrozen} from './element-index';

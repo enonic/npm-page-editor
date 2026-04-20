@@ -44,6 +44,7 @@ function emptyPageRecord(): Record<string, ComponentRecord> {
       descriptor: undefined,
       fragmentContentId: undefined,
       loading: false,
+      maxOccurrences: undefined,
     },
   };
 }

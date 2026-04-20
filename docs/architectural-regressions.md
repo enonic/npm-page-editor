@@ -135,13 +135,13 @@ Without both, page-config edits in CS's InspectPanel update local state and even
 5. **A4 (half)** — `[DONE iframe-side]` `configHash` field on `PageDescriptorEntry` + compared in `entryChanged`. CS-side serialization still pending.
 
 **Phase 2 — unblock drag-and-drop on real pages (high)**
-6. **D2** — `relocateInDom` respects wrapper hierarchy.
-7. **E1** — `[DONE (pending-sync half)]` `pendingPageStateSync` flag set by local drag-drop, cleared on next `page-state`; MutationObserver skips reconcile while pending. Still needs correlation-id or time-based safety net.
-8. **E2** — preserve element→path map during drag (guard `rebuildIndex`).
-9. **E4** — pin region element ref at drag-start.
-10. **I4** — `maxOccurrences` in descriptor; real capacity validation.
-11. **I5** — decouple placeholder anchor from region layout.
-12. **D3–D5** — fragment strip alias, accept region roots, walk-up in `getPathForElement`.
+6. **D2** — `[DONE]` `relocateInDom` walks up through wrappers that hold only the tracked source (`findSlotAncestor`) and moves the slot, preserving layout wrappers like `<div class="row"><article/></div>`.
+7. **E1** — `[DONE]` `pendingPageStateSync` now keyed by a monotonic `syncId` stamped on outgoing `move` / `drag-dropped` and echoed by CS on `page-state.syncId`. A 3s safety-net timeout prevents deadlock when CS hasn't yet been updated. `init.tsx:armPendingSync`.
+8. **E2** — `[DONE]` `setElementIndexFrozen(true)` during drag sessions; `rebuildIndex` is a no-op while frozen so mid-drag hit-tests keep returning valid paths even if a reconcile path bypasses `isDragging()`.
+9. **E4** — `[DONE]` `ActiveDrag` pins `sourceRegionElement` at drag-start; `relocateInDom` uses the pinned ref so the move survives registry churn.
+10. **I4** — `[DONE iframe-side]` `maxOccurrences` propagates from `PageDescriptorEntry` into `ComponentRecord`; `isRegionAtCapacity` enforces real caps; layout single-slot is kept as a fallback when the descriptor hasn't declared a cap. CS still needs to serialize the field.
+11. **I5** — `[DONE]` placeholder anchor is now `position: fixed`; its viewport coords are computed from adjacent siblings' rects. Siblings no longer shift under it, eliminating the mousemove oscillation.
+12. **D3–D5** — `[DONE]` fragment strip now covers `data-portal-region-name` (D3); `parseFragmentPage` accepts region roots and preserves the declared region name in the path (D4); `getPathForElement` walks up the DOM to find a registered ancestor (D5).
 
 **Phase 3 — UI consistency (high)**
 13. **E3** — gate selection restore on config+descriptors arrival.

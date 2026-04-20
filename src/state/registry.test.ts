@@ -29,6 +29,7 @@ function makeRecord(p: ComponentPath, overrides?: Partial<ComponentRecord>): Com
     descriptor: undefined,
     fragmentContentId: undefined,
     loading: false,
+    maxOccurrences: undefined,
     ...overrides,
   };
 }

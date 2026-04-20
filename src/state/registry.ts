@@ -13,6 +13,8 @@ export type ComponentRecord = {
   descriptor: string | undefined;
   fragmentContentId: string | undefined;
   loading: boolean;
+  // ? Region-only: server-authored max-child cap propagated from the descriptor entry.
+  maxOccurrences: number | undefined;
 };
 
 export const $registry = map<Record<string, ComponentRecord>>({});

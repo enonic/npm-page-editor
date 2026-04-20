@@ -5,7 +5,15 @@ import {markDirty} from '../geometry';
 import {translate} from '../i18n';
 import {insertAt} from '../protocol/path';
 import {setDragCursor} from '../rendering/drag-cursor';
-import {closeContextMenu, getRecord, isDragging, setDragState, setHoveredPath, updateDragState} from '../state';
+import {
+  closeContextMenu,
+  getRecord,
+  isDragging,
+  setDragState,
+  setElementIndexFrozen,
+  setHoveredPath,
+  updateDragState,
+} from '../state';
 import {clearPlaceholder, ensurePlaceholderAnchor, inferDropTarget, validateDrop} from './drop-target';
 
 //
@@ -40,6 +48,7 @@ export function initContextWindowDrag(channel: Channel): () => void {
     session = undefined;
 
     setDragState(undefined);
+    setElementIndexFrozen(false);
     if (canceled) channel.send({type: 'drag-stopped'});
     markDirty();
   }
@@ -64,6 +73,7 @@ export function initContextWindowDrag(channel: Channel): () => void {
 
         setHoveredPath(undefined);
         closeContextMenu();
+        setElementIndexFrozen(true);
 
         setDragState({
           itemType,

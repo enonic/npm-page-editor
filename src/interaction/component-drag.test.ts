@@ -35,6 +35,7 @@ function makeRecord(
     descriptor: undefined,
     fragmentContentId: undefined,
     loading: false,
+    maxOccurrences: undefined,
   };
 }
 
@@ -618,6 +619,48 @@ describe('component-drag', () => {
     //
     // * Placeholder sizing + variant
     //
+
+    //
+    // * Wrapper preservation (D2)
+    //
+
+    it('moves the wrapping slot ancestor, not the bare tracked element', () => {
+      const region = makeRegionElement('main');
+      // Wrapper hierarchy: region > wrapper > part
+      const wrapper0 = document.createElement('div');
+      const part0 = document.createElement('article');
+      part0.setAttribute('data-portal-component-type', 'part');
+      wrapper0.appendChild(part0);
+      region.appendChild(wrapper0);
+
+      const wrapper1 = document.createElement('div');
+      const part1 = document.createElement('article');
+      part1.setAttribute('data-portal-component-type', 'part');
+      wrapper1.appendChild(part1);
+      region.appendChild(wrapper1);
+
+      setRect(part0, {top: 0, height: 100});
+      setRect(part1, {top: 100, height: 100});
+
+      setupRegistry({
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0', '/main/1']),
+        '/main/0': makeRecord('/main/0', 'part', part0, '/main'),
+        '/main/1': makeRecord('/main/1', 'part', part1, '/main'),
+      });
+
+      cleanup = initComponentDrag(channel);
+
+      vi.spyOn(document, 'elementsFromPoint').mockReturnValue([region]);
+
+      mouseDown(part0, 100, 50);
+      mouseMove(100, 60);
+      mouseUp(100, 180);
+
+      // wrapper0 (holding part0) is the move unit — it lands at the end, preserving the row-wrap.
+      expect(wrapper0.contains(part0)).toBe(true);
+      expect(wrapper1.contains(part1)).toBe(true);
+      expect(Array.from(region.children)).toEqual([wrapper1, wrapper0]);
+    });
 
     it('sizes the anchor to the fixed drop-placeholder height', () => {
       const region = makeRegionElement('main');

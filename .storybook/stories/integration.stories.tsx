@@ -65,6 +65,7 @@ function makeRecord(
     loading: overrides.loading ?? false,
     descriptor: overrides.descriptor,
     fragmentContentId: overrides.fragmentContentId,
+    maxOccurrences: undefined,
   };
 }
 

@@ -178,7 +178,7 @@ describe('parsePage', () => {
     document.body.innerHTML = `
       <section data-portal-region="main">
         <div data-portal-component-type="fragment" id="frag">
-          <div data-portal-region="inner">
+          <div data-portal-region="inner" data-portal-region-name="Inner">
             <article data-portal-component-type="part" id="inner-part"></article>
           </div>
         </div>
@@ -190,10 +190,13 @@ describe('parsePage', () => {
     const fragEl = document.getElementById('frag');
     const innerPart = document.getElementById('inner-part');
     const innerRegion = document.querySelector('[data-portal-region="inner"]');
+    const innerRegionName = document.querySelector('[data-portal-region-name="Inner"]');
 
     expect(fragEl?.getAttribute('data-portal-component-type')).toBe('fragment');
     expect(innerPart?.hasAttribute('data-portal-component-type')).toBe(false);
     expect(innerRegion).toBeNull();
+    // D3: data-portal-region-name alias is also stripped so hover/selection cannot route to a ghost.
+    expect(innerRegionName).toBeNull();
   });
 
   it('preserves inner tracking attributes when the fragment root is a layout', () => {
@@ -214,6 +217,27 @@ describe('parsePage', () => {
 
     expect(innerPart?.getAttribute('data-portal-component-type')).toBe('part');
     expect(innerRegion?.getAttribute('data-portal-region')).toBe('content');
+  });
+
+  it('parses a region-root fragment preserving the declared region name in the path', () => {
+    document.body.innerHTML = `
+      <main>
+        <section data-portal-region="content">
+          <article data-portal-component-type="part" id="p0"></article>
+          <article data-portal-component-type="part" id="p1"></article>
+        </section>
+      </main>
+    `;
+
+    const records = parsePage(document.body, {fragment: true});
+
+    expect(records['/']).toMatchObject({type: 'page', children: ['/content']});
+    expect(records['/content']).toMatchObject({
+      type: 'region',
+      children: ['/content/0', '/content/1'],
+    });
+    expect(records['/content/0']).toMatchObject({type: 'part'});
+    expect(records['/content/1']).toMatchObject({type: 'part'});
   });
 
   it('registers a fragment as a leaf component with no children', () => {

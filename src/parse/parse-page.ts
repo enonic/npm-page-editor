@@ -92,6 +92,7 @@ function makeRecord(
     descriptor: resolveDescriptor(path, type, descriptors),
     fragmentContentId: type === 'fragment' ? descriptors[path]?.fragment : undefined,
     loading: false,
+    maxOccurrences: type === 'region' ? descriptors[path]?.maxOccurrences : undefined,
   };
 }
 
@@ -115,10 +116,17 @@ function parseComponent(
   }
 
   if (type === 'fragment') {
-    const innerTracked = element.querySelectorAll('[data-portal-component-type], [data-portal-region]');
+    // ! Fragments are atomic to drag-and-drop: inner tracking attributes must be stripped so
+    // ! `getPathForElement` / hover / selection never route into the fragment's internals.
+    // ! Omitting the `-name` alias lets the drag layer route into a ghost path the registry
+    // ! doesn't know about (D3). Legacy stripped all three — match it.
+    const innerTracked = element.querySelectorAll(
+      '[data-portal-component-type], [data-portal-region], [data-portal-region-name]',
+    );
     innerTracked.forEach(el => {
       el.removeAttribute('data-portal-component-type');
       el.removeAttribute('data-portal-region');
+      el.removeAttribute('data-portal-region-name');
     });
   }
 
@@ -190,6 +198,7 @@ function parseStandardPage(body: HTMLElement, descriptors: DescriptorMap): Recor
     descriptor: undefined,
     fragmentContentId: undefined,
     loading: false,
+    maxOccurrences: undefined,
   };
 
   return records;
@@ -197,9 +206,12 @@ function parseStandardPage(body: HTMLElement, descriptors: DescriptorMap): Recor
 
 function parseFragmentPage(body: HTMLElement, descriptors: DescriptorMap): Record<string, ComponentRecord> {
   const records: Record<string, ComponentRecord> = {};
-  const rootComponent = findFirstTrackedDescendant(body, isComponentElement);
+  // ? Fragment roots may be either a component OR a region — legacy `doParseFragmentItemViews`
+  // ? accepted both. Narrowing to `isComponentElement` only (D4) collapses region-root fragments
+  // ? to a single `/` entry, so inner components end up at the wrong path and never render.
+  const rootElement = findFirstTrackedDescendant(body, el => isComponentElement(el) || isRegionElement(el));
 
-  if (!rootComponent) {
+  if (!rootElement) {
     const rootPath = root();
     records[rootPath] = {
       path: rootPath,
@@ -212,12 +224,38 @@ function parseFragmentPage(body: HTMLElement, descriptors: DescriptorMap): Recor
       descriptor: undefined,
       fragmentContentId: undefined,
       loading: false,
+      maxOccurrences: undefined,
     };
 
     return records;
   }
 
-  parseRootComponent(rootComponent, records, descriptors);
+  if (isComponentElement(rootElement)) {
+    parseRootComponent(rootElement, records, descriptors);
+    return records;
+  }
+
+  // ? Region-root fragment. The region's declared name keeps the path model consistent
+  // ? (segments alternate region-name / component-index), so the page path stays `/` and
+  // ? the region sits at `/<regionName>` with children `/<regionName>/0`, etc. This matches
+  // ? how the same HTML parses when rendered inside a standard page.
+  const rootPath = root();
+  const regionRecord = parseRegionSubtree(rootElement, rootPath, records, descriptors);
+
+  records[rootPath] = {
+    path: rootPath,
+    type: 'page',
+    element: body,
+    parentPath: undefined,
+    children: [regionRecord.path],
+    empty: false,
+    error: false,
+    descriptor: undefined,
+    fragmentContentId: undefined,
+    loading: false,
+    maxOccurrences: undefined,
+  };
+
   return records;
 }
 

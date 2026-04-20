@@ -34,10 +34,20 @@ export type PageDescriptorEntry = {
   // ? detect config-only edits (e.g. InspectPanel changes) and fire `load(existing=true)`.
   // ? Without it, config edits update CS state but never reach the iframe.
   configHash?: string;
+  // ? Only meaningful on region entries: the server-authored maximum number of child
+  // ? components the region accepts. Used by drop validation to replace the legacy
+  // ? "layout cells are single-slot" heuristic with real descriptor-driven capacity.
+  // ? Absent => unlimited (except the single-slot legacy fallback for layout-nested regions).
+  maxOccurrences?: number;
 };
 
 export type PageDescriptor = {
   components: Record<string, PageDescriptorEntry>;
+  // ? Optional correlation id. CS echoes the highest `syncId` it has seen on the most recent
+  // ? outgoing message that mutated page state (e.g. `move`); the iframe uses it to decide
+  // ? whether an incoming `page-state` is the response to a still-pending local mutation, or
+  // ? an unrelated push from another cause (InspectPanel edit, controller switch, etc.).
+  syncId?: number;
 };
 
 export type PageController = {
@@ -85,9 +95,9 @@ export type OutgoingMessage =
   | {type: 'error'; phase: 'init' | 'reconcile' | 'handle'; message: string}
   | {type: 'select'; path: ComponentPath; position?: {x: number; y: number}; rightClicked?: boolean}
   | {type: 'deselect'; path: ComponentPath}
-  | {type: 'move'; from: ComponentPath; to: ComponentPath}
-  | {type: 'add'; path: ComponentPath; componentType: ComponentType}
-  | {type: 'remove'; path: ComponentPath}
+  | {type: 'move'; from: ComponentPath; to: ComponentPath; syncId?: number}
+  | {type: 'add'; path: ComponentPath; componentType: ComponentType; syncId?: number}
+  | {type: 'remove'; path: ComponentPath; syncId?: number}
   | {type: 'duplicate'; path: ComponentPath}
   | {type: 'reset'; path: ComponentPath}
   | {type: 'inspect'; path: ComponentPath}
@@ -102,7 +112,7 @@ export type OutgoingMessage =
   | {type: 'component-load-failed'; path: ComponentPath; reason: string}
   | {type: 'drag-started'; path?: ComponentPath}
   | {type: 'drag-stopped'; path?: ComponentPath}
-  | {type: 'drag-dropped'; from?: ComponentPath; to: ComponentPath}
+  | {type: 'drag-dropped'; from?: ComponentPath; to: ComponentPath; syncId?: number}
   | {type: 'keyboard-event'; eventType: string; key: string; keyCode: number; modifiers: Modifiers}
   | {type: 'iframe-loaded'}
   | {type: 'navigate'; path: string};

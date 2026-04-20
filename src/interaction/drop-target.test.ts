@@ -17,6 +17,7 @@ function makeRecord(
   element: HTMLElement | undefined,
   parentPath: string | undefined,
   children: string[] = [],
+  maxOccurrences?: number,
 ): ComponentRecord {
   return {
     path: path(p),
@@ -29,6 +30,7 @@ function makeRecord(
     descriptor: undefined,
     fragmentContentId: undefined,
     loading: false,
+    maxOccurrences,
   };
 }
 
@@ -346,6 +348,60 @@ describe('drop-target', () => {
       expect(result.message).toContain('already occupied');
     });
 
+    it('rejects when region.maxOccurrences is reached even outside a layout', () => {
+      const page = document.createElement('div');
+      const region = document.createElement('section');
+      region.setAttribute('data-portal-region', 'main');
+      document.body.appendChild(page);
+      page.appendChild(region);
+
+      const records: Record<string, ComponentRecord> = {
+        '/': makeRecord('/', 'page', page, undefined, ['/main']),
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0'], 1),
+        '/main/0': makeRecord('/main/0', 'part', document.createElement('div'), '/main'),
+      };
+      setupRegistry(records);
+
+      const result = validateDrop(path('/main/99'), path('/main'), 'part');
+      expect(result.allowed).toBe(false);
+      expect(result.message).toContain('already occupied');
+    });
+
+    it('allows drop up to maxOccurrences and rejects beyond it', () => {
+      const page = document.createElement('div');
+      const region = document.createElement('section');
+      region.setAttribute('data-portal-region', 'main');
+      document.body.appendChild(page);
+      page.appendChild(region);
+
+      const records: Record<string, ComponentRecord> = {
+        '/': makeRecord('/', 'page', page, undefined, ['/main']),
+        '/main': makeRecord('/main', 'region', region, '/', ['/main/0'], 2),
+        '/main/0': makeRecord('/main/0', 'part', document.createElement('div'), '/main'),
+      };
+      setupRegistry(records);
+
+      // 1 existing, cap 2 → still room.
+      expect(validateDrop(path('/main/99'), path('/main'), 'part')).toEqual({allowed: true});
+    });
+
+    it('ignores the layout single-slot fallback when maxOccurrences is declared', () => {
+      const layout = document.createElement('div');
+      const region = document.createElement('section');
+      document.body.appendChild(layout);
+      layout.appendChild(region);
+
+      const records: Record<string, ComponentRecord> = {
+        '/main/0': makeRecord('/main/0', 'layout', layout, '/main', ['/main/0/inner']),
+        '/main/0/inner': makeRecord('/main/0/inner', 'region', region, '/main/0', [], 3),
+      };
+      setupRegistry(records);
+
+      // Layout-nested region, empty, cap 3 → allowed (legacy single-slot would still be empty so moot here,
+      // but the declared cap is what drove the decision).
+      expect(validateDrop(path('/elsewhere'), path('/main/0/inner'), 'part')).toEqual({allowed: true});
+    });
+
     it('allows dropping back into an empty layout cell (only-child drag)', () => {
       const layout = document.createElement('div');
       const region = document.createElement('section');
@@ -400,23 +456,33 @@ describe('drop-target', () => {
       expect(region.children[1]).toBe(anchor);
     });
 
-    it('applies fixed 120px height on vertical axis', () => {
+    it('applies fixed 120px height on vertical axis for an empty region', () => {
       const region = document.createElement('section');
       document.body.appendChild(region);
 
       const anchor = ensurePlaceholderAnchor(undefined, region, 0, undefined, 'y');
       expect(anchor.style.height).toBe('120px');
-      expect(anchor.style.width).toBe('');
+      expect(anchor.style.position).toBe('fixed');
     });
 
-    it('applies fixed 120px width on horizontal axis', () => {
+    it('applies fixed 120px width on horizontal axis for an empty region', () => {
       const region = document.createElement('section');
       document.body.appendChild(region);
 
       const anchor = ensurePlaceholderAnchor(undefined, region, 0, undefined, 'x');
       expect(anchor.style.width).toBe('120px');
-      expect(anchor.style.height).toBe('');
-      expect(anchor.style.alignSelf).toBe('stretch');
+      expect(anchor.style.position).toBe('fixed');
+    });
+
+    it('stays out of region flow via position:fixed so siblings do not shift', () => {
+      const region = document.createElement('section');
+      const child = document.createElement('div');
+      region.appendChild(child);
+      document.body.appendChild(region);
+
+      const anchor = ensurePlaceholderAnchor(undefined, region, 0);
+      expect(anchor.style.position).toBe('fixed');
+      expect(anchor.style.pointerEvents).toBe('none');
     });
   });
 

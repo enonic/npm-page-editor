@@ -155,6 +155,7 @@ describe('initPageEditor', () => {
         descriptor: 'a',
         fragmentContentId: undefined,
         loading: true,
+        maxOccurrences: undefined,
       },
     });
 
@@ -183,6 +184,7 @@ describe('initPageEditor', () => {
         descriptor: 'a',
         fragmentContentId: undefined,
         loading: true,
+        maxOccurrences: undefined,
       },
     });
 
@@ -410,6 +412,64 @@ describe('initPageEditor', () => {
   });
 
   //
+  // * E1 — pending-sync correlation
+  //
+
+  it('keeps pending-sync until a page-state with matching syncId arrives', () => {
+    vi.useFakeTimers();
+
+    const {target} = createMockTarget();
+    const instance = initPageEditor(document.body, target);
+
+    emitIncoming({type: 'init', config: makeConfig()});
+    emitIncoming({type: 'page-state', page: {components: {}}});
+
+    // Arrange a tracked element for a drag source.
+    const region = document.createElement('section');
+    region.setAttribute('data-portal-region', 'main');
+    document.body.appendChild(region);
+    const part = document.createElement('article');
+    part.setAttribute('data-portal-component-type', 'part');
+    region.appendChild(part);
+
+    // Emit a page-state that matches this DOM; the MutationObserver would otherwise race.
+    emitIncoming({
+      type: 'page-state',
+      page: {
+        components: {
+          '/main/0': {type: 'part', descriptor: 'app:hello'},
+        },
+      },
+    });
+
+    // Nothing should hang on the safety-net timer yet.
+    vi.advanceTimersByTime(5000);
+
+    instance.destroy();
+    vi.useRealTimers();
+  });
+
+  it('clears pending-sync after the safety-net timeout so we never deadlock', () => {
+    vi.useFakeTimers();
+
+    const {target} = createMockTarget();
+    const instance = initPageEditor(document.body, target);
+
+    emitIncoming({type: 'init', config: makeConfig()});
+    emitIncoming({type: 'page-state', page: {components: {}}});
+
+    // Drive the safety-net timeout. Without a matching page-state, the flag should auto-clear
+    // inside 3 seconds so a later MutationObserver reconcile is no longer blocked.
+    vi.advanceTimersByTime(5000);
+
+    // No throw, no deadlock — the guarded reconcile path remains responsive.
+    expect(() => emitIncoming({type: 'page-state', page: {components: {}}})).not.toThrow();
+
+    instance.destroy();
+    vi.useRealTimers();
+  });
+
+  //
   // * G23 — EditorOptions
   //
 
@@ -473,6 +533,7 @@ describe('initPageEditor', () => {
         descriptor: 'my.app:widget',
         fragmentContentId: undefined,
         loading: false,
+        maxOccurrences: undefined,
       },
     });
 
@@ -500,6 +561,7 @@ describe('initPageEditor', () => {
         descriptor: undefined,
         fragmentContentId: undefined,
         loading: false,
+        maxOccurrences: undefined,
       },
     });
 
@@ -528,6 +590,7 @@ describe('initPageEditor', () => {
         descriptor: 'my.app:widget',
         fragmentContentId: undefined,
         loading: false,
+        maxOccurrences: undefined,
       },
       [p2]: {
         path: p2,
@@ -540,6 +603,7 @@ describe('initPageEditor', () => {
         descriptor: 'my.app:widget',
         fragmentContentId: undefined,
         loading: false,
+        maxOccurrences: undefined,
       },
       [p3]: {
         path: p3,
@@ -552,6 +616,7 @@ describe('initPageEditor', () => {
         descriptor: 'my.app:other',
         fragmentContentId: undefined,
         loading: false,
+        maxOccurrences: undefined,
       },
     });
 

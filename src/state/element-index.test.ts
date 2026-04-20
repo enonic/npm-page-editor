@@ -22,6 +22,7 @@ function makeRecord(p: ComponentPath, element?: HTMLElement): ComponentRecord {
     descriptor: undefined,
     fragmentContentId: undefined,
     loading: false,
+    maxOccurrences: undefined,
   };
 }
 

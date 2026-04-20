@@ -117,10 +117,35 @@ export function initPageEditor(root: HTMLElement, target: Window, options?: Edit
   const overlay = createOverlayHost(<OverlayApp />);
 
   let currentDescriptors: DescriptorMap = {};
-  // ? Set by a component drag-drop that mutates the DOM locally. Cleared when CS
-  // ? answers with the matching `page-state`, at which point descriptors and DOM
-  // ? agree again and reconcile is safe. See `startDomObserver` for why.
-  let pendingPageStateSync = false;
+  // ? Set by a component drag-drop that mutates the DOM locally. Cleared only when CS
+  // ? answers with a `page-state` whose `syncId` >= the pending sync id (the drag-drop's
+  // ? own id). Without correlation, an unrelated `page-state` push arriving between the
+  // ? local DOM mutation and CS's drag response would clear pending prematurely and the
+  // ? next MutationObserver reconcile would run with stale descriptors. A safety-net
+  // ? timeout auto-clears after `SYNC_TIMEOUT_MS` so we never deadlock if CS drops the
+  // ? response or doesn't yet echo `syncId`. See `docs/architectural-regressions.md#E1`.
+  const SYNC_TIMEOUT_MS = 3000;
+  let pendingSyncId: number | undefined;
+  let syncTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  let lastSyncId = 0;
+
+  const isPendingPageStateSync = (): boolean => pendingSyncId != null;
+
+  const clearPendingSync = (): void => {
+    pendingSyncId = undefined;
+    if (syncTimeoutId != null) {
+      clearTimeout(syncTimeoutId);
+      syncTimeoutId = undefined;
+    }
+  };
+
+  const armPendingSync = (): number => {
+    lastSyncId += 1;
+    pendingSyncId = lastSyncId;
+    if (syncTimeoutId != null) clearTimeout(syncTimeoutId);
+    syncTimeoutId = setTimeout(clearPendingSync, SYNC_TIMEOUT_MS);
+    return lastSyncId;
+  };
 
   const safeReconcile = (): void => {
     try {
@@ -137,7 +162,13 @@ export function initPageEditor(root: HTMLElement, target: Window, options?: Edit
 
   const stopAdapter = createAdapter(channel, {
     onPageState: page => {
-      pendingPageStateSync = false;
+      if (pendingSyncId != null && page.syncId != null && page.syncId >= pendingSyncId) {
+        clearPendingSync();
+      } else if (pendingSyncId != null && page.syncId == null) {
+        // ? Legacy CS (no syncId echo) — keep the safety-net semantics: clear on ANY page-state.
+        // ? Once CS is updated to echo `syncId`, this branch becomes unreachable.
+        clearPendingSync();
+      }
       currentDescriptors = page.components;
       safeReconcile();
     },
@@ -148,13 +179,11 @@ export function initPageEditor(root: HTMLElement, target: Window, options?: Edit
   const stopKeyboard = initKeyboardHandling(channel);
   const stopNavigation = initNavigationInterception(channel, {hostDomain: options?.hostDomain});
   const stopComponentDrag = initComponentDrag(channel, {
-    onAfterLocalMove: () => {
-      pendingPageStateSync = true;
-    },
+    onAfterLocalMove: () => armPendingSync(),
   });
   const stopContextDrag = initContextWindowDrag(channel);
   const stopPersistence = initSelectionPersistence();
-  const stopObserver = startDomObserver(root, safeReconcile, () => pendingPageStateSync);
+  const stopObserver = startDomObserver(root, safeReconcile, isPendingPageStateSync);
 
   channel.send({type: 'ready'});
 
@@ -168,6 +197,7 @@ export function initPageEditor(root: HTMLElement, target: Window, options?: Edit
     stopPersistence();
     stopContextDrag();
     stopComponentDrag();
+    clearPendingSync();
     stopNavigation();
     stopKeyboard();
     stopSelection();

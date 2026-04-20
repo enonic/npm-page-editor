@@ -1,5 +1,11 @@
 import {type IncomingMessage, type OutgoingMessage, type PageDescriptor} from './messages';
-import {root} from './path';
+import {type ComponentPath, fromString, root} from './path';
+
+function asPath(raw: string): ComponentPath {
+  const result = fromString(raw);
+  if (!result.ok) throw new Error(`Invalid path: ${raw}`);
+  return result.value;
+}
 
 describe('IncomingMessage', () => {
   it('discriminates by type field', () => {
@@ -116,5 +122,25 @@ describe('PageDescriptor', () => {
     };
 
     expect(page.components['/main/0'].configHash).toBe('abc123');
+  });
+
+  it('accepts optional syncId on the page-descriptor', () => {
+    const page: PageDescriptor = {components: {}, syncId: 42};
+
+    expect(page.syncId).toBe(42);
+  });
+});
+
+describe('syncId on outgoing mutations', () => {
+  it('move / add / remove / drag-dropped carry optional syncId', () => {
+    const move: OutgoingMessage = {type: 'move', from: root(), to: asPath('/main/0'), syncId: 1};
+    const add: OutgoingMessage = {type: 'add', path: asPath('/main/0'), componentType: 'part', syncId: 2};
+    const remove: OutgoingMessage = {type: 'remove', path: asPath('/main/0'), syncId: 3};
+    const dropped: OutgoingMessage = {type: 'drag-dropped', from: root(), to: asPath('/main/0'), syncId: 4};
+
+    if (move.type === 'move') expect(move.syncId).toBe(1);
+    if (add.type === 'add') expect(add.syncId).toBe(2);
+    if (remove.type === 'remove') expect(remove.syncId).toBe(3);
+    if (dropped.type === 'drag-dropped') expect(dropped.syncId).toBe(4);
   });
 });

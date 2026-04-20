@@ -126,12 +126,32 @@ function isInsideLayout(regionPath: ComponentPath): boolean {
   return parentRecord?.type === 'layout';
 }
 
+function occupancyExcludingSource(regionPath: ComponentPath, sourcePath: ComponentPath | undefined): number {
+  const regionRecord = getRecord(regionPath);
+  if (regionRecord == null) return 0;
+  let count = 0;
+  for (const path of regionRecord.children) {
+    if (path !== sourcePath) count += 1;
+  }
+  return count;
+}
+
+// ? Generic capacity check using the server-authored `maxOccurrences`. Regions without
+// ? a declared cap are unlimited. Legacy layout-cell single-slot behavior is handled by
+// ? the caller via `isLayoutCellOccupied` as a fallback.
+function isRegionAtCapacity(regionPath: ComponentPath, sourcePath: ComponentPath | undefined): boolean {
+  const regionRecord = getRecord(regionPath);
+  if (regionRecord?.maxOccurrences == null) return false;
+  return occupancyExcludingSource(regionPath, sourcePath) >= regionRecord.maxOccurrences;
+}
+
 function isLayoutCellOccupied(regionPath: ComponentPath, sourcePath: ComponentPath | undefined): boolean {
-  // TODO: Replace heuristic with `maxOccurrences` when the portal adapter
-  // surfaces region max-child limits. Until then we treat any region whose
-  // parent is a `layout` as single-slot.
+  // ? Legacy fallback when the descriptor hasn't supplied `maxOccurrences`: treat any
+  // ? region whose parent is a `layout` as single-slot. Once CS propagates the cap,
+  // ? `isRegionAtCapacity` above takes over and this path becomes a no-op for those regions.
   const regionRecord = getRecord(regionPath);
   if (regionRecord == null) return false;
+  if (regionRecord.maxOccurrences != null) return false;
   return regionRecord.children.some(path => path !== sourcePath);
 }
 
@@ -157,7 +177,12 @@ export function validateDrop(
     return {allowed: false, message: translate('field.drag.fragmentLayout')};
   }
 
-  // Layout cells are single-slot (heuristic): reject if already occupied
+  // Descriptor-driven capacity (region.maxOccurrences). Applies to all regions.
+  if (isRegionAtCapacity(targetRegion, sourcePath)) {
+    return {allowed: false, message: translate('field.drag.cellOccupied')};
+  }
+
+  // Legacy fallback: layout cells are single-slot when no cap is declared.
   if (insideLayout && isLayoutCellOccupied(targetRegion, sourcePath)) {
     return {allowed: false, message: translate('field.drag.cellOccupied')};
   }
@@ -169,17 +194,58 @@ export function validateDrop(
 // * Placeholder anchor management
 //
 
-function applyAnchorSize(anchor: HTMLElement, axis: Axis): void {
-  const size = `${String(DRAG_PLACEHOLDER_SIZE_PX)}px`;
-  if (axis === 'x') {
-    anchor.style.width = size;
-    anchor.style.removeProperty('height');
-    anchor.style.alignSelf = 'stretch';
-  } else {
-    anchor.style.height = size;
-    anchor.style.removeProperty('width');
-    anchor.style.removeProperty('align-self');
+type AnchorRect = {top: number; left: number; width: number; height: number};
+
+// ! The anchor uses `position: fixed` so it is removed from the region's flex/grid flow.
+// ! If it participated in flow, a freshly-inserted anchor would shift its siblings' bounding
+// ! rects by 120px and the next `computeInsertionIndex` call would read a different target —
+// ! producing an oscillation where the anchor dances between positions on every mousemove.
+// ! Viewport coords are computed from the adjacent siblings' rects and kept in sync with the
+// ! `DragTargetHighlighter` overlay, which reads `anchor.getBoundingClientRect()`.
+function midlineY(before: DOMRect | undefined, after: DOMRect | undefined): number {
+  if (before != null && after != null) return (before.bottom + after.top) / 2;
+  if (after != null) return after.top;
+  return before?.bottom ?? 0;
+}
+
+function midlineX(before: DOMRect | undefined, after: DOMRect | undefined): number {
+  if (before != null && after != null) return (before.right + after.left) / 2;
+  if (after != null) return after.left;
+  return before?.right ?? 0;
+}
+
+function computeAnchorRect(regionElement: HTMLElement, siblings: HTMLElement[], index: number, axis: Axis): AnchorRect {
+  if (siblings.length === 0) {
+    const r = regionElement.getBoundingClientRect();
+    if (axis === 'y') {
+      return {top: r.top, left: r.left, width: r.width, height: DRAG_PLACEHOLDER_SIZE_PX};
+    }
+    return {top: r.top, left: r.left, width: DRAG_PLACEHOLDER_SIZE_PX, height: r.height};
   }
+
+  const clamped = Math.max(0, Math.min(index, siblings.length));
+  const before = clamped > 0 ? siblings[clamped - 1].getBoundingClientRect() : undefined;
+  const after = clamped < siblings.length ? siblings[clamped].getBoundingClientRect() : undefined;
+  const ref = after ?? before;
+  if (ref == null) {
+    return {top: 0, left: 0, width: 0, height: 0};
+  }
+
+  const half = DRAG_PLACEHOLDER_SIZE_PX / 2;
+  if (axis === 'y') {
+    return {top: midlineY(before, after) - half, left: ref.left, width: ref.width, height: DRAG_PLACEHOLDER_SIZE_PX};
+  }
+  return {top: ref.top, left: midlineX(before, after) - half, width: DRAG_PLACEHOLDER_SIZE_PX, height: ref.height};
+}
+
+function applyAnchorStyles(anchor: HTMLElement, rect: AnchorRect): void {
+  anchor.style.position = 'fixed';
+  anchor.style.pointerEvents = 'none';
+  anchor.style.top = `${String(rect.top)}px`;
+  anchor.style.left = `${String(rect.left)}px`;
+  anchor.style.width = `${String(rect.width)}px`;
+  anchor.style.height = `${String(rect.height)}px`;
+  anchor.style.removeProperty('align-self');
   anchor.style.removeProperty('flex');
 }
 
@@ -193,7 +259,9 @@ export function ensurePlaceholderAnchor(
   const anchor = current ?? document.createElement('div');
   anchor.setAttribute(PLACEHOLDER_ATTR, '');
 
-  // Compute reference child for insertion, excluding source and existing anchors
+  // Compute reference child for insertion, excluding source and existing anchors.
+  // Kept in DOM for `inferDropTarget` filtering and DOM-order inspection in tests,
+  // but `position: fixed` keeps it out of the region's layout.
   const domChildren = Array.from(regionElement.children).filter(
     (child): child is HTMLElement =>
       child instanceof HTMLElement &&
@@ -207,7 +275,7 @@ export function ensurePlaceholderAnchor(
     regionElement.insertBefore(anchor, reference);
   }
 
-  applyAnchorSize(anchor, axis);
+  applyAnchorStyles(anchor, computeAnchorRect(regionElement, domChildren, index, axis));
 
   return anchor;
 }

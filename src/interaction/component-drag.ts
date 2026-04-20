@@ -13,6 +13,7 @@ import {
   getRecord,
   isDragging,
   setDragState,
+  setElementIndexFrozen,
   setHoveredPath,
   setSelectedPath,
   updateDragState,
@@ -25,7 +26,9 @@ export type ComponentDragOptions = {
   // ! suppress reconcile until the corresponding `page-state` round-trip lands. Without
   // ! this, the MutationObserver-triggered reconcile runs against still-old descriptors
   // ! and mis-stubs the shifted path, clobbering the moved element with stale server HTML.
-  onAfterLocalMove?: () => void;
+  // ! Returns a `syncId` the drag code stamps onto the outgoing `move` / `drag-dropped` so
+  // ! CS can echo it on the resulting `page-state` and the host can match request-to-response.
+  onAfterLocalMove?: () => number | undefined;
 };
 
 //
@@ -50,6 +53,11 @@ type ActiveDrag = {
   itemLabel: string;
   sourceElement: HTMLElement;
   sourceDisplay: string;
+  // ! Pinned at drag-start. `getRecord(parentPath)?.element` can churn mid-drag
+  // ! if the registry is rebuilt (e.g., a reconcile that slips past the drag guard);
+  // ! keeping the original ref guarantees `relocateInDom` removes the source from
+  // ! the DOM tree it actually lives in.
+  sourceRegionElement: HTMLElement;
   placeholderAnchor: HTMLElement | undefined;
 };
 
@@ -61,21 +69,41 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
   let pending: PendingDrag | undefined;
   let active: ActiveDrag | undefined;
 
-  function relocateInDom(sourceElement: HTMLElement, targetRegionPath: ComponentPath, targetIndex: number): boolean {
-    const regionRecord = getRecord(targetRegionPath);
-    const regionEl = regionRecord?.element;
-    if (regionEl == null) return false;
+  // ? Walks from a tracked component up to the outermost wrapper that still contains ONLY this
+  // ? one tracked descendant, stopping at the region boundary. Real server HTML frequently wraps
+  // ? components in layout divs (`<div class="row"><article data-portal-component-type="part"/></div>`);
+  // ? moving the bare `<article>` out of its wrapper breaks the grid/flex layout invariant the
+  // ? server renders with. The slot-ancestor is the correct move unit.
+  function findSlotAncestor(tracked: HTMLElement, regionEl: HTMLElement): HTMLElement {
+    let slot: HTMLElement = tracked;
+    while (true) {
+      const parent = slot.parentElement;
+      if (parent == null || parent === regionEl) return slot;
+      const descendants = collectTrackedDescendants(parent, isComponentElement);
+      if (descendants.length !== 1 || descendants[0] !== tracked) return slot;
+      slot = parent;
+    }
+  }
+
+  function relocateInDom(
+    sourceElement: HTMLElement,
+    sourceRegionEl: HTMLElement,
+    targetRegionEl: HTMLElement,
+    targetIndex: number,
+  ): boolean {
+    const sourceSlot = findSlotAncestor(sourceElement, sourceRegionEl);
 
     // ? Component siblings are resolved fresh: the source element is about to be spliced out
     // ? and re-inserted, so an index captured before removal is only valid against the live list.
-    const siblings = collectTrackedDescendants(regionEl, isComponentElement);
+    const siblings = collectTrackedDescendants(targetRegionEl, isComponentElement);
     const filtered = siblings.filter(el => el !== sourceElement);
-    const anchor = targetIndex < filtered.length ? filtered[targetIndex] : undefined;
+    const anchorComponent = targetIndex < filtered.length ? filtered[targetIndex] : undefined;
 
-    if (anchor != null) {
-      regionEl.insertBefore(sourceElement, anchor);
+    if (anchorComponent != null) {
+      const anchorSlot = findSlotAncestor(anchorComponent, targetRegionEl);
+      targetRegionEl.insertBefore(sourceSlot, anchorSlot);
     } else {
-      regionEl.appendChild(sourceElement);
+      targetRegionEl.appendChild(sourceSlot);
     }
     return true;
   }
@@ -85,6 +113,9 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
     const record = getRecord(p);
     if (record?.element == null || record.parentPath == null) return;
 
+    const regionRecord = getRecord(record.parentPath);
+    if (regionRecord?.element == null) return;
+
     const label = record.descriptor ?? translate(`field.${record.type}`);
 
     active = {
@@ -93,6 +124,7 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
       itemLabel: label,
       sourceElement: record.element,
       sourceDisplay: record.element.style.display,
+      sourceRegionElement: regionRecord.element,
       placeholderAnchor: undefined,
     };
     pending = undefined;
@@ -102,6 +134,7 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
     setHoveredPath(undefined);
     setSelectedPath(undefined);
     closeContextMenu();
+    setElementIndexFrozen(true);
 
     setDragState({
       itemType: record.type,
@@ -182,6 +215,7 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
 
     syncDragEmptyRegions(undefined);
     setDragState(undefined);
+    setElementIndexFrozen(false);
     if (canceled) channel.send({type: 'drag-stopped', path: dragPath});
     markDirty();
   }
@@ -241,15 +275,19 @@ export function initComponentDrag(channel: Channel, options?: ComponentDragOptio
       const validation = validateDrop(active.path, target.regionPath, active.itemType);
       if (validation.allowed) {
         const to = insertAt(target.regionPath, target.index);
+        const targetRegionRecord = getRecord(target.regionPath);
+        const targetRegionEl = targetRegionRecord?.element;
         // ! Move the DOM element locally BEFORE notifying CS. The v2 protocol treats
         // ! page-state as the source of truth, but reconcile cannot relocate existing
         // ! elements — it only stubs new paths and fires `load(existing=true)` on type
         // ! changes, which fetches pre-move server HTML. Moving the DOM here means the
         // ! subsequent CS page-state round-trip describes exactly what is already in DOM.
-        const moved = relocateInDom(dragState.sourceElement, target.regionPath, target.index);
-        if (moved) options?.onAfterLocalMove?.();
-        channel.send({type: 'move', from: dragState.path, to});
-        channel.send({type: 'drag-dropped', from: dragState.path, to});
+        const moved =
+          targetRegionEl != null &&
+          relocateInDom(dragState.sourceElement, dragState.sourceRegionElement, targetRegionEl, target.index);
+        const syncId = moved ? options?.onAfterLocalMove?.() : undefined;
+        channel.send({type: 'move', from: dragState.path, to, syncId});
+        channel.send({type: 'drag-dropped', from: dragState.path, to, syncId});
         dropped = true;
       }
     }

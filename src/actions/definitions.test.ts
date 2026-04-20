@@ -41,6 +41,7 @@ function makeRecord(p: string, overrides?: Partial<ComponentRecord>): ComponentR
     descriptor: undefined,
     fragmentContentId: undefined,
     loading: false,
+    maxOccurrences: undefined,
     ...overrides,
   };
 }

@@ -28,6 +28,7 @@ function makeRecord(p: ComponentPath): ComponentRecord {
     descriptor: undefined,
     fragmentContentId: undefined,
     loading: false,
+    maxOccurrences: undefined,
   };
 }
 
