@@ -1,5 +1,4 @@
 import type {Action} from '@enonic/lib-admin-ui/ui/Action';
-import {ItemViewContextMenuPosition} from '../ItemViewContextMenuPosition';
 import type {PageView} from '../PageView';
 import type {ItemView} from '../ItemView';
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
@@ -33,7 +32,7 @@ export function getLockedPageActions(): Action[] {
 export function selectLegacyItemView(path: string): void {
     const itemView = resolveItemView(path);
     if (itemView && !itemView.isSelected()) {
-        itemView.select(undefined, ItemViewContextMenuPosition.NONE, true);
+        itemView.select(undefined, true);
     }
 }
 

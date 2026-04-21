@@ -12,19 +12,10 @@ import {UriHelper} from '@enonic/lib-admin-ui/util/UriHelper';
 import {type PageView, PageViewBuilder} from './PageView';
 import {InitializeLiveEditEvent} from '@enonic/lib-contentstudio/page-editor/event/InitializeLiveEditEvent';
 import {SkipLiveEditReloadConfirmationEvent} from '@enonic/lib-contentstudio/page-editor/event/SkipLiveEditReloadConfirmationEvent';
-import {ComponentLoadedEvent} from '@enonic/lib-contentstudio/page-editor/event/ComponentLoadedEvent';
 import {ItemViewIdProducer} from './ItemViewIdProducer';
 import {LiveEditPageInitializationErrorEvent} from '@enonic/lib-contentstudio/page-editor/event/LiveEditPageInitializationErrorEvent';
-import {DragAndDrop} from './DragAndDrop';
 import {LiveEditPageViewReadyEvent} from '@enonic/lib-contentstudio/page-editor/event/LiveEditPageViewReadyEvent';
-import {Highlighter} from './Highlighter';
-import {SelectedHighlighter} from './SelectedHighlighter';
-import {Shader} from './Shader';
-import {Cursor} from './Cursor';
-import {ComponentViewDragStartedEvent} from '@enonic/lib-contentstudio/page-editor/event/ComponentViewDragStartedEvent';
-import {ComponentViewDragStoppedEvent} from '@enonic/lib-contentstudio/page-editor/event/ComponentViewDragStoppedEvent';
 import {DefaultItemViewFactory} from './ItemViewFactory';
-import {ItemViewContextMenuPosition} from './ItemViewContextMenuPosition';
 import {SelectComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/navigation/SelectComponentViewEvent';
 import {type ItemView} from './ItemView';
 import {DeselectComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/navigation/DeselectComponentViewEvent';
@@ -39,15 +30,10 @@ import {DuplicateComponentViewEvent} from '@enonic/lib-contentstudio/page-editor
 import {MoveComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/MoveComponentViewEvent';
 import {SetPageLockStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetPageLockStateEvent';
 import {SetModifyAllowedEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetModifyAllowedEvent';
-import {
-    CreateOrDestroyDraggableEvent
-} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/CreateOrDestroyDraggableEvent';
-import {SetDraggableVisibleEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetDraggableVisibleEvent';
 import {ResetComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/ResetComponentViewEvent';
 import {PageStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/common/PageStateEvent';
 import {UpdateTextComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/UpdateTextComponentViewEvent';
 import {SetComponentStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetComponentStateEvent';
-import {LayoutItemType} from './layout/LayoutItemType';
 
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
 import {ComponentType} from '@enonic/lib-contentstudio/app/page/region/ComponentType';
@@ -61,7 +47,6 @@ import {SessionStorageHelper} from '@enonic/lib-contentstudio/app/util/SessionSt
 import {EditorEvent, EditorEvents} from './event/EditorEvent';
 import type {ContentSummaryAndCompareStatus} from '@enonic/lib-contentstudio/app/content/ContentSummaryAndCompareStatus';
 import {claimNewUiOwnership, initNewUi} from './editor/init';
-import {isOwnedByNewUI} from './editor/coexistence/ownership';
 
 
 export class LiveEditPage {
@@ -75,12 +60,6 @@ export class LiveEditPage {
     private skipConfirmationListener: (event: SkipLiveEditReloadConfirmationEvent) => void;
 
     private unloadListener: (event: UIEvent) => void;
-
-    private componentLoadedListener: (event: ComponentLoadedEvent) => void;
-
-    private dragStartedListener: () => void;
-
-    private dragStoppedListener: () => void;
 
     private selectComponentRequestedListener: (event: SelectComponentViewEvent) => void;
 
@@ -104,17 +83,11 @@ export class LiveEditPage {
 
     private setModifyAllowedListener: (event: SetModifyAllowedEvent) => void;
 
-    private createOrDestroyDraggableListener: (event: CreateOrDestroyDraggableEvent) => void;
-
     private resetComponentViewRequestListener: (event: ResetComponentViewEvent) => void;
 
     private pageStateListener: (event: PageStateEvent) => void;
 
     private updateTextComponentViewListener: (event: UpdateTextComponentViewEvent) => void;
-
-    private setDraggableVisibleEventListener: (event: SetDraggableVisibleEvent) => void;
-
-    private static debug: boolean = false;
 
     private content: ContentSummaryAndCompareStatus;
 
@@ -133,11 +106,6 @@ export class LiveEditPage {
     }
 
     private init(event: InitializeLiveEditEvent): void {
-        const startTime = Date.now();
-        if (LiveEditPage.debug) {
-            console.debug('LiveEditPage: starting live edit initialization', event);
-        }
-
         this.content = event.getContent();
 
         // Setting up parent-like environment inside iframe
@@ -165,9 +133,6 @@ export class LiveEditPage {
                 .setLiveEditParams(event.getParams())
                 .setElement(body).build();
         } catch (error) {
-            if (LiveEditPage.debug) {
-                console.error('LiveEditPage: error initializing live edit in ' + (Date.now() - startTime) + 'ms');
-            }
             if (ObjectHelper.iFrameSafeInstanceOf(error, Exception)) {
                 new LiveEditPageInitializationErrorEvent('The Live edit page could not be initialized. ' +
                                                          error.getMessage()).fire();
@@ -178,16 +143,10 @@ export class LiveEditPage {
             return;
         }
 
-        DragAndDrop.init(this.pageView);
-
         Tooltip.allowMultipleInstances(false);
 
         this.registerGlobalListeners();
         this.destroyNewUi = initNewUi(this.pageView);
-
-        if (LiveEditPage.debug) {
-            console.debug('LiveEditPage: done live edit initializing in ' + (Date.now() - startTime) + 'ms');
-        }
 
         new LiveEditPageViewReadyEvent().fire();
     }
@@ -197,10 +156,6 @@ export class LiveEditPage {
     }
 
     public destroy(win: Window = window): void {
-        if (LiveEditPage.debug) {
-            console.debug('LiveEditPage.destroy', win);
-        }
-
         SkipLiveEditReloadConfirmationEvent.un(this.skipConfirmationListener, win);
 
         InitializeLiveEditEvent.un(this.initializeListener, win);
@@ -222,42 +177,6 @@ export class LiveEditPage {
 
         WindowDOM.get().onUnload(this.unloadListener);
 
-        this.componentLoadedListener = (event: ComponentLoadedEvent) => {
-            const componentView: ComponentView = this.getItemViewByPath(event.getPath()) as ComponentView;
-            const componentType = componentView.getType();
-
-            if (LayoutItemType.get().equals(componentType)) {
-                DragAndDrop.get().createSortableLayout(componentView);
-            } else {
-                DragAndDrop.get().refreshSortable();
-            }
-        };
-
-        ComponentLoadedEvent.on(this.componentLoadedListener);
-
-        this.dragStartedListener = () => {
-            Highlighter.get().hide();
-            SelectedHighlighter.get().hide();
-            Shader.get().hide();
-            Cursor.get().hide();
-
-            // dragging anything should exit the text edit mode
-            //this.exitTextEditModeIfNeeded();
-        };
-
-        ComponentViewDragStartedEvent.on(this.dragStartedListener);
-
-        this.dragStoppedListener = () => {
-            Cursor.get().reset();
-
-            if (this.pageView.isLocked()) {
-                Highlighter.get().hide();
-                Shader.get().shade(this.pageView);
-            }
-        };
-
-        ComponentViewDragStoppedEvent.on(this.dragStoppedListener);
-
         this.selectComponentRequestedListener = (event: SelectComponentViewEvent): void => {
             if (!event.getPath()) {
                 return;
@@ -267,7 +186,7 @@ export class LiveEditPage {
             const itemView: ItemView = this.getItemViewByPath(path);
 
             if (itemView && !itemView.isSelected()) {
-                itemView.select(null, ItemViewContextMenuPosition.NONE, event.isSilent());
+                itemView.select(null, event.isSilent());
                 itemView.scrollComponentIntoView();
             }
         };
@@ -409,48 +328,6 @@ export class LiveEditPage {
 
         SetModifyAllowedEvent.on(this.setModifyAllowedListener);
 
-        this.createOrDestroyDraggableListener = (event: CreateOrDestroyDraggableEvent): void => {
-            if (isOwnedByNewUI('context-window-drag')) {
-                return;
-            }
-
-            const idAttr = `drag-helper-${event.getType()}`;
-            const dataAttr = `data-${ItemType.ATTRIBUTE_TYPE}="${event.getType()}"`;
-            if (event.isCreate()) {
-                const item = jQuery(`<div id="${idAttr}" ${dataAttr}}></div>`).appendTo(jQuery('body'));
-                this.pageView?.createDraggable(item);
-                item.simulate('mousedown').hide();
-            } else {
-                const item = jQuery(`div#${idAttr}[${dataAttr}]`);
-                if (item.length === 0) {
-                    return;
-                }
-                item.simulate('mouseup');
-                this.pageView?.destroyDraggable(item);
-                item.remove();
-            }
-        };
-
-        CreateOrDestroyDraggableEvent.on(this.createOrDestroyDraggableListener);
-
-        this.setDraggableVisibleEventListener = (event: SetDraggableVisibleEvent): void => {
-            if (isOwnedByNewUI('context-window-drag')) {
-                return;
-            }
-
-            const idAttr = `drag-helper-${event.getType()}`;
-            const dataAttr = `data-${ItemType.ATTRIBUTE_TYPE}="${event.getType()}"`;
-
-            const item = jQuery(`div#${idAttr}[${dataAttr}]`);
-            if (item.length === 0) {
-                return;
-            }
-
-            jQuery(item.draggable('option', 'helper')()).toggle(event.isVisible());
-        };
-
-        SetDraggableVisibleEvent.on(this.setDraggableVisibleEventListener);
-
         this.resetComponentViewRequestListener = (event: ResetComponentViewEvent): void => {
             const path: ComponentPath = event.getComponentPath();
             const view: ItemView = this.getItemViewByPath(path);
@@ -496,10 +373,6 @@ export class LiveEditPage {
 
         WindowDOM.get().unUnload(this.unloadListener);
 
-        ComponentViewDragStartedEvent.un(this.dragStartedListener);
-
-        ComponentViewDragStoppedEvent.un(this.dragStoppedListener);
-
         SelectComponentViewEvent.un(this.selectComponentRequestedListener);
 
         DeselectComponentViewEvent.un(this.deselectComponentRequestedListener);
@@ -522,20 +395,10 @@ export class LiveEditPage {
 
         SetModifyAllowedEvent.un(this.setModifyAllowedListener);
 
-        CreateOrDestroyDraggableEvent.un(this.createOrDestroyDraggableListener);
-
         ResetComponentViewEvent.un(this.resetComponentViewRequestListener);
 
         PageStateEvent.un(this.pageStateListener);
 
         UpdateTextComponentViewEvent.un(this.updateTextComponentViewListener);
-    }
-
-    private getComponentErrorText(error) {
-        if (!error || !error.message) {
-            return '';
-        }
-
-        return new DOMParser().parseFromString(error.message, 'text/html').title ?? '';
     }
 }

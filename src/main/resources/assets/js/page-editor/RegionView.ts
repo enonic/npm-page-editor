@@ -1,27 +1,21 @@
 import {type Element} from '@enonic/lib-admin-ui/dom/Element';
-import {i18n} from '@enonic/lib-admin-ui/util/Messages';
 import {ObjectHelper} from '@enonic/lib-admin-ui/ObjectHelper';
-import {ItemView, ItemViewBuilder} from './ItemView';
-import {RegionItemType} from '@enonic/lib-contentstudio/page-editor/RegionItemType';
-import {RegionViewContextMenuTitle} from './RegionViewContextMenuTitle';
-import {RegionPlaceholder} from './RegionPlaceholder';
-import {ItemViewAddedEvent} from '@enonic/lib-contentstudio/page-editor/event/ItemViewAddedEvent';
-import {ItemViewRemovedEvent} from '@enonic/lib-contentstudio/page-editor/event/ItemViewRemovedEvent';
-import {type ItemViewContextMenuPosition} from './ItemViewContextMenuPosition';
-import type {ItemViewSelectedEventConfig} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/SelectComponentEvent';
-import {ItemType} from '@enonic/lib-contentstudio/page-editor/ItemType';
-import {CreateItemViewConfig} from './CreateItemViewConfig';
-import {PageViewController} from '@enonic/lib-contentstudio/page-editor/PageViewController';
-import {ComponentView} from './ComponentView';
-import {type PageView} from './PageView';
-import type {LayoutComponentView} from './layout/LayoutComponentView';
-import {DragAndDrop} from './DragAndDrop';
-import {type ComponentAddedEvent} from '@enonic/lib-contentstudio/app/page/region/ComponentAddedEvent';
-import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
-import {type ComponentRemovedEvent} from '@enonic/lib-contentstudio/app/page/region/ComponentRemovedEvent';
 import {Action} from '@enonic/lib-admin-ui/ui/Action';
 import {assert} from '@enonic/lib-admin-ui/util/Assert';
-import {type LiveEditParams} from '@enonic/lib-contentstudio/page-editor/LiveEditParams';
+import {i18n} from '@enonic/lib-admin-ui/util/Messages';
+import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
+import {ItemViewAddedEvent} from '@enonic/lib-contentstudio/page-editor/event/ItemViewAddedEvent';
+import {ItemViewRemovedEvent} from '@enonic/lib-contentstudio/page-editor/event/ItemViewRemovedEvent';
+import type {ItemViewSelectedEventConfig} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/SelectComponentEvent';
+import {ItemType} from '@enonic/lib-contentstudio/page-editor/ItemType';
+import type {LiveEditParams} from '@enonic/lib-contentstudio/page-editor/LiveEditParams';
+import {RegionItemType} from '@enonic/lib-contentstudio/page-editor/RegionItemType';
+import {ComponentView} from './ComponentView';
+import {CreateItemViewConfig} from './CreateItemViewConfig';
+import {ItemView, ItemViewBuilder} from './ItemView';
+import type {LayoutComponentView} from './layout/LayoutComponentView';
+import {type PageView} from './PageView';
+import {RegionViewContextMenuTitle} from './RegionViewContextMenuTitle';
 
 export class RegionViewBuilder {
 
@@ -76,19 +70,7 @@ export class RegionView
 
     private itemViewRemovedListener: (event: ItemViewRemovedEvent) => void;
 
-    private componentAddedListener: (event: ComponentAddedEvent) => void;
-
-    private componentRemovedListener: (event: ComponentRemovedEvent) => void;
-
-    private mouseDownLastTarget: HTMLElement;
-
-    private mouseOverListener: (e: MouseEvent) => void;
-
     private readonly resetAction: Action;
-
-    private textMode: boolean = false;
-
-    public static debug: boolean = false;
 
     constructor(builder: RegionViewBuilder) {
         super(new ItemViewBuilder()
@@ -97,7 +79,6 @@ export class RegionView
             .setLiveEditParams(builder.liveEditParams || builder.parentView?.getLiveEditParams())
             .setType(RegionItemType.get())
             .setElement(builder.element)
-            .setPlaceholder(new RegionPlaceholder())
             .setParentElement(builder.parentElement)
             .setParentView(builder.parentView)
             .setContextMenuTitle(new RegionViewContextMenuTitle(builder.name)));
@@ -137,57 +118,6 @@ export class RegionView
             }
             this.notifyItemViewRemoved(event.getView());
         };
-
-        this.componentAddedListener = (event: ComponentAddedEvent) => {
-            if (RegionView.debug) {
-                console.log('RegionView.handleComponentAdded: ' + event.getPath().toString());
-            }
-
-            this.refreshEmptyState();
-            this.handleResetContextMenuAction();
-        };
-
-        this.componentRemovedListener = (event: ComponentRemovedEvent) => {
-            if (RegionView.debug) {
-                console.log('RegionView.handleComponentRemoved: ' + event.getPath().toString());
-            }
-
-            this.refreshEmptyState();
-            this.handleResetContextMenuAction();
-        };
-
-        this.onMouseDown(this.memorizeLastMouseDownTarget.bind(this));
-
-        this.mouseOverListener = (e: MouseEvent) => {
-            if (this.isDragging() && this.isElementOverRegion((e.target as HTMLElement))) {
-                this.highlight();
-            }
-        };
-
-        this.onMouseOver(this.mouseOverListener);
-
-        const textEditModeListener = (value: boolean) => this.textMode = value;
-
-        PageViewController.get().onTextEditModeChanged(textEditModeListener);
-
-        this.onRemoved(_event => {
-            PageViewController.get().unTextEditModeChanged(textEditModeListener);
-        });
-    }
-
-    /*
-        Checking if this region is where mouseover triggered to not highlight region's ancestor regions
-    */
-    private isElementOverRegion(element: HTMLElement): boolean {
-        while (!element.hasAttribute('data-portal-region')) {
-            element = element.parentElement;
-        }
-
-        return element === this.getHTMLElement();
-    }
-
-    memorizeLastMouseDownTarget(event: MouseEvent) {
-        this.mouseDownLastTarget = event.target as HTMLElement;
     }
 
     private addRegionContextMenuActions() {
@@ -222,24 +152,12 @@ export class RegionView
         return this.getRegionName() ? this.getRegionName().toString() : i18n('live.view.itemview.noname');
     }
 
-    highlightSelected() {
-        if (!this.textMode && !this.isDragging()) {
-            super.highlightSelected();
-        }
-    }
-
-    showCursor() {
-        if (!this.textMode) {
-            super.showCursor();
-        }
-    }
-
-    select(config?: ItemViewSelectedEventConfig, menuPosition?: ItemViewContextMenuPosition) {
+    select(config?: ItemViewSelectedEventConfig) {
         if (config) {
             config.rightClicked = false;
         }
 
-        super.select(config, menuPosition);
+        super.select(config);
     }
 
     toString() {
@@ -258,10 +176,6 @@ export class RegionView
     }
 
     registerComponentViewInParent(componentView: ComponentView, index?: number): void {
-        if (RegionView.debug) {
-            console.log('RegionView[' + this.toString() + '].registerComponentView: ' + componentView.toString() + ' at ' + index);
-        }
-
         if (index >= 0) {
             this.componentViews.splice(index, 0, componentView);
         } else {
@@ -276,10 +190,6 @@ export class RegionView
     }
 
     unregisterComponentView(componentView: ComponentView) {
-        if (RegionView.debug) {
-            console.log('RegionView[' + this.toString() + '].unregisterComponentView: ' + componentView.toString());
-        }
-
         const indexToRemove = this.getComponentViewIndex(componentView);
         if (indexToRemove >= 0) {
 
@@ -302,10 +212,6 @@ export class RegionView
     }
 
     addComponentView(componentView: ComponentView, index: number, newlyCreated: boolean = false, _dragged?: boolean) {
-        if (RegionView.debug) {
-            console.log('RegionView[' + this.toString() + ']addComponentView: ' + componentView.toString() + ' at ' + index);
-        }
-
         this.insertChild(componentView, index);
         this.registerComponentView(componentView, index);
         this.notifyItemViewAdded(componentView, newlyCreated);
@@ -313,10 +219,6 @@ export class RegionView
     }
 
     removeComponentView(componentView: ComponentView, silent: boolean = false) {
-        if (RegionView.debug) {
-            console.log('RegionView[' + this.toString() + '].removeComponentView: ' + componentView.toString());
-        }
-
         this.unregisterComponentView(componentView);
         if (!silent) {
             this.removeChild(componentView);
@@ -363,11 +265,8 @@ export class RegionView
     }
 
     empty() {
-        if (RegionView.debug) {
-            console.debug('RegionView[' + this.toString() + '].empty()', this.componentViews);
-        }
-
         while (this.componentViews.length > 0) {
+
             // remove component modifies the components array so we can't rely on forEach
             this.removeComponentView(this.componentViews[0]);
         }
@@ -378,7 +277,6 @@ export class RegionView
     }
 
     remove(): RegionView {
-        this.unMouseOver(this.mouseOverListener);
         super.remove();
         return this;
     }
@@ -474,7 +372,4 @@ export class RegionView
         });
     }
 
-    protected isDragging(): boolean {
-        return DragAndDrop.get().isDragging();
-    }
 }

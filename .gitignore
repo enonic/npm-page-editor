@@ -25,3 +25,5 @@ build/
 
 # Enonic XP dev dependencies
 .xp/
+
+.worktrees/

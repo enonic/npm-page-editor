@@ -1,32 +1,29 @@
-import {type Element} from '@enonic/lib-admin-ui/dom/Element';
-import {i18n} from '@enonic/lib-admin-ui/util/Messages';
 import type {Cloneable} from '@enonic/lib-admin-ui/Cloneable';
+import {type Element} from '@enonic/lib-admin-ui/dom/Element';
+import {Action} from '@enonic/lib-admin-ui/ui/Action';
+import {KeyBinding} from '@enonic/lib-admin-ui/ui/KeyBinding';
 import {KeyBindings} from '@enonic/lib-admin-ui/ui/KeyBindings';
-import {type ItemViewIdProducer} from './ItemViewIdProducer';
-import {type ItemViewPlaceholder} from './ItemViewPlaceholder';
-import {ItemView, ItemViewBuilder} from './ItemView';
+import {i18n} from '@enonic/lib-admin-ui/util/Messages';
+import {StringHelper} from '@enonic/lib-admin-ui/util/StringHelper';
+import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
+import {ComponentInspectedEvent} from '@enonic/lib-contentstudio/page-editor/event/ComponentInspectedEvent';
 import {ItemViewAddedEvent} from '@enonic/lib-contentstudio/page-editor/event/ItemViewAddedEvent';
 import {ItemViewRemovedEvent} from '@enonic/lib-contentstudio/page-editor/event/ItemViewRemovedEvent';
-import type {ItemViewSelectedEventConfig} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/SelectComponentEvent';
-import {ComponentViewContextMenuTitle} from './ComponentViewContextMenuTitle';
-import {ComponentItemType} from './ComponentItemType';
-import {ComponentInspectedEvent} from '@enonic/lib-contentstudio/page-editor/event/ComponentInspectedEvent';
-import {FragmentItemType} from './fragment/FragmentItemType';
-import {type ItemViewContextMenuPosition} from './ItemViewContextMenuPosition';
-import {CreateItemViewConfig} from './CreateItemViewConfig';
-import type {ItemViewFactory} from './ItemViewFactory';
-import {PageItemType} from '@enonic/lib-contentstudio/page-editor/PageItemType';
-import type {RegionView} from './RegionView';
-import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
-import {KeyBinding} from '@enonic/lib-admin-ui/ui/KeyBinding';
-import {Action} from '@enonic/lib-admin-ui/ui/Action';
 import {CreateFragmentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/CreateFragmentEvent';
-import {type LiveEditParams} from '@enonic/lib-contentstudio/page-editor/LiveEditParams';
-import {StringHelper} from '@enonic/lib-admin-ui/util/StringHelper';
-import {RemoveComponentRequest} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/RemoveComponentRequest';
 import {DuplicateComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/DuplicateComponentEvent';
+import {RemoveComponentRequest} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/RemoveComponentRequest';
 import {ResetComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/ResetComponentEvent';
-import {DragAndDrop} from './DragAndDrop';
+import type {ItemViewSelectedEventConfig} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/SelectComponentEvent';
+import type {LiveEditParams} from '@enonic/lib-contentstudio/page-editor/LiveEditParams';
+import {PageItemType} from '@enonic/lib-contentstudio/page-editor/PageItemType';
+import {ComponentItemType} from './ComponentItemType';
+import {ComponentViewContextMenuTitle} from './ComponentViewContextMenuTitle';
+import {CreateItemViewConfig} from './CreateItemViewConfig';
+import {FragmentItemType} from './fragment/FragmentItemType';
+import {ItemView, ItemViewBuilder} from './ItemView';
+import type {ItemViewFactory} from './ItemViewFactory';
+import {type ItemViewIdProducer} from './ItemViewIdProducer';
+import type {RegionView} from './RegionView';
 
 export class ComponentViewBuilder {
 
@@ -45,8 +42,6 @@ export class ComponentViewBuilder {
     positionIndex: number = -1;
 
     contextMenuActions: Action[];
-
-    placeholder: ItemViewPlaceholder;
 
     inspectActionRequired: boolean;
 
@@ -98,11 +93,6 @@ export class ComponentViewBuilder {
         return this;
     }
 
-    setPlaceholder(value: ItemViewPlaceholder): this {
-        this.placeholder = value;
-        return this;
-    }
-
     setInspectActionRequired(value: boolean): this {
         this.inspectActionRequired = value;
         return this;
@@ -126,11 +116,7 @@ export class ComponentView
 
     private itemViewRemovedListeners: ((event: ItemViewRemovedEvent) => void)[] = [];
 
-    protected initOnAdd: boolean = true;
-
     protected resetAction: Action;
-
-    public static debug: boolean = false;
 
     private keyBinding: KeyBinding[];
 
@@ -139,7 +125,6 @@ export class ComponentView
             .setItemViewIdProducer(
                 builder.itemViewIdProducer ? builder.itemViewIdProducer : builder.parentRegionView.getItemViewIdProducer())
             .setItemViewFactory(builder.itemViewFactory ? builder.itemViewFactory : builder.parentRegionView.getItemViewFactory())
-            .setPlaceholder(builder.placeholder)
             .setType(builder.type)
             .setElement(builder.element)
             .setParentView(builder.parentRegionView)
@@ -153,16 +138,10 @@ export class ComponentView
             this.getParentItemView().registerComponentViewInParent(this, builder.positionIndex);
         }
 
-        this.empty = StringHelper.isEmpty(builder.element?.getHtml()) ||
-                     (this.getChildren().length === 1 && this.getChildren()[0] === this.placeholder);
-        this.initListeners();
+        this.empty = StringHelper.isEmpty(builder.element?.getHtml());
         this.addComponentContextMenuActions(builder.inspectActionRequired);
         this.initKeyBoardBindings();
         this.refreshEmptyState();
-    }
-
-    protected initListeners() {
-        //
     }
 
     refreshEmptyState(): ItemView {
@@ -230,8 +209,8 @@ export class ComponentView
 
     }
 
-    select(config?: ItemViewSelectedEventConfig, menuPosition?: ItemViewContextMenuPosition) {
-        super.select(config, menuPosition);
+    select(config?: ItemViewSelectedEventConfig) {
+        super.select(config);
         KeyBindings.get().bindKeys(this.keyBinding);
     }
 
@@ -301,7 +280,6 @@ export class ComponentView
         const index = parentView.getComponentViewIndex(this);
         const duplicateView = this.createView(this.getType(), this.makeDuplicateConfig()) as ComponentView;
 
-        duplicateView.skipInitOnAdd();
         parentView.addComponentView(duplicateView, index + 1);
 
         return duplicateView;
@@ -312,11 +290,7 @@ export class ComponentView
     }
 
     replaceWith(replacement: ComponentView) {
-        if (ComponentView.debug) {
-            console.log('ComponentView[' + this.toString() + '].replaceWith', this, replacement);
-        }
         super.replaceWith(replacement);
-        this.unbindMouseListeners();
 
         if (this.isSelected()) {
             replacement.selectWithoutMenu(true);
@@ -338,18 +312,11 @@ export class ComponentView
 
     moveToRegion(toRegionView: RegionView, toIndex: number) {
         const parentRegionView = this.getParentItemView();
-        if (ComponentView.debug) {
-            console.log('ComponentView[' + this.toString() + '].moveToRegion', this, parentRegionView, toRegionView);
-        }
 
         this.moving = false;
 
         if (parentRegionView.getPath().equals(toRegionView.getPath()) &&
             toIndex === parentRegionView.getComponentViewIndex(this)) {
-
-            if (ComponentView.debug) {
-                console.debug('Dropped in the same region at the same index, no need to move', parentRegionView, toRegionView);
-            }
             return;
         }
 
@@ -421,13 +388,5 @@ export class ComponentView
         this.replaceWith(clone);
         clone.select();
         clone.hideContextMenu();
-    }
-
-    private skipInitOnAdd(): void {
-        this.initOnAdd = false;
-    }
-
-    protected isDragging(): boolean {
-        return DragAndDrop.get().isDragging();
     }
 }

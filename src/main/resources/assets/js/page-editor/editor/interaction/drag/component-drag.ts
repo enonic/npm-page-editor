@@ -7,7 +7,6 @@ import {ComponentViewDragDroppedEvent} from '@enonic/lib-contentstudio/page-edit
 import {ComponentViewDragStartedEvent} from '@enonic/lib-contentstudio/page-editor/event/ComponentViewDragStartedEvent';
 import {ComponentViewDragStoppedEvent} from '@enonic/lib-contentstudio/page-editor/event/ComponentViewDragStoppedEvent';
 import {MoveComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/MoveComponentEvent';
-import {DragAndDrop} from '../../../DragAndDrop';
 import {
     deselectLegacyItemView,
     getLegacyItemViewLabel,
@@ -120,8 +119,6 @@ export function initComponentDrag(): () => void {
     let pending: PendingComponentDrag | undefined;
     let active: ActiveComponentDrag | undefined;
 
-    DragAndDrop.get().disableLegacySortables();
-
     const destroyActiveDrag = (canceled: boolean) => {
         if (!active) {
             setDragState(undefined);
@@ -195,6 +192,8 @@ export function initComponentDrag(): () => void {
             startX: event.clientX,
             startY: event.clientY,
         };
+
+        event.preventDefault();
     };
 
     const handleMouseMove = (event: MouseEvent) => {

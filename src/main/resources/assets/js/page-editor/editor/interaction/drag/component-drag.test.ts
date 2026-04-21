@@ -5,20 +5,11 @@ const componentDragMocks = vi.hoisted(() => ({
     canceledViews: [] as unknown[],
     moveEvents: [] as Array<{from: {toString(): string}; to: {toString(): string}}>,
     setNextClickDisabled: vi.fn(),
-    disableLegacySortables: vi.fn(),
     getLegacyItemViewLabel: vi.fn() as ReturnType<typeof vi.fn<() => string | undefined>>,
     setLegacyItemViewMoving: vi.fn(),
     deselectLegacyItemView: vi.fn(),
     legacyFragmentContainsLayout: vi.fn() as ReturnType<typeof vi.fn<() => boolean>>,
     resolveItemView: vi.fn(),
-}));
-
-vi.mock('../../../DragAndDrop', () => ({
-    DragAndDrop: {
-        get: () => ({
-            disableLegacySortables: componentDragMocks.disableLegacySortables,
-        }),
-    },
 }));
 
 vi.mock('../../bridge', () => ({
@@ -210,18 +201,11 @@ describe('initComponentDrag', () => {
         componentDragMocks.canceledViews.length = 0;
         componentDragMocks.moveEvents.length = 0;
         componentDragMocks.setNextClickDisabled.mockReset();
-        componentDragMocks.disableLegacySortables.mockReset();
         componentDragMocks.getLegacyItemViewLabel.mockReset();
         componentDragMocks.setLegacyItemViewMoving.mockReset();
         componentDragMocks.deselectLegacyItemView.mockReset();
         componentDragMocks.legacyFragmentContainsLayout.mockReset();
         componentDragMocks.resolveItemView.mockReset();
-    });
-
-    it('disables legacy sortables on init', () => {
-        const stop = initComponentDrag();
-        expect(componentDragMocks.disableLegacySortables).toHaveBeenCalledTimes(1);
-        stop();
     });
 
     it('moves a component to a new position within the same region', () => {

@@ -3,7 +3,6 @@ import {PageViewController} from '@enonic/lib-contentstudio/page-editor/PageView
 import {DeselectComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/DeselectComponentEvent';
 import {EditTextComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/EditTextComponentViewEvent';
 import {SelectComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/SelectComponentEvent';
-import {DragAndDrop} from '../../../DragAndDrop';
 import {TEXT_COMPONENT_DBL_CLICK_TIMEOUT} from '../../../text/constants';
 import {elementIndex} from '../../stores/element-index';
 import {
@@ -45,10 +44,6 @@ function shouldIgnoreSelectionEvent(event: MouseEvent): boolean {
     }
 
     if (typeof PointerEvent !== 'undefined' && event instanceof PointerEvent && event.pointerType === 'touch') {
-        return true;
-    }
-
-    if (DragAndDrop.get().isNewlyDropped()) {
         return true;
     }
 

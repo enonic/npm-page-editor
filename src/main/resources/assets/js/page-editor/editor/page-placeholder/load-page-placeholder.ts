@@ -3,6 +3,7 @@ import {type Descriptor} from '@enonic/lib-contentstudio/app/page/Descriptor';
 import {PageComponentType} from '@enonic/lib-contentstudio/app/page/region/PageComponentType';
 import {GetContentTypeByNameRequest} from '@enonic/lib-contentstudio/app/resource/GetContentTypeByNameRequest';
 import {GetComponentDescriptorsRequest} from '@enonic/lib-contentstudio/app/resource/GetComponentDescriptorsRequest';
+import {type ContentType} from '@enonic/lib-contentstudio/app/inputtype/schema/ContentType';
 import {ContentTypeName} from '@enonic/lib-admin-ui/schema/content/ContentTypeName';
 
 export interface ControllerOption {
@@ -51,7 +52,7 @@ export async function loadPagePlaceholderState(
 
         try {
             const contentTypeDetails = await toPromise(
-                new GetContentTypeByNameRequest(name).sendAndParse() as PromiseLike<{getTitle(): string}>,
+                new GetContentTypeByNameRequest(name).sendAndParse() as PromiseLike<ContentType>,
             );
             contentTypeDisplayName = contentTypeDetails.getTitle();
         } catch {

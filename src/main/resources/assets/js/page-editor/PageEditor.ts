@@ -1,61 +1,59 @@
-/*global JQuery */
-import 'jquery';
-import 'jquery-ui/dist/jquery-ui.js';
-import 'jquery-simulate/jquery.simulate.js';
 import {StyleHelper} from '@enonic/lib-admin-ui/StyleHelper';
-import {IframeEventBus} from '@enonic/lib-admin-ui/event/IframeEventBus';
-import {LiveEditPage} from './LiveEditPage';
-import {ItemViewPlaceholder} from './ItemViewPlaceholder';
-import {type KeyBinding} from '@enonic/lib-admin-ui/ui/KeyBinding';
-import {Store} from '@enonic/lib-admin-ui/store/Store';
-import {KEY_BINDINGS_KEY} from '@enonic/lib-admin-ui/ui/KeyBindings';
+import {MinimizeWizardPanelEvent} from '@enonic/lib-admin-ui/app/wizard/MinimizeWizardPanelEvent';
+import {ApplicationKey} from '@enonic/lib-admin-ui/application/ApplicationKey';
+import {Event} from '@enonic/lib-admin-ui/event/Event';
 import {IframeEvent} from '@enonic/lib-admin-ui/event/IframeEvent';
-import {InitializeLiveEditEvent} from '@enonic/lib-contentstudio/page-editor/event/InitializeLiveEditEvent';
-import {LiveEditParams} from '@enonic/lib-contentstudio/page-editor/LiveEditParams';
-import {SkipLiveEditReloadConfirmationEvent} from '@enonic/lib-contentstudio/page-editor/event/SkipLiveEditReloadConfirmationEvent';
-import {ChildOrder} from '@enonic/lib-contentstudio/app/resource/order/ChildOrder';
-import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
+import {IframeEventBus} from '@enonic/lib-admin-ui/event/IframeEventBus';
+import {FieldOrderExpr} from '@enonic/lib-admin-ui/query/expr/FieldOrderExpr';
+import {ContentTypeName} from '@enonic/lib-admin-ui/schema/content/ContentTypeName';
+import {IdProviderKey} from '@enonic/lib-admin-ui/security/IdProviderKey';
+import {PrincipalKey} from '@enonic/lib-admin-ui/security/PrincipalKey';
+import {Store} from '@enonic/lib-admin-ui/store/Store';
+import {type KeyBinding} from '@enonic/lib-admin-ui/ui/KeyBinding';
+import {KEY_BINDINGS_KEY} from '@enonic/lib-admin-ui/ui/KeyBindings';
+import {UriHelper} from '@enonic/lib-admin-ui/util/UriHelper';
 import {ContentId} from '@enonic/lib-contentstudio/app/content/ContentId';
 import {ContentName} from '@enonic/lib-contentstudio/app/content/ContentName';
 import {ContentPath} from '@enonic/lib-contentstudio/app/content/ContentPath';
 import {ContentSummary} from '@enonic/lib-contentstudio/app/content/ContentSummary';
 import {ContentSummaryAndCompareStatus} from '@enonic/lib-contentstudio/app/content/ContentSummaryAndCompareStatus';
-import {FragmentComponentType} from '@enonic/lib-contentstudio/app/page/region/FragmentComponentType';
+import {Workflow} from '@enonic/lib-contentstudio/app/content/Workflow';
 import {IframeBeforeContentSavedEvent} from '@enonic/lib-contentstudio/app/event/IframeBeforeContentSavedEvent';
+import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
+import {FragmentComponentType} from '@enonic/lib-contentstudio/app/page/region/FragmentComponentType';
 import {LayoutComponentType} from '@enonic/lib-contentstudio/app/page/region/LayoutComponentType';
 import {PartComponentType} from '@enonic/lib-contentstudio/app/page/region/PartComponentType';
 import {TextComponentType} from '@enonic/lib-contentstudio/app/page/region/TextComponentType';
-import {Workflow} from '@enonic/lib-contentstudio/app/content/Workflow';
-import {ContentTypeName} from '@enonic/lib-admin-ui/schema/content/ContentTypeName';
-import {ApplicationKey} from '@enonic/lib-admin-ui/application/ApplicationKey';
-import {PrincipalKey} from '@enonic/lib-admin-ui/security/PrincipalKey';
-import {IdProviderKey} from '@enonic/lib-admin-ui/security/IdProviderKey';
-import {FieldOrderExpr} from '@enonic/lib-admin-ui/query/expr/FieldOrderExpr';
-import {AddComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/AddComponentViewEvent';
-import {RemoveComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/RemoveComponentViewEvent';
-import {PageStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/common/PageStateEvent';
-import {SelectComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/navigation/SelectComponentViewEvent';
-import {DeselectComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/navigation/DeselectComponentViewEvent';
-import {MoveComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/MoveComponentViewEvent';
-import {LoadComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/LoadComponentViewEvent';
-import {SetPageLockStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetPageLockStateEvent';
-import {PageReloadRequestedEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/PageReloadRequestedEvent';
+import {RenderingMode} from '@enonic/lib-contentstudio/app/rendering/RenderingMode';
+import {ChildOrder} from '@enonic/lib-contentstudio/app/resource/order/ChildOrder';
+import {ContentPreviewPathChangedEvent} from '@enonic/lib-contentstudio/app/view/ContentPreviewPathChangedEvent';
+import {LiveEditParams} from '@enonic/lib-contentstudio/page-editor/LiveEditParams';
 import {ComponentLoadedEvent} from '@enonic/lib-contentstudio/page-editor/event/ComponentLoadedEvent';
-import {LoadComponentFailedEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/LoadComponentFailedEvent';
+import {InitializeLiveEditEvent} from '@enonic/lib-contentstudio/page-editor/event/InitializeLiveEditEvent';
+import {SkipLiveEditReloadConfirmationEvent} from '@enonic/lib-contentstudio/page-editor/event/SkipLiveEditReloadConfirmationEvent';
+import {PageStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/common/PageStateEvent';
+import {AddComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/AddComponentViewEvent';
 import {
     CreateOrDestroyDraggableEvent
 } from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/CreateOrDestroyDraggableEvent';
-import {ResetComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/ResetComponentViewEvent';
-import {UpdateTextComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/UpdateTextComponentViewEvent';
 import {DuplicateComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/DuplicateComponentViewEvent';
-import {MinimizeWizardPanelEvent} from '@enonic/lib-admin-ui/app/wizard/MinimizeWizardPanelEvent';
+import {LoadComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/LoadComponentViewEvent';
+import {MoveComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/MoveComponentViewEvent';
+import {RemoveComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/RemoveComponentViewEvent';
+import {ResetComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/ResetComponentViewEvent';
 import {SetDraggableVisibleEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetDraggableVisibleEvent';
-import {Event} from '@enonic/lib-admin-ui/event/Event';
-import {EditorEvents, type EditorEvent} from './event/EditorEvent';
-import {RenderingMode} from '@enonic/lib-contentstudio/app/rendering/RenderingMode';
-import {UriHelper} from '@enonic/lib-admin-ui/util/UriHelper';
-import {ContentPreviewPathChangedEvent} from '@enonic/lib-contentstudio/app/view/ContentPreviewPathChangedEvent';
+import {SetPageLockStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetPageLockStateEvent';
+import {UpdateTextComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/UpdateTextComponentViewEvent';
+import {DeselectComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/navigation/DeselectComponentViewEvent';
+import {SelectComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/navigation/SelectComponentViewEvent';
+import {LoadComponentFailedEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/LoadComponentFailedEvent';
+import {PageReloadRequestedEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/PageReloadRequestedEvent';
+import 'jquery';
+import 'jquery-ui/dist/jquery-ui.js';
+import {LiveEditPage} from './LiveEditPage';
 import {isOwnedByNewUI} from './editor/coexistence/ownership';
+import {EditorEvents, type EditorEvent} from './event/EditorEvent';
+import {handleComponentLoads, type EditorConfig} from './handleComponentLoads';
 
 // ============================================================================
 // Event Handlers
@@ -249,7 +247,7 @@ function initializeEventBus(): IframeEventBus {
 
 function initializeGlobalState(): void {
     Store.instance().set('$', $);
-    StyleHelper.setCurrentPrefix(ItemViewPlaceholder.PAGE_EDITOR_PREFIX);
+    StyleHelper.setCurrentPrefix('xp-page-editor-');
 }
 
 // ============================================================================
@@ -264,19 +262,13 @@ export class PageEditor {
     private static windowClickListener: ((event: JQuery.ClickEvent) => void) | null = null;
     private static windowLoadListener: (() => void) | null = null;
 
-    static init(editMode: boolean): void {
-        if (this.mode) {
-            throw new Error(`Page editor is already initialized in "${this.mode}" mode.`);
-        }
-        this.mode = editMode ? RenderingMode.EDIT : RenderingMode.INLINE;
+    static initPreview(): void {
+        this.initInternal(false);
+    }
 
-        initializeGlobalState();
-        this.iframeEventBus = initializeEventBus();
-        this.initListeners(editMode);
-
-        if (editMode) {
-            this.liveEditPage = new LiveEditPage();
-        }
+    static initEditor(config: EditorConfig): void {
+        this.initInternal(true);
+        handleComponentLoads(config);
     }
 
     static isInitialized(): boolean {
@@ -318,6 +310,21 @@ export class PageEditor {
             this.iframeEventBus.fireEvent(new LoadComponentFailedEvent(path, reason));
         } else {
             throw new Error(`PageEditor.notify: unsupported event name "${event}"`);
+        }
+    }
+
+    private static initInternal(editMode: boolean): void {
+        if (this.mode) {
+            throw new Error(`Page editor is already initialized in "${this.mode}" mode.`);
+        }
+        this.mode = editMode ? RenderingMode.EDIT : RenderingMode.INLINE;
+
+        initializeGlobalState();
+        this.iframeEventBus = initializeEventBus();
+        this.initListeners(editMode);
+
+        if (editMode) {
+            this.liveEditPage = new LiveEditPage();
         }
     }
 

@@ -4,8 +4,6 @@
     "types": [
       "jquery",
       "jqueryui",
-      "q",
-      "ckeditor",
       "mousetrap"
     ],
     "lib": [
@@ -28,6 +26,8 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "baseUrl": ".",

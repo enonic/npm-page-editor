@@ -26,9 +26,9 @@ vi.mock('@enonic/lib-contentstudio/app/resource/GetComponentDescriptorsRequest',
 
 vi.mock('@enonic/lib-contentstudio/app/resource/GetContentTypeByNameRequest', () => ({
     GetContentTypeByNameRequest: class {
-        sendAndParse(): Promise<{getTitle(): string}> {
+        sendAndParse(): Promise<{getDisplayName(): string}> {
             return Promise.resolve({
-                getTitle: () => loaderMocks.contentTypeDisplayName,
+                getDisplayName: () => loaderMocks.contentTypeDisplayName,
             });
         }
     },
@@ -62,7 +62,7 @@ describe('loadPagePlaceholderState', () => {
         expect(state).toMatchObject({
             loading: false,
             error: undefined,
-            contentTypeDisplayName: 'Article',
+            contentTypeDisplayName: 'com.example:article',
         });
         expect(state.options.map((option) => option.displayName)).toEqual([
             'Landing page',
