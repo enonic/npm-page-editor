@@ -4,9 +4,7 @@
     "types": [
       "jquery",
       "jqueryui",
-      "q",
-      "ckeditor",
-      "mousetrap"
+      "vitest/globals"
     ],
     "lib": [
       "ES2023",
@@ -28,6 +26,8 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "baseUrl": ".",
@@ -47,11 +47,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    "build",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/*.spec.ts",
-    "**/*.spec.tsx",
-    "src/main/resources/assets/js/test/**/*"
+    "build"
   ]
 }

@@ -1,44 +1,35 @@
-import {type Element} from '@enonic/lib-admin-ui/dom/Element';
-import {i18n} from '@enonic/lib-admin-ui/util/Messages';
 import {ObjectHelper} from '@enonic/lib-admin-ui/ObjectHelper';
 import {type Body} from '@enonic/lib-admin-ui/dom/Body';
 import {DivEl} from '@enonic/lib-admin-ui/dom/DivEl';
-import {type ItemViewIdProducer} from './ItemViewIdProducer';
-import {ItemView, ItemViewBuilder} from './ItemView';
-import {RegionView, RegionViewBuilder} from './RegionView';
-import {ComponentView} from './ComponentView';
-import {type ItemViewAddedEvent} from '@enonic/lib-contentstudio/page-editor/event/ItemViewAddedEvent';
-import {type ItemViewRemovedEvent} from '@enonic/lib-contentstudio/page-editor/event/ItemViewRemovedEvent';
-import {ItemViewContextMenu} from '@enonic/lib-contentstudio/page-editor/ItemViewContextMenu';
+import {type Element} from '@enonic/lib-admin-ui/dom/Element';
+import {Action} from '@enonic/lib-admin-ui/ui/Action';
+import {i18n} from '@enonic/lib-admin-ui/util/Messages';
+import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
+import {ItemType} from '@enonic/lib-contentstudio/page-editor/ItemType';
+import type {LiveEditParams} from '@enonic/lib-contentstudio/page-editor/LiveEditParams';
 import {PageItemType} from '@enonic/lib-contentstudio/page-editor/PageItemType';
 import {PageViewContextMenuTitle} from '@enonic/lib-contentstudio/page-editor/PageViewContextMenuTitle';
-import {PagePlaceholder} from './PagePlaceholder';
+import {PageViewController} from '@enonic/lib-contentstudio/page-editor/PageViewController';
+import {RegionItemType} from '@enonic/lib-contentstudio/page-editor/RegionItemType';
+import {SaveAsTemplateEvent} from '@enonic/lib-contentstudio/page-editor/SaveAsTemplateEvent';
+import {ComponentInspectedEvent} from '@enonic/lib-contentstudio/page-editor/event/ComponentInspectedEvent';
+import {type ItemViewAddedEvent} from '@enonic/lib-contentstudio/page-editor/event/ItemViewAddedEvent';
+import {type ItemViewRemovedEvent} from '@enonic/lib-contentstudio/page-editor/event/ItemViewRemovedEvent';
+import {PageLockedEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/PageLockedEvent';
+import {PageResetEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/PageResetEvent';
+import {PageUnlockedEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/PageUnlockedEvent';
 import {
     type ItemViewSelectedEventConfig,
     SelectComponentEvent
 } from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/SelectComponentEvent';
-import {ItemViewContextMenuPosition} from './ItemViewContextMenuPosition';
-import {TextItemType} from './text/TextItemType';
-import {type TextComponentView} from './text/TextComponentView';
-import {PageLockedEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/PageLockedEvent';
-import {PageUnlockedEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/PageUnlockedEvent';
-import {SelectedHighlighter} from './SelectedHighlighter';
-import type {ClickPosition} from '@enonic/lib-contentstudio/page-editor/ClickPosition';
-import {type ItemViewId} from './ItemViewId';
-import {ItemType} from '@enonic/lib-contentstudio/page-editor/ItemType';
-import {LayoutComponentView} from './layout/LayoutComponentView';
-import {RegionItemType} from '@enonic/lib-contentstudio/page-editor/RegionItemType';
+import {type ComponentView} from './ComponentView';
 import {CreateItemViewConfig} from './CreateItemViewConfig';
-import {DragAndDrop} from './DragAndDrop';
+import {ItemView, ItemViewBuilder} from './ItemView';
 import type {ItemViewFactory} from './ItemViewFactory';
-import {PageViewController} from '@enonic/lib-contentstudio/page-editor/PageViewController';
-import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
-import {Action} from '@enonic/lib-admin-ui/ui/Action';
-import {assertNotNull} from '@enonic/lib-admin-ui/util/Assert';
-import {SaveAsTemplateEvent} from '@enonic/lib-contentstudio/page-editor/SaveAsTemplateEvent';
-import {type LiveEditParams} from '@enonic/lib-contentstudio/page-editor/LiveEditParams';
-import {PageResetEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/PageResetEvent';
-import {ComponentInspectedEvent} from '@enonic/lib-contentstudio/page-editor/event/ComponentInspectedEvent';
+import {type ItemViewIdProducer} from './ItemViewIdProducer';
+import {RegionView, RegionViewBuilder} from './RegionView';
+import {LayoutComponentView} from './layout/LayoutComponentView';
+import {TextItemType} from './text/TextItemType';
 
 export class PageViewBuilder {
 
@@ -90,12 +81,6 @@ export class PageView
 
     private itemViewRemovedListener: (event: ItemViewRemovedEvent) => void;
 
-    public static debug: boolean;
-
-    private lockedContextMenu: ItemViewContextMenu;
-
-    private modifyPermissions: boolean;
-
     constructor(builder: PageViewBuilder) {
         super(new ItemViewBuilder()
             .setLiveEditParams(builder.liveEditParams)
@@ -105,12 +90,10 @@ export class PageView
             .setElement(builder.element)
             .setContextMenuTitle(new PageViewContextMenuTitle(builder.liveEditParams.displayName)));
 
-        this.setPlaceholder(new PagePlaceholder(this));
         this.addPageContextMenuActions();
 
         this.regionViews = [];
         this.viewsById = {};
-        this.modifyPermissions = builder.liveEditParams.modifyPermissions;
 
         this.addClassEx('page-view');
 
@@ -124,21 +107,7 @@ export class PageView
         }
     }
 
-    protected isDragging(): boolean {
-        return DragAndDrop.get().isDragging();
-    }
-
-    public createDraggable(item: JQuery) {
-        return DragAndDrop.get().createDraggable(item);
-    }
-
-    public destroyDraggable(item: JQuery) {
-        return DragAndDrop.get().destroyDraggable(item);
-    }
-
     public setModifyPermissions(modifyPermissions: boolean): void {
-        this.modifyPermissions = modifyPermissions;
-
         if (!modifyPermissions) {
             this.setLocked(true);
         }
@@ -152,9 +121,6 @@ export class PageView
         }));
 
         this.resetAction = new Action(i18n('live.view.reset')).onExecuted(() => {
-            if (PageView.debug) {
-                console.log('PageView.reset');
-            }
             new PageResetEvent().fire();
         });
 
@@ -194,8 +160,7 @@ export class PageView
             } else {
                 if (event.isNewlyCreated()) {
                     const config = {path: itemView.getPath(), position: null, newlyCreated: true} as ItemViewSelectedEventConfig;
-                    itemView.select(config, ItemViewContextMenuPosition.NONE);
-                    itemView.focusPlaceholderIfEmpty();
+                    itemView.select(config);
                 }
             }
         };
@@ -205,64 +170,18 @@ export class PageView
                 this.unregisterItemView(itemView);
             });
         };
-
-        this.listenToMouseEvents();
-    }
-
-    highlightSelected() {
-        if (!this.isLocked() && !this.isDragging()) {
-            super.highlightSelected();
-        }
-    }
-
-    showCursor() {
-        if (!this.isLocked()) {
-            super.showCursor();
-        }
-    }
-
-    shade() {
-        if (!this.isEmpty()) {
-            super.shade();
-        }
-    }
-
-    unshade() {
-        if (!this.isLocked()) {
-            super.unshade();
-        }
-    }
-
-    private listenToMouseEvents() {
-        this.onMouseOverView(() => {
-            if (this.isDragging() && this.lockedContextMenu) {
-                if (this.lockedContextMenu.isVisible()) {
-                    this.lockedContextMenu.hide();
-                }
-            }
-        });
     }
 
     getPath(): ComponentPath {
         return ComponentPath.root();
     }
 
-    select(config?: ItemViewSelectedEventConfig, menuPosition?: ItemViewContextMenuPosition) {
+    select(config?: ItemViewSelectedEventConfig) {
         if (config) {
             config.rightClicked = false;
         }
 
-        super.select(config, menuPosition);
-    }
-
-    showContextMenu(clickPosition?: ClickPosition, menuPosition?: ItemViewContextMenuPosition) {
-        if (!this.isLocked()) {
-            super.showContextMenu(clickPosition, menuPosition);
-        }
-    }
-
-    createLockedContextMenu() {
-        return new ItemViewContextMenu(this.getContextMenuTitle(), this.getLockedMenuActions());
+        super.select(config);
     }
 
     getLockedMenuActions(): Action[] {
@@ -275,45 +194,8 @@ export class PageView
         return [unlockAction];
     }
 
-    selectLocked(position: ClickPosition) {
-        this.setLockVisible(true);
-        this.lockedContextMenu.showAt(position.x, position.y);
-    }
-
-    deselectLocked() {
-        this.setLockVisible(false);
-        this.lockedContextMenu.hide();
-    }
-
-    handleShaderClick(event: MouseEvent) {
-        if (this.isLocked() && this.modifyPermissions) {
-            if (!this.lockedContextMenu) {
-                this.lockedContextMenu = this.createLockedContextMenu();
-            }
-            if (this.lockedContextMenu.isVisible()) {
-                this.deselectLocked();
-            } else {
-                this.selectLocked({x: event.pageX, y: event.pageY});
-            }
-        } else if (!this.isSelected() || event.which === 3) {
-            this.handleClick(event);
-        } else {
-            this.deselect();
-        }
-    }
-
-    hideContextMenu() {
-        this.lockedContextMenu?.hide();
-
-        return super.hideContextMenu();
-    }
-
     isLocked() {
         return this.hasClass('locked');
-    }
-
-    setLockVisible(visible: boolean) {
-        this.toggleClass('lock-visible', visible);
     }
 
     setLocked(locked: boolean): void {
@@ -323,15 +205,9 @@ export class PageView
 
         this.toggleClass('locked', locked);
 
-        this.hideContextMenu();
-
         if (locked) {
-            this.shade();
-
             new PageLockedEvent().fire();
         } else {
-            this.unshade();
-
             new PageUnlockedEvent().fire();
             new ComponentInspectedEvent(this.getPath()).fire();
         }
@@ -341,30 +217,6 @@ export class PageView
 
     getPageView(): PageView {
         return this;
-    }
-
-    getPageViewController(): PageViewController {
-        return PageViewController.get();
-    }
-
-    getCurrentContextMenu(): ItemViewContextMenu {
-        return this.lockedContextMenu || super.getCurrentContextMenu();
-    }
-
-    hasTargetWithinTextComponent(target: HTMLElement) {
-        const textItemViews = this.getItemViewsByType(TextItemType.get());
-        let result: boolean = false;
-
-        let textView: TextComponentView;
-        textItemViews.forEach((view: ItemView) => {
-            textView = view as TextComponentView;
-            if (textView.getEl().contains(target)) {
-                result = true;
-                return;
-            }
-        });
-
-        return result;
     }
 
     isEmpty(): boolean {
@@ -419,69 +271,12 @@ export class PageView
         return array;
     }
 
-    hasSelectedView(): boolean {
-        return !!SelectedHighlighter.get().getSelectedView();
-    }
-
     getSelectedView(): ItemView {
         for (const id in this.viewsById) {
             if (this.viewsById.hasOwnProperty(id) && this.viewsById[id].isSelected()) {
                 return this.viewsById[id];
             }
         }
-        return null;
-    }
-
-    getItemViewById(id: ItemViewId): ItemView {
-        assertNotNull(id, i18n('live.view.itemview.error.idisnull'));
-        return this.viewsById[id.toNumber()];
-    }
-
-    getItemViewsByType(type: ItemType): ItemView[] {
-        const views: ItemView[] = [];
-        for (const key in this.viewsById) {
-            if (this.viewsById.hasOwnProperty(key)) {
-                const view = this.viewsById[key];
-                if (type.equals(view.getType())) {
-                    views.push(view);
-                }
-            }
-        }
-        return views;
-    }
-
-    getItemViewByElement(element: HTMLElement): ItemView {
-        assertNotNull(element, i18n('live.view.itemview.error.elementisnull'));
-
-        const itemId = ItemView.parseItemId(element);
-        if (!itemId) {
-            return null;
-        }
-
-        const itemView = this.getItemViewById(itemId);
-        assertNotNull(itemView, i18n('live.view.itemview.error.notfound', itemId.toString()));
-
-        return itemView;
-    }
-
-    getRegionViewByElement(element: HTMLElement): RegionView {
-
-        const itemView = this.getItemViewByElement(element);
-
-        if (ObjectHelper.iFrameSafeInstanceOf(itemView, RegionView)) {
-            return itemView as RegionView;
-        }
-        return null;
-    }
-
-    getComponentViewByElement(element: HTMLElement): ComponentView {
-
-        const itemView = this.getItemViewByElement(element);
-
-        if (ObjectHelper.iFrameSafeInstanceOf(itemView, ComponentView)) {
-            return itemView as ComponentView;
-        }
-
         return null;
     }
 
@@ -526,18 +321,10 @@ export class PageView
     }
 
     private registerItemView(view: ItemView) {
-        if (PageView.debug) {
-            console.debug('PageView.registerItemView: ' + view.toString());
-        }
-
         this.viewsById[view.getItemId().toNumber()] = view;
     }
 
     private unregisterItemView(view: ItemView) {
-        if (PageView.debug) {
-            console.debug('PageView.unregisterItemView: ' + view.toString());
-        }
-
         delete this.viewsById[view.getItemId().toNumber()];
     }
 

@@ -1,4 +1,4 @@
-import {cn, Skeleton} from '@enonic/ui';
+import {cn} from '@enonic/ui';
 import {Box, Columns2, PenLine, Puzzle} from 'lucide-preact';
 
 import type {ComponentRecordType} from '../../types';
@@ -31,9 +31,9 @@ type WireframeLinesProps = {
 
 const WireframeLines = ({className}: WireframeLinesProps): JSX.Element => (
     <div className={cn('flex max-w-48 min-w-0 flex-1 flex-col gap-1.5', className)}>
-        <Skeleton animated={false} className='h-1.5 w-full bg-decorative' />
-        <Skeleton animated={false} className='h-1.5 w-full bg-decorative' />
-        <Skeleton animated={false} className='h-1.5 w-[75%] bg-decorative' />
+        <div className='h-1.5 w-full rounded-sm bg-decorative' />
+        <div className='h-1.5 w-full rounded-sm bg-decorative' />
+        <div className='h-1.5 w-[75%] rounded-sm bg-decorative' />
     </div>
 );
 
@@ -67,7 +67,7 @@ export const ComponentPlaceholder = ({type, descriptor, error, className}: Compo
             className={cn('pe-shell @container overflow-hidden bg-surface-neutral select-none', className)}
         >
             <div className='p-2.5'>
-                <div className='flex items-center justify-center border border-decorative p-2 @[12rem]:gap-4 @[12rem]:px-4 @[12rem]:py-2.5'>
+                <div className='flex min-h-25 items-center justify-center border border-decorative p-2 @[12rem]:gap-4 @[12rem]:px-4 @[12rem]:py-2.5'>
                     {Icon != null ? (
                         <div className='size-8 shrink-0 text-decorative @[12rem]:size-16'>
                             <Icon className='size-full' strokeWidth={1.5} />
