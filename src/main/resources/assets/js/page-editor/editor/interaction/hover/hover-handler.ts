@@ -1,10 +1,10 @@
 import {elementIndex} from '../../stores/element-index';
-import {$dragState, $textEditing, setHoveredPath} from '../../stores/registry';
+import {$dragState, setHoveredPath} from '../../stores/registry';
 import {getTrackedTarget} from '../common/click-guard';
 
 export function initHoverDetection(): () => void {
     const handleMouseOver = (event: MouseEvent) => {
-        if ($textEditing.get() || $dragState.get()) {
+        if ($dragState.get()) {
             setHoveredPath(undefined);
             return;
         }
@@ -18,7 +18,7 @@ export function initHoverDetection(): () => void {
     };
 
     const handleMouseOut = (event: MouseEvent) => {
-        if ($textEditing.get() || $dragState.get()) {
+        if ($dragState.get()) {
             setHoveredPath(undefined);
             return;
         }

@@ -4,15 +4,12 @@ import {ComponentViewBuilder} from '../ComponentView';
 import {LayoutItemType} from './LayoutItemType';
 import {type ItemViewAddedEvent} from '@enonic/lib-contentstudio/page-editor/event/ItemViewAddedEvent';
 import {type ItemViewRemovedEvent} from '@enonic/lib-contentstudio/page-editor/event/ItemViewRemovedEvent';
-import {LayoutPlaceholder} from './LayoutPlaceholder';
 import {type ItemView} from '../ItemView';
 import {ItemType} from '@enonic/lib-contentstudio/page-editor/ItemType';
 import {RegionItemType} from '@enonic/lib-contentstudio/page-editor/RegionItemType';
 import {RegionView, RegionViewBuilder} from '../RegionView';
 import {type ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
 import {DescriptorBasedComponentView} from '../DescriptorBasedComponentView';
-import {i18n} from '@enonic/lib-admin-ui/util/Messages';
-import {type DescriptorBasedComponent} from '@enonic/lib-contentstudio/app/page/region/DescriptorBasedComponent';
 
 export class LayoutComponentViewBuilder
     extends ComponentViewBuilder {
@@ -32,10 +29,8 @@ export class LayoutComponentView
 
     private readonly itemViewRemovedListener: (event: ItemViewRemovedEvent) => void;
 
-    public static debug: boolean = false;
-
     constructor(builder: LayoutComponentViewBuilder) {
-        super(builder.setInspectActionRequired(true).setPlaceholder(new LayoutPlaceholder()));
+        super(builder.setInspectActionRequired(true));
 
         this.regionViews = [];
         this.itemViewAddedListener = (event: ItemViewAddedEvent) => this.notifyItemViewAdded(event.getView(), event.isNewlyCreated());
@@ -75,11 +70,6 @@ export class LayoutComponentView
         return array;
     }
 
-    protected makeEmptyDescriptorText(component: DescriptorBasedComponent): string {
-        const descriptorName = component.getName()?.toString() || component.getDescriptorKey().toString();
-        return `${i18n('field.layout')} "${descriptorName}"`;
-    }
-
     private parseRegions() {
         this.regionViews.forEach((regionView) => {
             this.unregisterRegionView(regionView);
@@ -116,10 +106,6 @@ export class LayoutComponentView
     }
 
     private registerRegionView(regionView: RegionView) {
-        if (LayoutComponentView.debug) {
-            console.log('LayoutComponentView.registerRegionView: ' + regionView.toString());
-        }
-
         this.regionViews.push(regionView);
         this.notifyItemViewAdded(regionView);
 
@@ -128,10 +114,6 @@ export class LayoutComponentView
     }
 
     private unregisterRegionView(regionView: RegionView) {
-        if (LayoutComponentView.debug) {
-            console.log('LayoutComponentView.unregisterRegionView: ' + regionView.toString(), this.regionViews);
-        }
-
         const index = this.regionViews.indexOf(regionView);
         if (index > -1) {
             this.regionViews.splice(index, 1);

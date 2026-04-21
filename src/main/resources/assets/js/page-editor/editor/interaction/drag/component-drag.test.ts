@@ -5,20 +5,11 @@ const componentDragMocks = vi.hoisted(() => ({
     canceledViews: [] as unknown[],
     moveEvents: [] as Array<{from: {toString(): string}; to: {toString(): string}}>,
     setNextClickDisabled: vi.fn(),
-    disableLegacySortables: vi.fn(),
     getLegacyItemViewLabel: vi.fn() as ReturnType<typeof vi.fn<() => string | undefined>>,
     setLegacyItemViewMoving: vi.fn(),
     deselectLegacyItemView: vi.fn(),
     legacyFragmentContainsLayout: vi.fn() as ReturnType<typeof vi.fn<() => boolean>>,
     resolveItemView: vi.fn(),
-}));
-
-vi.mock('../../../DragAndDrop', () => ({
-    DragAndDrop: {
-        get: () => ({
-            disableLegacySortables: componentDragMocks.disableLegacySortables,
-        }),
-    },
 }));
 
 vi.mock('../../bridge', () => ({
@@ -128,7 +119,6 @@ import {
     setHoveredPath,
     setRegistry,
     setSelectedPath,
-    setTextEditing,
 } from '../../stores/registry';
 import {initComponentDrag} from './component-drag';
 
@@ -202,7 +192,6 @@ describe('initComponentDrag', () => {
         setDragState(undefined);
         setHoveredPath(undefined);
         setSelectedPath(undefined);
-        setTextEditing(false);
 
         componentDragMocks.startedPaths.length = 0;
         componentDragMocks.stoppedPaths.length = 0;
@@ -210,18 +199,11 @@ describe('initComponentDrag', () => {
         componentDragMocks.canceledViews.length = 0;
         componentDragMocks.moveEvents.length = 0;
         componentDragMocks.setNextClickDisabled.mockReset();
-        componentDragMocks.disableLegacySortables.mockReset();
         componentDragMocks.getLegacyItemViewLabel.mockReset();
         componentDragMocks.setLegacyItemViewMoving.mockReset();
         componentDragMocks.deselectLegacyItemView.mockReset();
         componentDragMocks.legacyFragmentContainsLayout.mockReset();
         componentDragMocks.resolveItemView.mockReset();
-    });
-
-    it('disables legacy sortables on init', () => {
-        const stop = initComponentDrag();
-        expect(componentDragMocks.disableLegacySortables).toHaveBeenCalledTimes(1);
-        stop();
     });
 
     it('moves a component to a new position within the same region', () => {
@@ -482,35 +464,6 @@ describe('initComponentDrag', () => {
         expect(componentDragMocks.canceledViews).toHaveLength(1);
         expect(componentDragMocks.stoppedPaths).toHaveLength(1);
         expect(part.style.display).not.toBe('none');
-
-        stop();
-    });
-
-    it('ignores mousedown during text editing', () => {
-        const region = document.createElement('section');
-        region.dataset.portalRegion = 'main';
-        const part = document.createElement('article');
-        part.dataset.portalComponentType = 'part';
-        region.appendChild(part);
-        document.body.appendChild(region);
-
-        const records: Record<string, ComponentRecord> = {
-            '/main': createRecord('/main', region, 'region', ComponentPath.root().toString(), ['/main/0']),
-            '/main/0': createRecord('/main/0', part, 'part', '/main'),
-        };
-
-        setRegistry(records);
-        rebuildIndex(records);
-
-        setTextEditing(true);
-
-        const stop = initComponentDrag();
-
-        dispatchMouseDown(part, 50, 50);
-        dispatchMouseMove(50, 70);
-
-        expect($dragState.get()).toBeUndefined();
-        expect(componentDragMocks.startedPaths).toHaveLength(0);
 
         stop();
     });

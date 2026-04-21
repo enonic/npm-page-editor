@@ -1,11 +1,12 @@
 import type {Meta, StoryObj} from '@storybook/preact-vite';
-import type {ComponentChildren, CSSProperties} from 'preact';
+import type {ComponentChildren} from 'preact';
 import {useEffect, useRef} from 'preact/hooks';
-import {ComponentPlaceholder} from '../../src/main/resources/assets/js/editor/components/placeholders/ComponentPlaceholder';
-import {DragPlaceholder} from '../../src/main/resources/assets/js/editor/components/placeholders/DragPlaceholder';
-import {EmptyPlaceholder} from '../../src/main/resources/assets/js/editor/components/placeholders/EmptyPlaceholder';
-import {RegionPlaceholder} from '../../src/main/resources/assets/js/editor/components/placeholders/RegionPlaceholder';
-import {createPlaceholderIsland} from '../../src/main/resources/assets/js/editor/rendering/placeholder-island';
+import {ComponentPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/ComponentPlaceholder';
+import {DragPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/DragPlaceholder';
+import {EmptyPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/EmptyPlaceholder';
+import {LoadingPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/LoadingPlaceholder';
+import {RegionPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/RegionPlaceholder';
+import {createPlaceholderIsland} from '../../src/main/resources/assets/js/page-editor/editor/rendering/placeholder-island';
 
 //
 // * Helpers
@@ -14,10 +15,9 @@ import {createPlaceholderIsland} from '../../src/main/resources/assets/js/editor
 interface IslandMountProps {
     children: ComponentChildren;
     className?: string;
-    style?: CSSProperties;
 }
 
-function IslandMount({children, className, style}: IslandMountProps) {
+function IslandMount({children, className}: IslandMountProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -29,7 +29,7 @@ function IslandMount({children, className, style}: IslandMountProps) {
         return () => island.unmount();
     }, [children]);
 
-    return <div ref={containerRef} className={className} style={style} />;
+    return <div ref={containerRef} className={className} />;
 }
 
 //
@@ -55,7 +55,7 @@ type Story = StoryObj<typeof meta>;
 export const DropzoneDefault: Story = {
     name: 'Dropzone / Default',
     render: () => (
-        <IslandMount style={{width: '640px'}}>
+        <IslandMount className='w-160'>
             <RegionPlaceholder path='/main' regionName='main' />
         </IslandMount>
     ),
@@ -64,7 +64,7 @@ export const DropzoneDefault: Story = {
 export const DropzoneDragOver: Story = {
     name: 'Dropzone / Drag Over',
     render: () => (
-        <IslandMount style={{width: '640px'}}>
+        <IslandMount className='w-160'>
             <DragPlaceholder itemLabel='Hero banner' dropAllowed={true} />
         </IslandMount>
     ),
@@ -73,7 +73,7 @@ export const DropzoneDragOver: Story = {
 export const DropzoneForbidden: Story = {
     name: 'Dropzone / Forbidden',
     render: () => (
-        <IslandMount style={{width: '640px'}}>
+        <IslandMount className='w-160'>
             <DragPlaceholder
                 itemLabel='Layout'
                 dropAllowed={false}
@@ -90,16 +90,16 @@ export const DropzoneForbidden: Story = {
 export const PlaceholderStates: Story = {
     name: 'Placeholder / States',
     render: () => (
-        <div style={{display: 'flex', gap: '24px', alignItems: 'start'}}>
-            <IslandMount style={{width: '280px'}}>
+        <div className='flex items-start gap-6'>
+            <IslandMount className='w-70'>
                 <ComponentPlaceholder type='part' error={false} />
             </IslandMount>
-            <div style={{width: '280px', boxShadow: '0 0 0 3px rgb(59 130 246)'}}>
+            <div className='w-70 ring-[3px] ring-blue-500'>
                 <IslandMount>
                     <ComponentPlaceholder type='part' error={false} />
                 </IslandMount>
             </div>
-            <div style={{width: '280px', boxShadow: '0 0 0 1.5px rgb(59 130 246 / 0.7)'}}>
+            <div className='w-70 ring-[1.5px] ring-blue-500/70'>
                 <IslandMount>
                     <ComponentPlaceholder type='part' error={false} />
                 </IslandMount>
@@ -111,14 +111,7 @@ export const PlaceholderStates: Story = {
 export const PlaceholderVariants: Story = {
     name: 'Placeholder / Variants',
     render: () => (
-        <div style={{
-            border: '2px dashed rgb(139 92 246 / 0.5)',
-            borderRadius: '8px',
-            padding: '16px',
-            display: 'grid',
-            gap: '16px',
-            width: '400px',
-        }}>
+        <div className='grid w-100 gap-4 rounded-lg border-2 border-dashed border-violet-500/50 p-4'>
             <IslandMount>
                 <ComponentPlaceholder type='text' error={false} />
             </IslandMount>
@@ -142,7 +135,7 @@ export const PlaceholderVariants: Story = {
 export const ErrorBlock: Story = {
     name: 'States / Error',
     render: () => (
-        <IslandMount style={{width: '640px'}}>
+        <IslandMount className='w-160'>
             <ComponentPlaceholder
                 type='part'
                 descriptor='This is a message that describes the error'
@@ -155,8 +148,17 @@ export const ErrorBlock: Story = {
 export const EmptyBlock: Story = {
     name: 'States / Empty',
     render: () => (
-        <IslandMount style={{width: '640px'}}>
+        <IslandMount className='w-160'>
             <EmptyPlaceholder name='Hero Banner' />
+        </IslandMount>
+    ),
+};
+
+export const LoadingBlock: Story = {
+    name: 'States / Loading',
+    render: () => (
+        <IslandMount className='w-160'>
+            <LoadingPlaceholder />
         </IslandMount>
     ),
 };

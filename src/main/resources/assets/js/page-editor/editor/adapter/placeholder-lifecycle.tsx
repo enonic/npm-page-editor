@@ -1,10 +1,18 @@
 import {ComponentPlaceholder} from '../components/placeholders/ComponentPlaceholder';
+import {LoadingPlaceholder} from '../components/placeholders/LoadingPlaceholder';
 import {RegionPlaceholder} from '../components/placeholders/RegionPlaceholder';
 import {createPlaceholderIsland} from '../rendering/placeholder-island';
 import {$dragState, getRegistry} from '../stores/registry';
 import type {ComponentRecord, DragState, PlaceholderIsland} from '../types';
 
 const placeholderIslands = new Map<string, PlaceholderIsland>();
+const placeholderKinds = new Map<string, string>();
+
+function getPlaceholderKind(record: ComponentRecord): string {
+    if (record.type === 'region') return 'region';
+    if (record.loading && !record.error) return 'loading';
+    return `component:${record.type}:${record.error ? '1' : '0'}:${record.descriptor ?? ''}`;
+}
 
 function isRegionDraggedEmpty(record: ComponentRecord, dragState: DragState | undefined): boolean {
     // ? Mirrors legacy RegionView.hasOnlyMovingComponentViews — a region whose
@@ -20,7 +28,7 @@ function isRegionDraggedEmpty(record: ComponentRecord, dragState: DragState | un
 
 function shouldShowPlaceholder(record: ComponentRecord, dragState: DragState | undefined): boolean {
     if (record.type === 'page') return false;
-    if (record.empty || record.error) return true;
+    if (record.empty || record.error || record.loading) return true;
 
     return isRegionDraggedEmpty(record, dragState);
 }
@@ -33,6 +41,7 @@ function destroyPlaceholder(path: string): void {
 
     island.unmount();
     placeholderIslands.delete(path);
+    placeholderKinds.delete(path);
 }
 
 export function syncPlaceholders(records: Record<string, ComponentRecord>): void {
@@ -47,8 +56,13 @@ export function syncPlaceholders(records: Record<string, ComponentRecord>): void
 
         nextPaths.add(path);
 
+        const kind = getPlaceholderKind(record);
         const currentIsland = placeholderIslands.get(path);
-        if (currentIsland?.container === record.element && currentIsland.host.isConnected) {
+        if (
+            currentIsland?.container === record.element
+            && currentIsland.host.isConnected
+            && placeholderKinds.get(path) === kind
+        ) {
             return;
         }
 
@@ -56,9 +70,12 @@ export function syncPlaceholders(records: Record<string, ComponentRecord>): void
 
         const content = record.type === 'region'
             ? <RegionPlaceholder path={path} regionName={String(record.path.getPath())} />
-            : <ComponentPlaceholder type={record.type} descriptor={record.descriptor} error={record.error} />;
+            : record.loading && !record.error
+                ? <LoadingPlaceholder />
+                : <ComponentPlaceholder type={record.type} descriptor={record.descriptor} error={record.error} />;
 
         placeholderIslands.set(path, createPlaceholderIsland(record.element, content));
+        placeholderKinds.set(path, kind);
     });
 
     Array.from(placeholderIslands.keys()).forEach((path) => {

@@ -84,19 +84,30 @@ export function reconcileSubtree(pageView: PageView, rootPath: string | undefine
     finalizeReconcile(current, nextRecords);
 }
 
-export function markLoading(path: string, loading: boolean): void {
+function updateRecord(path: string, patch: Partial<ComponentRecord>): void {
     const record = getRecord(path);
     if (!record) {
         return;
     }
 
-    setRegistry({
+    const nextRecords = {
         ...getRegistry(),
         [path]: {
             ...record,
-            loading,
+            ...patch,
         },
-    });
+    };
+
+    setRegistry(nextRecords);
+    syncPlaceholders(nextRecords);
+}
+
+export function markLoading(path: string, loading: boolean): void {
+    updateRecord(path, {loading});
+}
+
+export function markError(path: string, error: boolean): void {
+    updateRecord(path, {error});
 }
 
 export function remapInteractionPath(fromPath: string, toPath: string): void {

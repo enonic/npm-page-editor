@@ -13,6 +13,7 @@ const eslintConfig = defineConfig([
                 "argsIgnorePattern": "^_",
                 "varsIgnorePattern": "^_"
             }],
+            "no-unused-private-class-members": "error",
             "no-prototype-builtins": "off",
             '@typescript-eslint/consistent-type-imports': [
                 'error',

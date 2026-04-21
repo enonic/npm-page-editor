@@ -4,15 +4,12 @@ const initMocks = vi.hoisted(() => ({
     destroyPlaceholders: vi.fn(),
     initPlaceholderDragSync: vi.fn(() => vi.fn()),
     setCurrentPageView: vi.fn(),
-    transferOwnership: vi.fn(),
-    resetOwnership: vi.fn(),
     initGeometryTriggers: vi.fn(() => vi.fn()),
     initHoverDetection: vi.fn(() => vi.fn()),
     initKeyboardHandling: vi.fn(() => vi.fn()),
     initSelectionDetection: vi.fn(() => vi.fn()),
     initComponentDrag: vi.fn(() => vi.fn()),
     initContextWindowDrag: vi.fn(() => vi.fn()),
-    initTextEditingSync: vi.fn(() => vi.fn()),
     syncSelectionStorage: vi.fn(() => vi.fn()),
     restoreStoredSelection: vi.fn(),
     createOverlayHost: vi.fn(() => ({unmount: vi.fn()})),
@@ -35,11 +32,6 @@ vi.mock('./bridge', () => ({
     setCurrentPageView: initMocks.setCurrentPageView,
 }));
 
-vi.mock('./coexistence/ownership', () => ({
-    transferOwnership: initMocks.transferOwnership,
-    resetOwnership: initMocks.resetOwnership,
-}));
-
 vi.mock('./geometry/scheduler', () => ({
     initGeometryTriggers: initMocks.initGeometryTriggers,
 }));
@@ -59,10 +51,6 @@ vi.mock('./interaction/selection', () => ({
 vi.mock('./interaction/drag', () => ({
     initComponentDrag: initMocks.initComponentDrag,
     initContextWindowDrag: initMocks.initContextWindowDrag,
-}));
-
-vi.mock('./interaction/text-editing', () => ({
-    initTextEditingSync: initMocks.initTextEditingSync,
 }));
 
 vi.mock('./persistence/selection-storage', () => ({
@@ -89,15 +77,12 @@ describe('initNewUi', () => {
         initMocks.reconcilePage.mockClear();
         initMocks.destroyPlaceholders.mockClear();
         initMocks.setCurrentPageView.mockClear();
-        initMocks.transferOwnership.mockClear();
-        initMocks.resetOwnership.mockClear();
         initMocks.initGeometryTriggers.mockClear();
         initMocks.initHoverDetection.mockClear();
         initMocks.initKeyboardHandling.mockClear();
         initMocks.initSelectionDetection.mockClear();
         initMocks.initComponentDrag.mockClear();
         initMocks.initContextWindowDrag.mockClear();
-        initMocks.initTextEditingSync.mockClear();
         initMocks.syncSelectionStorage.mockClear();
         initMocks.restoreStoredSelection.mockClear();
         initMocks.createOverlayHost.mockClear();
@@ -124,7 +109,6 @@ describe('initNewUi', () => {
         expect(initMocks.reconcilePage).toHaveBeenCalledWith(pageView);
         expect(initMocks.initComponentDrag).toHaveBeenCalledTimes(1);
         expect(initMocks.initContextWindowDrag).toHaveBeenCalledTimes(1);
-        expect(initMocks.initTextEditingSync).toHaveBeenCalledTimes(1);
         expect(initMocks.syncSelectionStorage).toHaveBeenCalledWith('fragment-content', true);
         expect(initMocks.restoreStoredSelection).toHaveBeenCalledWith('fragment-content', true);
         expect(document.body.classList.contains('pe-overlay-active')).toBe(true);
@@ -132,7 +116,6 @@ describe('initNewUi', () => {
         destroy();
 
         expect(initMocks.destroyPlaceholders).toHaveBeenCalledTimes(1);
-        expect(initMocks.resetOwnership).toHaveBeenCalledTimes(1);
         expect(document.body.classList.contains('pe-overlay-active')).toBe(false);
     });
 });

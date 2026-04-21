@@ -51,7 +51,7 @@ app {
     vendorUrl = 'https://enonic.com'
     systemVersion = "${xpVersion}"
     devSourcePaths += file( "$rootDir/../lib-admin-ui/src/main/resources" )
-    devSourcePaths += file( "$rootDir/../app-contentstudio2/modules/lib/src/main/resources" )
+    devSourcePaths += file( "$rootDir/../app-contentstudio/modules/lib/src/main/resources" )
 }
 
 dependencies {
@@ -93,7 +93,7 @@ tasks.named( 'check' ).configure {
 tasks.register( 'pnpmBuild', PnpmTask ) {
     dependsOn tasks.named( 'pnpmInstall' )
     dependsOn tasks.named( 'javadoc' )
-    description = 'Build UI resources (ts, css, etc) with Vite.'
+    description = 'Build UI resources with Vite.'
     args = ['run', "build:${environmentShort()}"]
     inputs.dir '.xp/dev'
     inputs.dir 'src/main'
@@ -105,11 +105,6 @@ tasks.register( 'pnpmBuild', PnpmTask ) {
 tasks.named( 'processResources' ).configure {
     // Don't need source files
     exclude 'assets/js/**'
-    exclude 'assets/css/**'
-
-    // Inlined by the Vite into CSS
-    exclude 'assets/fonts/**'
-    exclude 'assets/img/**'
 
     includeEmptyDirs = false
 }

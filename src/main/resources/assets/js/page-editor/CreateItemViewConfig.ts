@@ -1,10 +1,10 @@
-import {type Element} from '@enonic/lib-admin-ui/dom/Element';
-import {type ItemViewIdProducer} from './ItemViewIdProducer';
-import type {ItemView} from './ItemView';
-import type {ItemViewFactory} from './ItemViewFactory';
-import type {RegionView} from './RegionView';
-import {type LiveEditParams} from '@enonic/lib-contentstudio/page-editor/LiveEditParams';
-import {type ContentId} from '@enonic/lib-contentstudio/app/content/ContentId';
+import { type Element } from '@enonic/lib-admin-ui/dom/Element';
+import { type ContentId } from '@enonic/lib-contentstudio/app/content/ContentId';
+import type { LiveEditParams } from '@enonic/lib-contentstudio/page-editor/LiveEditParams';
+import type { ItemView } from './ItemView';
+import type { ItemViewFactory } from './ItemViewFactory';
+import { type ItemViewIdProducer } from './ItemViewIdProducer';
+import type { RegionView } from './RegionView';
 
 export class CreateItemViewConfig<PARENT extends ItemView> {
 

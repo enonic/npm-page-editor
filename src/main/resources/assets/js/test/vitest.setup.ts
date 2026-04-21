@@ -1,4 +1,5 @@
 import jQuery from 'jquery';
 
-globalThis.$ = jQuery;
-globalThis.jQuery = jQuery;
+const globals = globalThis as typeof globalThis & {$: typeof jQuery; jQuery: typeof jQuery};
+globals.$ = jQuery;
+globals.jQuery = jQuery;

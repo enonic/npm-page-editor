@@ -1,14 +1,8 @@
-const keyboardMocks = vi.hoisted(() => {
-    const parentStore = {
-        has: vi.fn(),
-        get: vi.fn(),
-    };
-
-    return {
-        fireEvent: vi.fn(),
-        parentStore,
-    };
-});
+const keyboardMocks = vi.hoisted(() => ({
+    fireEvent: vi.fn(),
+    cancelActiveDrag: vi.fn(),
+    removedPaths: [] as string[],
+}));
 
 vi.mock('@enonic/lib-admin-ui/event/IframeEventBus', () => ({
     IframeEventBus: {
@@ -35,25 +29,54 @@ vi.mock('@enonic/lib-admin-ui/event/IframeEvent', () => ({
     },
 }));
 
-vi.mock('@enonic/lib-admin-ui/store/Store', () => ({
-    Store: {
-        parentInstance: () => keyboardMocks.parentStore,
+vi.mock('@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/RemoveComponentRequest', () => ({
+    RemoveComponentRequest: class {
+        private readonly path: {toString(): string};
+
+        constructor(path: {toString(): string}) {
+            this.path = path;
+        }
+
+        fire(): void {
+            keyboardMocks.removedPaths.push(this.path.toString());
+        }
     },
 }));
 
-import {setDragState, setTextEditing} from '../../stores/registry';
+vi.mock('../drag/component-drag', () => ({
+    cancelActiveDrag: keyboardMocks.cancelActiveDrag,
+}));
+
+import {
+    $selectedPath,
+    setDragState,
+    setLocked,
+    setModifyAllowed,
+    setSelectedPath,
+} from '../../stores/registry';
 import {initKeyboardHandling} from './keyboard-handler';
 
-function createKeyboardEvent(type: string, options: {keyCode: number; ctrlKey?: boolean; altKey?: boolean}): KeyboardEvent {
+type KeyboardEventOptions = {
+    key: string;
+    keyCode?: number;
+    ctrlKey?: boolean;
+    metaKey?: boolean;
+    altKey?: boolean;
+    shiftKey?: boolean;
+};
+
+function createKeyboardEvent(type: string, options: KeyboardEventOptions): KeyboardEvent {
     const event = new KeyboardEvent(type, {
+        key: options.key,
         bubbles: true,
         cancelable: true,
         ctrlKey: options.ctrlKey,
+        metaKey: options.metaKey,
         altKey: options.altKey,
+        shiftKey: options.shiftKey,
     });
 
-    Object.defineProperty(event, 'keyCode', {value: options.keyCode});
-    Object.defineProperty(event, 'which', {value: options.keyCode});
+    Object.defineProperty(event, 'keyCode', {value: options.keyCode ?? 0});
     Object.defineProperty(event, 'charCode', {value: 0});
 
     return event;
@@ -62,22 +85,17 @@ function createKeyboardEvent(type: string, options: {keyCode: number; ctrlKey?: 
 describe('initKeyboardHandling', () => {
     afterEach(() => {
         keyboardMocks.fireEvent.mockReset();
-        keyboardMocks.parentStore.has.mockReset();
-        keyboardMocks.parentStore.get.mockReset();
-        setTextEditing(false);
+        keyboardMocks.cancelActiveDrag.mockReset();
+        keyboardMocks.removedPaths.length = 0;
+        setSelectedPath(undefined);
         setDragState(undefined);
+        setLocked(false);
+        setModifyAllowed(true);
     });
 
-    it('forwards matching modifier shortcuts to the parent frame', () => {
-        keyboardMocks.parentStore.has.mockReturnValue(true);
-        keyboardMocks.parentStore.get.mockReturnValue({
-            getActiveBindings: () => [
-                {getCombination: () => 'mod+s'},
-            ],
-        });
-
+    it('relays modifier shortcuts to the parent and prevents the browser default', () => {
         const stop = initKeyboardHandling();
-        const event = createKeyboardEvent('keydown', {keyCode: 83, ctrlKey: true});
+        const event = createKeyboardEvent('keydown', {key: 's', keyCode: 83, ctrlKey: true});
 
         document.dispatchEvent(event);
 
@@ -97,49 +115,138 @@ describe('initKeyboardHandling', () => {
         stop();
     });
 
-    it('ignores keyboard events without a matching parent binding', () => {
-        keyboardMocks.parentStore.has.mockReturnValue(true);
-        keyboardMocks.parentStore.get.mockReturnValue({
-            getActiveBindings: () => [
-                {getCombination: () => 'mod+del'},
-            ],
-        });
-
+    it('relays function keys without preventing browser defaults', () => {
         const stop = initKeyboardHandling();
-        document.dispatchEvent(createKeyboardEvent('keydown', {keyCode: 83, ctrlKey: true}));
-
-        expect(keyboardMocks.fireEvent).not.toHaveBeenCalled();
-
-        stop();
-    });
-
-    it('leaves keyboard shortcuts alone while text editing is active', () => {
-        keyboardMocks.parentStore.has.mockReturnValue(true);
-        keyboardMocks.parentStore.get.mockReturnValue({
-            getActiveBindings: () => [
-                {getCombination: () => 'mod+s'},
-            ],
-        });
-        setTextEditing(true);
-
-        const stop = initKeyboardHandling();
-        const event = createKeyboardEvent('keydown', {keyCode: 83, ctrlKey: true});
+        const event = createKeyboardEvent('keydown', {key: 'F2', keyCode: 113});
 
         document.dispatchEvent(event);
 
         expect(event.defaultPrevented).toBe(false);
+        expect(keyboardMocks.fireEvent).toHaveBeenCalledTimes(1);
+
+        stop();
+    });
+
+    it('does not relay plain printable characters', () => {
+        const stop = initKeyboardHandling();
+        document.dispatchEvent(createKeyboardEvent('keydown', {key: 'a', keyCode: 65}));
+
         expect(keyboardMocks.fireEvent).not.toHaveBeenCalled();
 
         stop();
     });
 
-    it('leaves keyboard shortcuts alone while drag feedback is active', () => {
-        keyboardMocks.parentStore.has.mockReturnValue(true);
-        keyboardMocks.parentStore.get.mockReturnValue({
-            getActiveBindings: () => [
-                {getCombination: () => 'mod+s'},
-            ],
-        });
+    it('does not relay plain arrow keys', () => {
+        const stop = initKeyboardHandling();
+
+        for (const key of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {
+            const event = createKeyboardEvent('keydown', {key});
+            document.dispatchEvent(event);
+            expect(event.defaultPrevented).toBe(false);
+        }
+
+        expect(keyboardMocks.fireEvent).not.toHaveBeenCalled();
+
+        stop();
+    });
+
+    it('does not relay Tab or Enter without a modifier', () => {
+        const stop = initKeyboardHandling();
+
+        for (const key of ['Tab', 'Enter']) {
+            const event = createKeyboardEvent('keydown', {key});
+            document.dispatchEvent(event);
+            expect(event.defaultPrevented).toBe(false);
+        }
+
+        expect(keyboardMocks.fireEvent).not.toHaveBeenCalled();
+
+        stop();
+    });
+
+    it('relays arrow keys when combined with a modifier', () => {
+        const stop = initKeyboardHandling();
+        const event = createKeyboardEvent('keydown', {key: 'ArrowDown', keyCode: 40, ctrlKey: true});
+
+        document.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(keyboardMocks.fireEvent).toHaveBeenCalledTimes(1);
+
+        stop();
+    });
+
+    it('removes the selected component on Delete', () => {
+        setSelectedPath('/main/0');
+
+        const stop = initKeyboardHandling();
+        const event = createKeyboardEvent('keydown', {key: 'Delete', keyCode: 46});
+
+        document.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(keyboardMocks.removedPaths).toEqual(['/main/0']);
+        expect(keyboardMocks.fireEvent).not.toHaveBeenCalled();
+
+        stop();
+    });
+
+    it('removes the selected component on Backspace', () => {
+        setSelectedPath('/main/1');
+
+        const stop = initKeyboardHandling();
+        const event = createKeyboardEvent('keydown', {key: 'Backspace', keyCode: 8});
+
+        document.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(keyboardMocks.removedPaths).toEqual(['/main/1']);
+
+        stop();
+    });
+
+    it('skips removal when the page is locked but still consumes the event', () => {
+        setSelectedPath('/main/0');
+        setLocked(true);
+
+        const stop = initKeyboardHandling();
+        const event = createKeyboardEvent('keydown', {key: 'Delete', keyCode: 46});
+
+        document.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(keyboardMocks.removedPaths).toHaveLength(0);
+
+        stop();
+    });
+
+    it('skips removal when modifications are not allowed', () => {
+        setSelectedPath('/main/0');
+        setModifyAllowed(false);
+
+        const stop = initKeyboardHandling();
+        document.dispatchEvent(createKeyboardEvent('keydown', {key: 'Backspace', keyCode: 8}));
+
+        expect(keyboardMocks.removedPaths).toHaveLength(0);
+
+        stop();
+    });
+
+    it('clears the current selection on Escape', () => {
+        setSelectedPath('/main/0');
+
+        const stop = initKeyboardHandling();
+        const event = createKeyboardEvent('keydown', {key: 'Escape', keyCode: 27});
+
+        document.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect($selectedPath.get()).toBeUndefined();
+
+        stop();
+    });
+
+    it('cancels an active drag on Escape and ignores other keys during drag', () => {
         setDragState({
             itemType: 'part',
             itemLabel: 'Hero',
@@ -153,13 +260,39 @@ describe('initKeyboardHandling', () => {
         });
 
         const stop = initKeyboardHandling();
-        const event = createKeyboardEvent('keydown', {keyCode: 83, ctrlKey: true});
 
-        document.dispatchEvent(event);
+        const escape = createKeyboardEvent('keydown', {key: 'Escape', keyCode: 27});
+        document.dispatchEvent(escape);
 
-        expect(event.defaultPrevented).toBe(false);
+        expect(escape.defaultPrevented).toBe(true);
+        expect(keyboardMocks.cancelActiveDrag).toHaveBeenCalledTimes(1);
+
+        const save = createKeyboardEvent('keydown', {key: 's', keyCode: 83, ctrlKey: true});
+        document.dispatchEvent(save);
+
+        expect(save.defaultPrevented).toBe(false);
         expect(keyboardMocks.fireEvent).not.toHaveBeenCalled();
 
         stop();
+    });
+
+    it('ignores keypress and keyup events entirely', () => {
+        const stop = initKeyboardHandling();
+
+        document.dispatchEvent(createKeyboardEvent('keypress', {key: 's', keyCode: 83, ctrlKey: true}));
+        document.dispatchEvent(createKeyboardEvent('keyup', {key: 's', keyCode: 83, ctrlKey: true}));
+
+        expect(keyboardMocks.fireEvent).not.toHaveBeenCalled();
+
+        stop();
+    });
+
+    it('removes the keydown listener on teardown', () => {
+        const stop = initKeyboardHandling();
+        stop();
+
+        document.dispatchEvent(createKeyboardEvent('keydown', {key: 's', keyCode: 83, ctrlKey: true}));
+
+        expect(keyboardMocks.fireEvent).not.toHaveBeenCalled();
     });
 });

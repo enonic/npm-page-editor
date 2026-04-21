@@ -1,6 +1,5 @@
 import {ContentBasedComponentView} from '../ContentBasedComponentView';
 import {FragmentItemType} from './FragmentItemType';
-import {FragmentPlaceholder} from './FragmentPlaceholder';
 import {ItemType} from '@enonic/lib-contentstudio/page-editor/ItemType';
 import {LayoutItemType} from '../layout/LayoutItemType';
 import {TextItemType} from '../text/TextItemType';
@@ -31,7 +30,7 @@ export class FragmentComponentView
     private detachAction: Action;
 
     constructor(builder: FragmentComponentViewBuilder) {
-        super(builder.setInspectActionRequired(true).setPlaceholder(new FragmentPlaceholder()));
+        super(builder.setInspectActionRequired(true));
 
         this.fragmentContainsLayout = false;
         this.disableLinks();
