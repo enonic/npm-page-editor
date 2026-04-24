@@ -25,7 +25,6 @@ import {RegionView} from './RegionView';
 import {ItemType} from '@enonic/lib-contentstudio/page-editor/ItemType';
 import {RemoveComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/RemoveComponentViewEvent';
 import {ComponentView} from './ComponentView';
-import {LoadComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/LoadComponentViewEvent';
 import {DuplicateComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/DuplicateComponentViewEvent';
 import {MoveComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/MoveComponentViewEvent';
 import {SetPageLockStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetPageLockStateEvent';
@@ -44,7 +43,6 @@ import {PageState} from '@enonic/lib-contentstudio/app/wizard/page/PageState';
 import {Project} from '@enonic/lib-contentstudio/app/settings/data/project/Project';
 import {ProjectContext} from '@enonic/lib-contentstudio/app/project/ProjectContext';
 import {SessionStorageHelper} from '@enonic/lib-contentstudio/app/util/SessionStorageHelper';
-import {EditorEvent, EditorEvents} from './event/EditorEvent';
 import type {ContentSummaryAndCompareStatus} from '@enonic/lib-contentstudio/app/content/ContentSummaryAndCompareStatus';
 import {claimNewUiOwnership, initNewUi} from './editor/init';
 
@@ -70,8 +68,6 @@ export class LiveEditPage {
     private addItemViewRequestListener: (event: AddComponentViewEvent) => void;
 
     private removeItemViewRequestListener: (event: RemoveComponentViewEvent) => void;
-
-    private loadComponentRequestListener: (event: LoadComponentViewEvent) => void;
 
     private duplicateComponentViewRequestedListener: (event: DuplicateComponentViewEvent) => void;
 
@@ -252,22 +248,6 @@ export class LiveEditPage {
 
         RemoveComponentViewEvent.on(this.removeItemViewRequestListener);
 
-        this.loadComponentRequestListener = (event: LoadComponentViewEvent) => {
-            const path: ComponentPath = event.getComponentPath();
-            const view: ItemView = this.getItemViewByPath(path);
-
-            if (!view) {
-                return;
-            }
-
-            new EditorEvent(EditorEvents.ComponentLoadRequest, {
-                view,
-                isExisting: event.isExisting(),
-            }).fire();
-        };
-
-        LoadComponentViewEvent.on(this.loadComponentRequestListener);
-
         this.duplicateComponentViewRequestedListener = (event: DuplicateComponentViewEvent) => {
             const newItemPath: ComponentPath = event.getComponentPath();
             const sourceItemPath: ComponentPath = new ComponentPath(newItemPath.getPath() as number - 1, newItemPath.getParentPath());
@@ -382,8 +362,6 @@ export class LiveEditPage {
         AddComponentViewEvent.un(this.addItemViewRequestListener);
 
         RemoveComponentViewEvent.un(this.removeItemViewRequestListener);
-
-        LoadComponentViewEvent.un(this.loadComponentRequestListener);
 
         DuplicateComponentViewEvent.un(this.duplicateComponentViewRequestedListener);
 

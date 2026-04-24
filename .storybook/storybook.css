@@ -1,3 +1,9 @@
+@import 'tailwindcss';
+@import '@enonic/ui/preset.css';
+
+@source "../.storybook";
+@source "../src";
+
 body,
 .docs-story {
     background:

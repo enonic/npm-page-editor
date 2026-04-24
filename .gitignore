@@ -23,6 +23,8 @@ build/
 # ESLint
 .eslintcache
 
+storybook-static/
+
 # Enonic XP dev dependencies
 .xp/
 

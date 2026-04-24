@@ -4,18 +4,18 @@ import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/Component
 import type {ComponentChildren, CSSProperties, JSX} from 'preact';
 import {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'preact/hooks';
 import {Lock} from 'lucide-preact';
-import {ComponentPlaceholder} from '../../src/main/resources/assets/js/editor/components/placeholders/ComponentPlaceholder';
-import {ContextMenu} from '../../src/main/resources/assets/js/editor/components/overlay/context-menu';
-import {DragPreview} from '../../src/main/resources/assets/js/editor/components/overlay/DragPreview';
-import {setCurrentPageView} from '../../src/main/resources/assets/js/editor/bridge';
-import {createPlaceholderIsland} from '../../src/main/resources/assets/js/editor/rendering/placeholder-island';
-import type {ComponentRecord, ComponentRecordType} from '../../src/main/resources/assets/js/editor/types';
+import {ComponentPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/ComponentPlaceholder';
+import {ContextMenu} from '../../src/main/resources/assets/js/page-editor/editor/components/overlay/context-menu';
+import {DragPreview} from '../../src/main/resources/assets/js/page-editor/editor/components/overlay/DragPreview';
+import {setCurrentPageView} from '../../src/main/resources/assets/js/page-editor/editor/bridge';
+import {createPlaceholderIsland} from '../../src/main/resources/assets/js/page-editor/editor/rendering/placeholder-island';
+import type {ComponentRecord, ComponentRecordType} from '../../src/main/resources/assets/js/page-editor/editor/types';
 import {
     $registry,
     closeContextMenu,
     openContextMenu,
     setDragState,
-} from '../../src/main/resources/assets/js/editor/stores/registry';
+} from '../../src/main/resources/assets/js/page-editor/editor/stores/registry';
 
 //
 // * Helpers

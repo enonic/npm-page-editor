@@ -2,9 +2,10 @@ import {Event} from '@enonic/lib-admin-ui/event/Event';
 
 export enum EditorEvents {
     ComponentLoadRequest = 'component:load:request',
-    PageReloadRequest = 'page:reload:request',
-    ComponentLoadFailed = 'component:load:failed',
+    ComponentLoadStarted = 'component:load:started',
     ComponentLoaded = 'component:loaded',
+    ComponentLoadFailed = 'component:load:failed',
+    PageReloadRequest = 'page:reload:request',
 }
 
 export class EditorEvent<D extends object = object>

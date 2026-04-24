@@ -51,9 +51,9 @@ import {PageReloadRequestedEvent} from '@enonic/lib-contentstudio/page-editor/ev
 import 'jquery';
 import 'jquery-ui/dist/jquery-ui.js';
 import {LiveEditPage} from './LiveEditPage';
+import {markComponentError, markComponentLoading, renderComponentHtml} from './componentRendering';
 import {isOwnedByNewUI} from './editor/coexistence/ownership';
-import {EditorEvents, type EditorEvent} from './event/EditorEvent';
-import {handleComponentLoads, type EditorConfig} from './handleComponentLoads';
+import {EditorEvent, EditorEvents} from './event/EditorEvent';
 
 // ============================================================================
 // Event Handlers
@@ -262,15 +262,6 @@ export class PageEditor {
     private static windowClickListener: ((event: JQuery.ClickEvent) => void) | null = null;
     private static windowLoadListener: (() => void) | null = null;
 
-    static initPreview(): void {
-        this.initInternal(false);
-    }
-
-    static initEditor(config: EditorConfig): void {
-        this.initInternal(true);
-        handleComponentLoads(config);
-    }
-
     static isInitialized(): boolean {
         return !!this.mode;
     }
@@ -287,33 +278,29 @@ export class PageEditor {
         Event.unbind(eventName, handler);
     }
 
-    static notify(event: EditorEvents.PageReloadRequest): void;
-    static notify(event: EditorEvents.ComponentLoaded, data: { path: ComponentPath }): void;
-    static notify(event: EditorEvents.ComponentLoadFailed, data: { path: ComponentPath, reason: Error }): void;
-    static notify(event: EditorEvents, data?: object): void {
-        // Hide the iframe event bus behind the EditorEvent abstraction
-        if (event === EditorEvents.PageReloadRequest) {
-            this.iframeEventBus.fireEvent(new PageReloadRequestedEvent());
-        } else if (event === EditorEvents.ComponentLoaded) {
-            const isDataValid = data && typeof data === 'object' && 'path' in data;
-            if (!isDataValid) {
-                throw new Error(`path is required for "${event}" event`);
-            }
-            const {path} = data as { path: ComponentPath };
-            this.iframeEventBus.fireEvent(new ComponentLoadedEvent(path));
-        } else if (event === EditorEvents.ComponentLoadFailed) {
-            const isDataValid = data && typeof data === 'object' && 'path' in data && 'reason' in data;
-            if (!isDataValid) {
-                throw new Error(`path and reason are required for "${event}" event`);
-            }
-            const {path, reason} = data as { path: ComponentPath, reason: Error };
-            this.iframeEventBus.fireEvent(new LoadComponentFailedEvent(path, reason));
-        } else {
-            throw new Error(`PageEditor.notify: unsupported event name "${event}"`);
-        }
+    static renderLoadingComponent(path: ComponentPath): void {
+        markComponentLoading(path);
+        new EditorEvent(EditorEvents.ComponentLoadStarted, {path}).fire();
     }
 
-    private static initInternal(editMode: boolean): void {
+    static renderComponent(path: ComponentPath, html: string): void {
+        if (!renderComponentHtml(path, html)) {
+            return;
+        }
+        this.iframeEventBus?.fireEvent(new ComponentLoadedEvent(path));
+    }
+
+    static renderErrorComponent(path: ComponentPath, reason: Error): void {
+        console.warn(`PageEditor: component load at [${path.toString()}] failed:`, reason);
+        markComponentError(path);
+        this.iframeEventBus?.fireEvent(new LoadComponentFailedEvent(path, reason));
+    }
+
+    static reloadPage(): void {
+        this.iframeEventBus?.fireEvent(new PageReloadRequestedEvent());
+    }
+
+    static init(editMode: boolean): void {
         if (this.mode) {
             throw new Error(`Page editor is already initialized in "${this.mode}" mode.`);
         }

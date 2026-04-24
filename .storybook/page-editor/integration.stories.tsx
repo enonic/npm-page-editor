@@ -1,22 +1,26 @@
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import {Action} from '@enonic/lib-admin-ui/ui/Action';
+import {Event} from '@enonic/lib-admin-ui/event/Event';
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
 import type {CSSProperties} from 'preact';
-import {useEffect, useRef} from 'preact/hooks';
-import {OverlayApp} from '../../src/main/resources/assets/js/editor/components/OverlayApp';
-import {RegionPlaceholder} from '../../src/main/resources/assets/js/editor/components/placeholders/RegionPlaceholder';
-import {setCurrentPageView} from '../../src/main/resources/assets/js/editor/bridge';
-import {transferOwnership, resetOwnership} from '../../src/main/resources/assets/js/editor/coexistence/ownership';
-import {initGeometryTriggers, markDirty} from '../../src/main/resources/assets/js/editor/geometry/scheduler';
-import {getTrackedTarget, isOverlayChromeEvent} from '../../src/main/resources/assets/js/editor/interaction/common/click-guard';
-import {initHoverDetection} from '../../src/main/resources/assets/js/editor/interaction/hover';
-import {createOverlayHost} from '../../src/main/resources/assets/js/editor/rendering/overlay-host';
-import {createPlaceholderIsland} from '../../src/main/resources/assets/js/editor/rendering/placeholder-island';
-import {elementIndex, rebuildIndex} from '../../src/main/resources/assets/js/editor/stores/element-index';
+import {useEffect, useRef, useState} from 'preact/hooks';
+import {OverlayApp} from '../../src/main/resources/assets/js/page-editor/editor/components/OverlayApp';
+import {RegionPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/RegionPlaceholder';
+import {markError, markLoading} from '../../src/main/resources/assets/js/page-editor/editor/adapter/reconcile';
+import {syncPlaceholders} from '../../src/main/resources/assets/js/page-editor/editor/adapter/placeholder-lifecycle';
+import {setCurrentPageView} from '../../src/main/resources/assets/js/page-editor/editor/bridge';
+import {transferOwnership, resetOwnership} from '../../src/main/resources/assets/js/page-editor/editor/coexistence/ownership';
+import {initGeometryTriggers, markDirty} from '../../src/main/resources/assets/js/page-editor/editor/geometry/scheduler';
+import {getTrackedTarget, isOverlayChromeEvent} from '../../src/main/resources/assets/js/page-editor/editor/interaction/common/click-guard';
+import {initHoverDetection} from '../../src/main/resources/assets/js/page-editor/editor/interaction/hover';
+import {createOverlayHost} from '../../src/main/resources/assets/js/page-editor/editor/rendering/overlay-host';
+import {createPlaceholderIsland} from '../../src/main/resources/assets/js/page-editor/editor/rendering/placeholder-island';
+import {elementIndex, rebuildIndex} from '../../src/main/resources/assets/js/page-editor/editor/stores/element-index';
 import {
     $selectedPath,
     closeContextMenu,
     getRecord,
+    getRegistry,
     openContextMenu,
     setDragState,
     setHoveredPath,
@@ -24,8 +28,9 @@ import {
     setModifyAllowed,
     setRegistry,
     setSelectedPath,
-} from '../../src/main/resources/assets/js/editor/stores/registry';
-import type {ComponentRecord, ComponentRecordType} from '../../src/main/resources/assets/js/editor/types';
+} from '../../src/main/resources/assets/js/page-editor/editor/stores/registry';
+import type {ComponentRecord, ComponentRecordType} from '../../src/main/resources/assets/js/page-editor/editor/types';
+import {EditorEvent, EditorEvents} from '../../src/main/resources/assets/js/page-editor/event/EditorEvent';
 
 //
 // * Helpers
@@ -561,4 +566,209 @@ type Story = StoryObj<typeof meta>;
 export const Overlay: Story = {
     name: 'Integration / Overlay',
     render: () => <OverlayTest />,
+};
+
+//
+// * Load and Replace
+//
+
+const loadCanvasStyle: CSSProperties = {
+    width: '640px',
+    border: '1px solid rgba(33, 52, 75, 0.12)',
+    borderRadius: '12px',
+    background: '#fff',
+    padding: '20px',
+};
+
+const toolbarStyle: CSSProperties = {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '16px',
+    flexWrap: 'wrap',
+};
+
+const buttonStyle: CSSProperties = {
+    padding: '6px 12px',
+    borderRadius: '6px',
+    border: '1px solid rgba(33, 52, 75, 0.2)',
+    background: '#fff',
+    cursor: 'pointer',
+    fontSize: '13px',
+};
+
+const logStyle: CSSProperties = {
+    marginTop: '16px',
+    padding: '12px',
+    borderRadius: '6px',
+    background: '#0f172a',
+    color: '#e2e8f0',
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+    fontSize: '12px',
+    minHeight: '80px',
+    maxHeight: '160px',
+    overflowY: 'auto',
+};
+
+function LoadReplaceDemo() {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const mainRegionRef = useRef<HTMLElement>(null);
+    const counterRef = useRef(0);
+    const [events, setEvents] = useState<string[]>([]);
+
+    const log = (line: string): void => {
+        setEvents((prev) => [...prev, `${new Date().toLocaleTimeString()} · ${line}`].slice(-12));
+    };
+
+    const addComponent = (variant: 'regular' | 'error'): void => {
+        const main = mainRegionRef.current;
+        if (!main) return;
+
+        const index = counterRef.current++;
+        const path = `/main/${index}`;
+
+        const el = document.createElement('article');
+        el.dataset.portalComponentType = 'fragment';
+        el.dataset.testid = `part-${index}`;
+        main.appendChild(el);
+
+        const current = getRegistry();
+        const parent = current['/main'];
+        if (!parent) return;
+
+        const next = {
+            ...current,
+            '/main': {...parent, empty: false, children: [...parent.children, path]},
+            [path]: makeRecord(path, 'fragment', el, '/main', [], false),
+        };
+        setRegistry(next);
+        rebuildIndex(next);
+        markLoading(path, true);
+        markDirty();
+
+        const cpath = ComponentPath.fromString(path);
+        new EditorEvent(EditorEvents.ComponentLoadRequest, {path: cpath, isExisting: false}).fire();
+        new EditorEvent(EditorEvents.ComponentLoadStarted, {path: cpath}).fire();
+
+        window.setTimeout(() => {
+            const rec = getRecord(path);
+            if (!rec || rec.element !== el) return;
+
+            if (variant === 'regular') {
+                const recs = getRegistry();
+                const updated = {...recs, [path]: {...rec, loading: false, empty: true}};
+                setRegistry(updated);
+                syncPlaceholders(updated);
+                new EditorEvent(EditorEvents.ComponentLoaded, {path: cpath}).fire();
+            } else {
+                markLoading(path, false);
+                markError(path, true);
+                new EditorEvent(EditorEvents.ComponentLoadFailed, {path: cpath, reason: new Error('Simulated 500 from server')}).fire();
+            }
+            markDirty();
+        }, 1000);
+    };
+
+    const handleClear = (): void => {
+        const main = mainRegionRef.current;
+        const container = containerRef.current;
+        if (!main || !container) return;
+
+        while (main.firstChild) main.removeChild(main.firstChild);
+
+        const next: Record<string, ComponentRecord> = {
+            '/': makeRecord('/', 'page', container, undefined, ['/main']),
+            '/main': makeRecord('/main', 'region', main, '/', [], true),
+        };
+        setRegistry(next);
+        rebuildIndex(next);
+        syncPlaceholders(next);
+        setEvents([]);
+        counterRef.current = 0;
+        markDirty();
+    };
+
+    useEffect(() => {
+        const container = containerRef.current;
+        const mainRegion = mainRegionRef.current;
+        if (!container || !mainRegion) return undefined;
+
+        const records: Record<string, ComponentRecord> = {
+            '/': makeRecord('/', 'page', container, undefined, ['/main']),
+            '/main': makeRecord('/main', 'region', mainRegion, '/', [], true),
+        };
+
+        setCurrentPageView(createMockPageView(container));
+        setupOwnership();
+
+        const overlay = createOverlayHost(<OverlayApp />);
+        setRegistry(records);
+        rebuildIndex(records);
+        setModifyAllowed(true);
+        syncPlaceholders(records);
+
+        const stopGeometry = initGeometryTriggers();
+        markDirty();
+
+        const onRequest = (event: EditorEvent<{path: ComponentPath; isExisting: boolean}>): void => {
+            const data = event.getData();
+            log(`ComponentLoadRequest  path=${data?.path.toString()} isExisting=${String(data?.isExisting)}`);
+        };
+        const onStarted = (event: EditorEvent<{path: ComponentPath}>): void => {
+            log(`ComponentLoadStarted  path=${event.getData()?.path.toString()}`);
+        };
+        const onLoaded = (event: EditorEvent<{path: ComponentPath}>): void => {
+            log(`ComponentLoaded       path=${event.getData()?.path.toString()}`);
+        };
+        const onFailed = (event: EditorEvent<{path: ComponentPath; reason: Error}>): void => {
+            const data = event.getData();
+            log(`ComponentLoadFailed   path=${data?.path.toString()} reason=${data?.reason.message}`);
+        };
+
+        Event.bind(EditorEvents.ComponentLoadRequest, onRequest);
+        Event.bind(EditorEvents.ComponentLoadStarted, onStarted);
+        Event.bind(EditorEvents.ComponentLoaded, onLoaded);
+        Event.bind(EditorEvents.ComponentLoadFailed, onFailed);
+
+        return () => {
+            Event.unbind(EditorEvents.ComponentLoadRequest, onRequest);
+            Event.unbind(EditorEvents.ComponentLoadStarted, onStarted);
+            Event.unbind(EditorEvents.ComponentLoaded, onLoaded);
+            Event.unbind(EditorEvents.ComponentLoadFailed, onFailed);
+            stopGeometry();
+            overlay.unmount();
+            resetOwnership();
+            resetState();
+        };
+    }, []);
+
+    return (
+        <div>
+            <div style={toolbarStyle}>
+                <button type='button' style={buttonStyle} onClick={() => addComponent('regular')}>
+                    Add component
+                </button>
+                <button type='button' style={buttonStyle} onClick={() => addComponent('error')}>
+                    Add component (error)
+                </button>
+                <button type='button' style={buttonStyle} onClick={handleClear}>
+                    Clear
+                </button>
+            </div>
+
+            <div ref={containerRef} data-testid='load-replace-canvas' style={loadCanvasStyle}>
+                <section
+                    ref={mainRegionRef}
+                    data-portal-region='main'
+                    style={{display: 'grid', gap: '12px', minHeight: '60px'}}
+                />
+            </div>
+
+            <pre style={logStyle}>{events.length === 0 ? 'Waiting for events…' : events.join('\n')}</pre>
+        </div>
+    );
+}
+
+export const LoadAndReplace: Story = {
+    name: 'Integration / Load and Replace',
+    render: () => <LoadReplaceDemo />,
 };
