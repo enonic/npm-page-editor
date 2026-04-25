@@ -8,7 +8,7 @@ export class ComponentItemType
         return new ItemTypeConfig({
             cssSelector: '[data-portal-component-type=' + itemType + ']',
             draggable: true,
-            cursor: 'move',
+            cursor: 'grab',
             iconCls: 'icon-' + itemType,
             highlighterStyle: {
                 stroke: 'rgba(68, 68, 68, 1)', // not used
