@@ -119,7 +119,6 @@ import {
     setHoveredPath,
     setRegistry,
     setSelectedPath,
-    setTextEditing,
 } from '../../stores/registry';
 import {initComponentDrag} from './component-drag';
 
@@ -193,7 +192,6 @@ describe('initComponentDrag', () => {
         setDragState(undefined);
         setHoveredPath(undefined);
         setSelectedPath(undefined);
-        setTextEditing(false);
 
         componentDragMocks.startedPaths.length = 0;
         componentDragMocks.stoppedPaths.length = 0;
@@ -466,35 +464,6 @@ describe('initComponentDrag', () => {
         expect(componentDragMocks.canceledViews).toHaveLength(1);
         expect(componentDragMocks.stoppedPaths).toHaveLength(1);
         expect(part.style.display).not.toBe('none');
-
-        stop();
-    });
-
-    it('ignores mousedown during text editing', () => {
-        const region = document.createElement('section');
-        region.dataset.portalRegion = 'main';
-        const part = document.createElement('article');
-        part.dataset.portalComponentType = 'part';
-        region.appendChild(part);
-        document.body.appendChild(region);
-
-        const records: Record<string, ComponentRecord> = {
-            '/main': createRecord('/main', region, 'region', ComponentPath.root().toString(), ['/main/0']),
-            '/main/0': createRecord('/main/0', part, 'part', '/main'),
-        };
-
-        setRegistry(records);
-        rebuildIndex(records);
-
-        setTextEditing(true);
-
-        const stop = initComponentDrag();
-
-        dispatchMouseDown(part, 50, 50);
-        dispatchMouseMove(50, 70);
-
-        expect($dragState.get()).toBeUndefined();
-        expect(componentDragMocks.startedPaths).toHaveLength(0);
 
         stop();
     });

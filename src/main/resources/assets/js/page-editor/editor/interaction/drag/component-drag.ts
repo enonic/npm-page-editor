@@ -17,7 +17,6 @@ import {
 import {elementIndex} from '../../stores/element-index';
 import {
     $dragState,
-    $textEditing,
     closeContextMenu,
     getRecord,
     setDragState,
@@ -115,29 +114,36 @@ function fireDragCanceled(path: string): void {
     new ComponentViewDragCanceledEvent(resolveItemView(path) as never).fire();
 }
 
+let activeDragSession: ActiveComponentDrag | undefined;
+
+function destroyActiveDrag(canceled: boolean): void {
+    if (!activeDragSession) {
+        setDragState(undefined);
+        return;
+    }
+
+    const current = activeDragSession;
+    activeDragSession = undefined;
+
+    clearTarget(current);
+    restoreSource(current);
+    setDragState(undefined);
+
+    if (canceled) {
+        fireDragCanceled(current.path);
+    }
+
+    fireDragStopped(current.path);
+}
+
+export function cancelActiveDrag(): void {
+    if (activeDragSession) {
+        destroyActiveDrag(true);
+    }
+}
+
 export function initComponentDrag(): () => void {
     let pending: PendingComponentDrag | undefined;
-    let active: ActiveComponentDrag | undefined;
-
-    const destroyActiveDrag = (canceled: boolean) => {
-        if (!active) {
-            setDragState(undefined);
-            return;
-        }
-
-        const current = active;
-        active = undefined;
-
-        clearTarget(current);
-        restoreSource(current);
-        setDragState(undefined);
-
-        if (canceled) {
-            fireDragCanceled(current.path);
-        }
-
-        fireDragStopped(current.path);
-    };
 
     const beginDrag = (path: string, x: number, y: number): void => {
         const record = getRecord(path);
@@ -146,7 +152,7 @@ export function initComponentDrag(): () => void {
             return;
         }
 
-        active = {
+        activeDragSession = {
             path,
             itemType: record.type,
             itemLabel: getLegacyItemViewLabel(path) ?? StringHelper.capitalize(record.type),
@@ -163,18 +169,18 @@ export function initComponentDrag(): () => void {
 
         pending = undefined;
         setLegacyItemViewMoving(path, true);
-        active.sourceElement.style.display = 'none';
+        activeDragSession.sourceElement.style.display = 'none';
         setHoveredPath(undefined);
         closeContextMenu();
         setSelectedPath(undefined);
         deselectLegacyItemView(path);
         new ComponentViewDragStartedEvent(ComponentPath.fromString(path)).fire();
-        resolveDropTarget(active);
-        publishState(active);
+        resolveDropTarget(activeDragSession);
+        publishState(activeDragSession);
     };
 
     const handleMouseDown = (event: MouseEvent) => {
-        if (event.button !== 0 || isOverlayChromeEvent(event) || $textEditing.get() || $dragState.get()) {
+        if (event.button !== 0 || isOverlayChromeEvent(event) || $dragState.get()) {
             return;
         }
 
@@ -197,11 +203,11 @@ export function initComponentDrag(): () => void {
     };
 
     const handleMouseMove = (event: MouseEvent) => {
-        if (active) {
-            active.x = event.clientX;
-            active.y = event.clientY;
-            resolveDropTarget(active);
-            publishState(active);
+        if (activeDragSession) {
+            activeDragSession.x = event.clientX;
+            activeDragSession.y = event.clientY;
+            resolveDropTarget(activeDragSession);
+            publishState(activeDragSession);
             return;
         }
 
@@ -220,14 +226,14 @@ export function initComponentDrag(): () => void {
     const handleMouseUp = (event: MouseEvent) => {
         pending = undefined;
 
-        if (!active) {
+        if (!activeDragSession) {
             return;
         }
 
         event.preventDefault();
         event.stopPropagation();
 
-        const current = active;
+        const current = activeDragSession;
         const sourcePath = ComponentPath.fromString(current.path);
         if (current.dropAllowed && current.targetPath && current.targetIndex != null) {
             const targetPath = new ComponentPath(current.targetIndex, ComponentPath.fromString(current.targetPath));
@@ -243,10 +249,7 @@ export function initComponentDrag(): () => void {
 
     const handleWindowBlur = () => {
         pending = undefined;
-
-        if (active) {
-            destroyActiveDrag(true);
-        }
+        cancelActiveDrag();
     };
 
     document.addEventListener('mousedown', handleMouseDown, {capture: true});
@@ -256,9 +259,7 @@ export function initComponentDrag(): () => void {
 
     return () => {
         pending = undefined;
-        if (active) {
-            destroyActiveDrag(true);
-        }
+        cancelActiveDrag();
         document.removeEventListener('mousedown', handleMouseDown, {capture: true});
         document.removeEventListener('mousemove', handleMouseMove, {capture: true});
         document.removeEventListener('mouseup', handleMouseUp, {capture: true});

@@ -4,7 +4,7 @@
     "types": [
       "jquery",
       "jqueryui",
-      "mousetrap"
+      "vitest/globals"
     ],
     "lib": [
       "ES2023",
@@ -47,11 +47,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    "build",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/*.spec.ts",
-    "**/*.spec.tsx",
-    "src/main/resources/assets/js/test/**/*"
+    "build"
   ]
 }

@@ -44,7 +44,7 @@ import {Project} from '@enonic/lib-contentstudio/app/settings/data/project/Proje
 import {ProjectContext} from '@enonic/lib-contentstudio/app/project/ProjectContext';
 import {SessionStorageHelper} from '@enonic/lib-contentstudio/app/util/SessionStorageHelper';
 import type {ContentSummaryAndCompareStatus} from '@enonic/lib-contentstudio/app/content/ContentSummaryAndCompareStatus';
-import {claimNewUiOwnership, initNewUi} from './editor/init';
+import {initNewUi} from './editor/init';
 
 
 export class LiveEditPage {
@@ -118,10 +118,6 @@ export class LiveEditPage {
 
 
         const body = Body.get().loadExistingChildren();
-        // ! Claim new-UI ownership before building the legacy view tree so
-        // ! constructors see the gates as transferred and skip attaching
-        // ! legacy placeholders/highlighters that the new UI now renders.
-        claimNewUiOwnership();
         try {
             this.pageView = new PageViewBuilder()
                 .setItemViewIdProducer(new ItemViewIdProducer())

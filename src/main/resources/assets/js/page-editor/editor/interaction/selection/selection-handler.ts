@@ -8,7 +8,6 @@ import {elementIndex} from '../../stores/element-index';
 import {
     $dragState,
     $selectedPath,
-    $textEditing,
     closeContextMenu,
     getRecord,
     openContextMenu,
@@ -39,7 +38,7 @@ function fireSelect(path: string, x: number, y: number, rightClicked: boolean): 
 }
 
 function shouldIgnoreSelectionEvent(event: MouseEvent): boolean {
-    if ($textEditing.get() || $dragState.get()) {
+    if ($dragState.get()) {
         return true;
     }
 
@@ -170,7 +169,7 @@ export function initSelectionDetection(): () => void {
     };
 
     const handleContextMenu = (event: MouseEvent) => {
-        if ($textEditing.get() || $dragState.get()) {
+        if ($dragState.get()) {
             return;
         }
 

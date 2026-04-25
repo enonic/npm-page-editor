@@ -1,8 +1,6 @@
 import type {Cloneable} from '@enonic/lib-admin-ui/Cloneable';
 import {type Element} from '@enonic/lib-admin-ui/dom/Element';
 import {Action} from '@enonic/lib-admin-ui/ui/Action';
-import {KeyBinding} from '@enonic/lib-admin-ui/ui/KeyBinding';
-import {KeyBindings} from '@enonic/lib-admin-ui/ui/KeyBindings';
 import {i18n} from '@enonic/lib-admin-ui/util/Messages';
 import {StringHelper} from '@enonic/lib-admin-ui/util/StringHelper';
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
@@ -13,7 +11,6 @@ import {CreateFragmentEvent} from '@enonic/lib-contentstudio/page-editor/event/o
 import {DuplicateComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/DuplicateComponentEvent';
 import {RemoveComponentRequest} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/RemoveComponentRequest';
 import {ResetComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/ResetComponentEvent';
-import type {ItemViewSelectedEventConfig} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/SelectComponentEvent';
 import type {LiveEditParams} from '@enonic/lib-contentstudio/page-editor/LiveEditParams';
 import {PageItemType} from '@enonic/lib-contentstudio/page-editor/PageItemType';
 import {ComponentItemType} from './ComponentItemType';
@@ -118,8 +115,6 @@ export class ComponentView
 
     protected resetAction: Action;
 
-    private keyBinding: KeyBinding[];
-
     constructor(builder: ComponentViewBuilder) {
         super(new ItemViewBuilder()
             .setItemViewIdProducer(
@@ -140,7 +135,6 @@ export class ComponentView
 
         this.empty = StringHelper.isEmpty(builder.element?.getHtml());
         this.addComponentContextMenuActions(builder.inspectActionRequired);
-        this.initKeyBoardBindings();
         this.refreshEmptyState();
     }
 
@@ -195,29 +189,6 @@ export class ComponentView
         }
 
         this.addContextMenuActions(actions);
-    }
-
-    private initKeyBoardBindings() {
-        const removeHandler = () => {
-            new RemoveComponentRequest(this.getPath()).fire();
-            return true;
-        };
-        this.keyBinding = [
-            new KeyBinding('del', removeHandler),
-            new KeyBinding('backspace', removeHandler)
-        ];
-
-    }
-
-    select(config?: ItemViewSelectedEventConfig) {
-        super.select(config);
-        KeyBindings.get().bindKeys(this.keyBinding);
-    }
-
-    deselect(silent?: boolean) {
-        KeyBindings.get().unbindKeys(this.keyBinding);
-
-        super.deselect(silent);
     }
 
     remove(): ComponentView {

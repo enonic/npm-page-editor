@@ -17,9 +17,6 @@ importers:
       jquery-ui:
         specifier: ^1.14.1
         version: 1.14.1
-      mousetrap:
-        specifier: ^1.6.5
-        version: 1.6.5
       nanoid:
         specifier: ^5.1.7
         version: 5.1.7
@@ -66,9 +63,6 @@ importers:
       '@types/jqueryui':
         specifier: ^1.12.24
         version: 1.12.24
-      '@types/mousetrap':
-        specifier: 1.6.15
-        version: 1.6.15
       '@types/node':
         specifier: ^25.0.10
         version: 25.0.10
@@ -87,6 +81,9 @@ importers:
       lucide-preact:
         specifier: ^1.8.0
         version: 1.8.0(preact@10.29.1)
+      mousetrap:
+        specifier: ^1.6.5
+        version: 1.6.5
       preact:
         specifier: ^10.29.1
         version: 10.29.1
@@ -939,9 +936,6 @@ packages:
 
   '@types/mdx@2.0.13':
     resolution: {integrity: sha512-+OWZQfAYyio6YkJb3HLxDrvnx6SWWDbC0zVPfBRzUk0/nqoDyf6dNxQi3eArPe8rJ473nobTMQ/8Zk+LxJ+Yuw==}
-
-  '@types/mousetrap@1.6.15':
-    resolution: {integrity: sha512-qL0hyIMNPow317QWW/63RvL1x5MVMV+Ru3NaY9f/CuEpCqrmb7WeuK2071ZY5hczOnm38qExWM2i2WtkXLSqFw==}
 
   '@types/node@25.0.10':
     resolution: {integrity: sha512-zWW5KPngR/yvakJgGOmZ5vTBemDoSqF3AcV/LrO5u5wTWyEAVVh+IT39G4gtyAkh3CtTZs8aX/yRM82OfzHJRg==}
@@ -3248,8 +3242,6 @@ snapshots:
   '@types/json-schema@7.0.15': {}
 
   '@types/mdx@2.0.13': {}
-
-  '@types/mousetrap@1.6.15': {}
 
   '@types/node@25.0.10':
     dependencies:

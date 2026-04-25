@@ -9,7 +9,6 @@ import {RegionPlaceholder} from '../../src/main/resources/assets/js/page-editor/
 import {markError, markLoading} from '../../src/main/resources/assets/js/page-editor/editor/adapter/reconcile';
 import {syncPlaceholders} from '../../src/main/resources/assets/js/page-editor/editor/adapter/placeholder-lifecycle';
 import {setCurrentPageView} from '../../src/main/resources/assets/js/page-editor/editor/bridge';
-import {transferOwnership, resetOwnership} from '../../src/main/resources/assets/js/page-editor/editor/coexistence/ownership';
 import {initGeometryTriggers, markDirty} from '../../src/main/resources/assets/js/page-editor/editor/geometry/scheduler';
 import {getTrackedTarget, isOverlayChromeEvent} from '../../src/main/resources/assets/js/page-editor/editor/interaction/common/click-guard';
 import {initHoverDetection} from '../../src/main/resources/assets/js/page-editor/editor/interaction/hover';
@@ -85,16 +84,6 @@ function resetState(): void {
     setDragState(undefined);
     setRegistry({});
     setCurrentPageView(undefined);
-}
-
-function setupOwnership(): void {
-    transferOwnership('placeholder');
-    transferOwnership('highlighter');
-    transferOwnership('selection');
-    transferOwnership('shader');
-    transferOwnership('hover-detection');
-    transferOwnership('click-selection');
-    transferOwnership('drag-drop');
 }
 
 //
@@ -461,7 +450,6 @@ function OverlayTest() {
         };
 
         setCurrentPageView(createMockPageView(container));
-        setupOwnership();
 
         const overlay = createOverlayHost(<OverlayApp />);
         setRegistry(records);
@@ -490,7 +478,6 @@ function OverlayTest() {
             rightIsland.unmount();
             centerIsland.unmount();
             overlay.unmount();
-            resetOwnership();
             resetState();
         };
     }, []);
@@ -698,7 +685,6 @@ function LoadReplaceDemo() {
         };
 
         setCurrentPageView(createMockPageView(container));
-        setupOwnership();
 
         const overlay = createOverlayHost(<OverlayApp />);
         setRegistry(records);
@@ -736,7 +722,6 @@ function LoadReplaceDemo() {
             Event.unbind(EditorEvents.ComponentLoadFailed, onFailed);
             stopGeometry();
             overlay.unmount();
-            resetOwnership();
             resetState();
         };
     }, []);

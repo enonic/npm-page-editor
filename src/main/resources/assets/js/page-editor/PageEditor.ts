@@ -9,8 +9,6 @@ import {ContentTypeName} from '@enonic/lib-admin-ui/schema/content/ContentTypeNa
 import {IdProviderKey} from '@enonic/lib-admin-ui/security/IdProviderKey';
 import {PrincipalKey} from '@enonic/lib-admin-ui/security/PrincipalKey';
 import {Store} from '@enonic/lib-admin-ui/store/Store';
-import {type KeyBinding} from '@enonic/lib-admin-ui/ui/KeyBinding';
-import {KEY_BINDINGS_KEY} from '@enonic/lib-admin-ui/ui/KeyBindings';
 import {UriHelper} from '@enonic/lib-admin-ui/util/UriHelper';
 import {ContentId} from '@enonic/lib-contentstudio/app/content/ContentId';
 import {ContentName} from '@enonic/lib-contentstudio/app/content/ContentName';
@@ -52,102 +50,11 @@ import 'jquery';
 import 'jquery-ui/dist/jquery-ui.js';
 import {LiveEditPage} from './LiveEditPage';
 import {markComponentError, markComponentLoading, renderComponentHtml} from './componentRendering';
-import {isOwnedByNewUI} from './editor/coexistence/ownership';
 import {EditorEvent, EditorEvents} from './event/EditorEvent';
 
 // ============================================================================
 // Event Handlers
 // ============================================================================
-
-function shouldBubble(event: JQuery.TriggeredEvent): boolean {
-    return (event.metaKey || event.ctrlKey || event.altKey) && !!event.keyCode;
-}
-
-function shouldBubbleEvent(event: JQuery.TriggeredEvent): boolean {
-    switch (event.keyCode) {
-    case 113:
-        return true;
-    default:
-        return shouldBubble(event);
-    }
-}
-
-function hasMatchingBinding(keys: KeyBinding[], event: JQuery.TriggeredEvent): boolean {
-    const isMod = event.ctrlKey || event.metaKey;
-    const isAlt = event.altKey;
-    const eventKey = event.keyCode || event.which;
-
-    for (const key of keys) {
-        let matches = false;
-
-        switch (key.getCombination()) {
-        case 'backspace':
-            matches = eventKey === 8;
-            break;
-        case 'del':
-            matches = eventKey === 46;
-            // eslint-disable-next-line no-fallthrough
-        case 'mod+del':
-            matches = matches && isMod;
-            break;
-        case 'mod+s':
-            matches = eventKey === 83 && isMod;
-            break;
-        case 'mod+esc':
-            matches = eventKey === 83 && isMod;
-            break;
-        case 'mod+alt+f4':
-            matches = eventKey === 115 && isMod && isAlt;
-            break;
-        }
-
-        if (matches) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-function stopBrowserShortcuts(event: JQuery.TriggeredEvent): void {
-    const hasKeyBindings = Store.parentInstance().has(KEY_BINDINGS_KEY);
-    const keyBindings = Store.parentInstance().get(KEY_BINDINGS_KEY);
-    const activeBindings: KeyBinding[] = hasKeyBindings ? keyBindings.getActiveBindings() : [];
-
-    const hasMatch = hasMatchingBinding(activeBindings, event);
-
-    if (hasMatch) {
-        event.preventDefault();
-        console.log('Prevented default for event in live edit because it has binding in parent', event);
-    }
-}
-
-function createDocumentKeyListener(): (event: JQuery.TriggeredEvent) => void {
-    return (event: JQuery.TriggeredEvent) => {
-        if (isOwnedByNewUI('keyboard')) {
-            return;
-        }
-
-        if (shouldBubbleEvent(event)) {
-            stopBrowserShortcuts(event);
-
-            const modifierEvent = new IframeEvent('editor-modifier-pressed').setData({
-                type: event.type,
-                config: {
-                    bubbles: event.bubbles,
-                    cancelable: event.cancelable,
-                    ctrlKey: event.ctrlKey,
-                    altKey: event.altKey,
-                    shiftKey: event.shiftKey,
-                    metaKey: event.metaKey,
-                    keyCode: event.keyCode,
-                    charCode: event.charCode
-                }
-            });
-            IframeEventBus.get().fireEvent(modifierEvent);
-        }
-    };
-}
 
 function createWindowLoadListener(): () => void {
     return () => {
@@ -258,7 +165,6 @@ export class PageEditor {
     private static mode: RenderingMode;
     private static liveEditPage: LiveEditPage | null = null;
     private static iframeEventBus: IframeEventBus;
-    private static documentKeyListener: ((event: JQuery.TriggeredEvent) => void) | null = null;
     private static windowClickListener: ((event: JQuery.ClickEvent) => void) | null = null;
     private static windowLoadListener: (() => void) | null = null;
 
@@ -316,10 +222,6 @@ export class PageEditor {
     }
 
     private static initListeners(editMode: boolean): void {
-        if (!this.documentKeyListener && editMode) {
-            this.documentKeyListener = createDocumentKeyListener();
-            $(document).on('keypress keydown keyup', this.documentKeyListener);
-        }
         if (!this.windowLoadListener && editMode) {
             this.windowLoadListener = createWindowLoadListener();
             $(window).on('load', this.windowLoadListener);

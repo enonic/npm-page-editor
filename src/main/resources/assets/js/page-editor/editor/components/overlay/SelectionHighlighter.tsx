@@ -1,17 +1,16 @@
 import type {JSX} from 'preact';
 import {useStoreValue} from '../../hooks/use-store-value';
 import {useTrackedRect} from '../../hooks/use-tracked-rect';
-import {$dragState, $selectedPath, $textEditing} from '../../stores/registry';
+import {$dragState, $selectedPath} from '../../stores/registry';
 
 const SELECTION_HIGHLIGHTER_NAME = 'SelectionHighlighter';
 
 export const SelectionHighlighter = (): JSX.Element | null => {
     const selectedPath = useStoreValue($selectedPath);
     const dragState = useStoreValue($dragState);
-    const textEditing = useStoreValue($textEditing);
     const rect = useTrackedRect(selectedPath);
 
-    if (textEditing || dragState || !selectedPath || !rect) return null;
+    if (dragState || !selectedPath || !rect) return null;
 
     const {top, left, width, height} = rect;
 

@@ -78,7 +78,6 @@ import {
     setDragState,
     setRegistry,
     setSelectedPath,
-    setTextEditing,
 } from '../../stores/registry';
 import {initSelectionDetection} from './selection-handler';
 
@@ -101,7 +100,6 @@ describe('initSelectionDetection', () => {
         document.body.innerHTML = '';
         setRegistry({});
         setSelectedPath(undefined);
-        setTextEditing(false);
         setDragState(undefined);
         closeContextMenu();
 
@@ -190,31 +188,6 @@ describe('initSelectionDetection', () => {
         });
         expect(selectionMocks.selectEvents).toHaveLength(1);
         expect(selectionMocks.selectEvents[0].rightClicked).toBe(true);
-
-        stop();
-    });
-
-    it('does not hijack clicks while legacy text editing is active', () => {
-        const element = document.createElement('article');
-        element.dataset.portalComponentType = 'part';
-        document.body.appendChild(element);
-
-        const records = {
-            '/main/0': createRecord('/main/0', element),
-        };
-
-        setRegistry(records);
-        rebuildIndex(records);
-        setTextEditing(true);
-
-        const stop = initSelectionDetection();
-        const event = new MouseEvent('click', {bubbles: true, cancelable: true});
-        element.dispatchEvent(event);
-
-        expect(event.defaultPrevented).toBe(false);
-        expect($selectedPath.get()).toBeUndefined();
-        expect(selectionMocks.selectEvents).toHaveLength(0);
-        expect(selectionMocks.selectLegacyItemView).not.toHaveBeenCalled();
 
         stop();
     });
