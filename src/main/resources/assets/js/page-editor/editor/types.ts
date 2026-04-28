@@ -3,15 +3,15 @@ import type {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/Comp
 export type ComponentRecordType = 'page' | 'region' | 'text' | 'part' | 'layout' | 'fragment';
 
 export interface ComponentRecord {
-    path: ComponentPath;
-    type: ComponentRecordType;
-    element: HTMLElement | undefined;
-    parentPath: string | undefined;
-    children: string[];
-    empty: boolean;
-    error: boolean;
-    descriptor: string | undefined;
-    loading: boolean;
+    readonly path: ComponentPath;
+    readonly type: ComponentRecordType;
+    readonly element: HTMLElement | undefined;
+    readonly parentPath: string | undefined;
+    readonly children: readonly string[];
+    readonly empty: boolean;
+    readonly error: boolean;
+    readonly descriptor: string | undefined;
+    readonly loading: boolean;
 }
 
 export interface ContextMenuState {

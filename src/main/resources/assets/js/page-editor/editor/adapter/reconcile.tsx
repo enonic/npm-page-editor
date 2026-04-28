@@ -27,7 +27,7 @@ function finalizeReconcile(current: Record<string, ComponentRecord>, records: Re
     Object.entries(records).forEach(([path, record]) => {
         const previous = current[path];
         if (previous?.loading) {
-            record.loading = true;
+            records[path] = {...record, loading: true};
         }
     });
 
