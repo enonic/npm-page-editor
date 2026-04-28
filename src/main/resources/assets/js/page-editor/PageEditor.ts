@@ -50,6 +50,8 @@ import 'jquery';
 import 'jquery-ui/dist/jquery-ui.js';
 import {LiveEditPage} from './LiveEditPage';
 import {markComponentError, markComponentLoading, renderComponentHtml} from './componentRendering';
+import {getRecord, getRegistry} from './editor/stores/registry';
+import type {ComponentRecord} from './editor/types';
 import {EditorEvent, EditorEvents} from './event/EditorEvent';
 
 // ============================================================================
@@ -204,6 +206,14 @@ export class PageEditor {
 
     static reloadPage(): void {
         this.iframeEventBus?.fireEvent(new PageReloadRequestedEvent());
+    }
+
+    static getComponentAt(path: ComponentPath): ComponentRecord | undefined {
+        return getRecord(path?.toString());
+    }
+
+    static getAllComponents(): readonly ComponentRecord[] {
+        return Object.values(getRegistry());
     }
 
     static init(editMode: boolean): void {
