@@ -5,26 +5,15 @@ import {GetContentTypeByNameRequest} from '@enonic/lib-contentstudio/app/resourc
 import {GetComponentDescriptorsRequest} from '@enonic/lib-contentstudio/app/resource/GetComponentDescriptorsRequest';
 import {type ContentType} from '@enonic/lib-contentstudio/app/inputtype/schema/ContentType';
 import {ContentTypeName} from '@enonic/lib-admin-ui/schema/content/ContentTypeName';
-
-export interface ControllerOption {
-    key: string;
-    displayName: string;
-    description: string;
-}
+import {DefaultErrorHandler} from '@enonic/lib-admin-ui/DefaultErrorHandler';
 
 export interface PlaceholderState {
-    loading: boolean;
-    error: string | undefined;
+    hasControllers: boolean;
     contentTypeDisplayName: string | undefined;
-    options: ControllerOption[];
 }
 
 function toPromise<T>(value: PromiseLike<T>): Promise<T> {
     return Promise.resolve(value);
-}
-
-function sortOptions(options: ControllerOption[]): ControllerOption[] {
-    return [...options].sort((left, right) => left.displayName.localeCompare(right.displayName));
 }
 
 export async function loadPagePlaceholderState(
@@ -40,30 +29,22 @@ export async function loadPagePlaceholderState(
     }
 
     const descriptors = await toPromise(request.sendAndParse() as PromiseLike<Descriptor[]>);
-    const options = sortOptions(descriptors.map((descriptor) => ({
-        key: descriptor.getKey().toString(),
-        displayName: descriptor.getDisplayName()?.toString() || descriptor.getName()?.toString() || descriptor.getKey().toString(),
-        description: descriptor.getDescription()?.toString() || 'No description available for this controller.',
-    })));
+    const hasControllers = descriptors.length > 0;
 
     let contentTypeDisplayName: string | undefined;
-    if (!isPageTemplate && contentType && options.length > 0) {
+    if (hasControllers && !isPageTemplate && contentType) {
         const name = new ContentTypeName(contentType);
 
         try {
             const contentTypeDetails = await toPromise(
                 new GetContentTypeByNameRequest(name).sendAndParse() as PromiseLike<ContentType>,
             );
-            contentTypeDisplayName = contentTypeDetails.getTitle();
-        } catch {
+            contentTypeDisplayName = contentTypeDetails.getTitle() || name.toString();
+        } catch (reason) {
             contentTypeDisplayName = name.toString();
+            DefaultErrorHandler.handle(reason);
         }
     }
 
-    return {
-        loading: false,
-        error: undefined,
-        contentTypeDisplayName,
-        options,
-    };
+    return {hasControllers, contentTypeDisplayName};
 }

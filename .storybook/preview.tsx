@@ -2,11 +2,19 @@ import jQuery from 'jquery';
 import {withThemeByClassName} from '@storybook/addon-themes';
 import type {Preview} from '@storybook/preact-vite';
 import {themes} from 'storybook/theming';
+import {Messages} from '@enonic/lib-admin-ui/util/Messages';
 
 import './storybook.css';
 
 globalThis.$ = jQuery;
 globalThis.jQuery = jQuery;
+
+Messages.setMessages({
+    'text.selectcontroller': 'Select a component to create a page',
+    'text.nocontrollers': 'No page controllers found',
+    'text.addapplications': 'Please add an application to your site to enable preview',
+    'text.notemplates': 'No page templates supporting content type "{0}" found',
+});
 
 const isDark = globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches;
 

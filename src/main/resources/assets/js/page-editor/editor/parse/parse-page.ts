@@ -189,7 +189,7 @@ function parseStandardPage(body: HTMLElement): Record<string, ComponentRecord> {
         parentPath: undefined,
         children,
         empty: children.length === 0,
-        error: false,
+        error: body.getAttribute(ERROR_ATTR) === 'true',
         descriptor: undefined,
         loading: false,
     };
@@ -209,7 +209,7 @@ function parseFragmentPage(body: HTMLElement): Record<string, ComponentRecord> {
             parentPath: undefined,
             children: [],
             empty: true,
-            error: false,
+            error: body.getAttribute(ERROR_ATTR) === 'true',
             descriptor: undefined,
             loading: false,
         };

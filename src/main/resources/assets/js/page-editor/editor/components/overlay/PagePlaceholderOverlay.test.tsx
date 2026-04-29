@@ -1,48 +1,39 @@
 const pagePlaceholderMocks = vi.hoisted(() => ({
     loadPagePlaceholderState: vi.fn(),
-    selectedKeys: [] as string[],
     getCurrentPageView: vi.fn(),
+    i18n: vi.fn((key: string, ...args: unknown[]) => (args.length > 0 ? `${key}|${args.join(',')}` : key)),
 }));
 
 vi.mock('../../page-placeholder/load-page-placeholder', () => ({
     loadPagePlaceholderState: pagePlaceholderMocks.loadPagePlaceholderState,
 }));
 
-vi.mock('@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/SelectPageDescriptorEvent', () => ({
-    SelectPageDescriptorEvent: class {
-        private readonly key: string;
-
-        constructor(key: string) {
-            this.key = key;
-        }
-
-        fire(): void {
-            pagePlaceholderMocks.selectedKeys.push(this.key);
-        }
-    },
-}));
-
 vi.mock('../../bridge', () => ({
     getCurrentPageView: pagePlaceholderMocks.getCurrentPageView,
 }));
 
+vi.mock('@enonic/lib-admin-ui/util/Messages', () => ({
+    i18n: pagePlaceholderMocks.i18n,
+}));
+
 import {render} from 'preact';
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
-import {setModifyAllowed, setRegistry} from '../../stores/registry';
+import {setRegistry} from '../../stores/registry';
 import type {ComponentRecord} from '../../types';
 import {PagePlaceholderOverlay} from './PagePlaceholderOverlay';
 
-function makeRootRecord(type: ComponentRecord['type'], empty: boolean): ComponentRecord {
+function makeRootRecord(overrides: Partial<ComponentRecord> = {}): ComponentRecord {
     return {
         path: ComponentPath.root(),
-        type,
+        type: 'page',
         element: document.body,
         parentPath: undefined,
         children: [],
-        empty,
+        empty: true,
         error: false,
         descriptor: undefined,
         loading: false,
+        ...overrides,
     };
 }
 
@@ -72,12 +63,9 @@ describe('PagePlaceholderOverlay', () => {
 
         pagePlaceholderMocks.loadPagePlaceholderState.mockReset();
         pagePlaceholderMocks.loadPagePlaceholderState.mockResolvedValue({
-            loading: false,
-            error: undefined,
-            contentTypeDisplayName: 'Article',
-            options: [],
+            hasControllers: false,
+            contentTypeDisplayName: undefined,
         });
-        pagePlaceholderMocks.selectedKeys.length = 0;
         pagePlaceholderMocks.getCurrentPageView.mockReset();
         pagePlaceholderMocks.getCurrentPageView.mockReturnValue({
             getLiveEditParams: () => ({
@@ -86,10 +74,7 @@ describe('PagePlaceholderOverlay', () => {
             }),
         });
 
-        setModifyAllowed(true);
-        setRegistry({
-            '/': makeRootRecord('page', true),
-        });
+        setRegistry({'/': makeRootRecord()});
     });
 
     afterEach(() => {
@@ -97,55 +82,34 @@ describe('PagePlaceholderOverlay', () => {
         container.remove();
         document.body.innerHTML = '';
         setRegistry({});
-        setModifyAllowed(true);
     });
 
-    it('loads controller options and fires the selection event from the new overlay UI', async () => {
+    it('renders the legacy controller-available copy when descriptors load', async () => {
         pagePlaceholderMocks.loadPagePlaceholderState.mockResolvedValue({
-            loading: false,
-            error: undefined,
+            hasControllers: true,
             contentTypeDisplayName: 'Article',
-            options: [
-                {
-                    key: 'app:landing',
-                    displayName: 'Landing page',
-                    description: 'Best for curated editorial landing pages.',
-                },
-                {
-                    key: 'app:news',
-                    displayName: 'News page',
-                    description: 'Renders article content with the news application.',
-                },
-            ],
         });
 
         render(<PagePlaceholderOverlay />, container);
         await waitFor(() => pagePlaceholderMocks.loadPagePlaceholderState.mock.calls.length === 1);
-        await waitFor(() => container.textContent?.includes('Select a controller') ?? false);
+        await waitFor(() => container.textContent?.includes('text.selectcontroller') ?? false);
 
-        const select = container.querySelector('select') as HTMLSelectElement;
+        expect(container.textContent).toContain('text.selectcontroller');
+        expect(container.textContent).toContain('text.notemplates|Article');
+        expect(container.querySelector('select')).toBeNull();
+    });
 
-        expect(container.textContent).toContain('Select a controller');
-        expect(container.textContent).toContain('No page template is assigned for Article');
-        expect(select).not.toBeNull();
-        expect(Array.from(select.options).map((option) => option.textContent)).toEqual([
-            'Choose a controller',
-            'Landing page',
-            'News page',
-        ]);
+    it('also surfaces when the root page reports a render error', async () => {
+        setRegistry({'/': makeRootRecord({empty: false, error: true})});
 
-        select.value = 'app:news';
-        select.dispatchEvent(new Event('change', {bubbles: true}));
-        await flushEffects();
+        render(<PagePlaceholderOverlay />, container);
+        await waitFor(() => pagePlaceholderMocks.loadPagePlaceholderState.mock.calls.length === 1);
 
-        expect(pagePlaceholderMocks.selectedKeys).toEqual(['app:news']);
-        expect(container.textContent).toContain('Renders article content with the news application.');
+        expect(container.textContent).toContain('text.nocontrollers');
     });
 
     it('stays hidden when the root registry record is not an empty page shell', async () => {
-        setRegistry({
-            '/': makeRootRecord('part', true),
-        });
+        setRegistry({'/': makeRootRecord({type: 'part', empty: true})});
 
         render(<PagePlaceholderOverlay />, container);
         await flushEffects();
