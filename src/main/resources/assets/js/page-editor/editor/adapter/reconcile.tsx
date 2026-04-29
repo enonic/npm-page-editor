@@ -110,12 +110,17 @@ export function markError(path: string, error: boolean): void {
     updateRecord(path, {error});
 }
 
-export function remapInteractionPath(fromPath: string, toPath: string): void {
+export function remapInteractionPath(fromPath: string, toPath: string): string | undefined {
     const selected = $selectedPath.get();
     if (selected === fromPath) {
         setSelectedPath(toPath);
-    } else if (selected?.startsWith(`${fromPath}/`)) {
-        setSelectedPath(`${toPath}${selected.slice(fromPath.length)}`);
+        return toPath;
     }
+    if (selected?.startsWith(`${fromPath}/`)) {
+        const remapped = `${toPath}${selected.slice(fromPath.length)}`;
+        setSelectedPath(remapped);
+        return remapped;
+    }
+    return undefined;
 }
 

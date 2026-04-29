@@ -19,6 +19,7 @@ import {DeselectComponentEvent} from '@enonic/lib-contentstudio/page-editor/even
 import {SelectComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/SelectComponentEvent';
 import type {PageView} from '../../PageView';
 import {EditorEvent, EditorEvents} from '../../event/EditorEvent';
+import {selectLegacyItemView} from '../bridge';
 import {$hoveredPath, $selectedPath, closeContextMenu, setHoveredPath, setLocked, setModifyAllowed, setSelectedPath} from '../stores/registry';
 import {markLoading, reconcilePage, reconcileSubtree, remapInteractionPath} from './reconcile';
 
@@ -136,17 +137,25 @@ export function registerBusHandlers(pageView: PageView): () => void {
     cleanup.push(() => RemoveComponentViewEvent.un(onRemove));
 
     const onMove = (event: MoveComponentViewEvent) => {
-        remapInteractionPath(event.getFrom().toString(), event.getTo().toString());
+        const toComponentPath = event.getTo();
+        const toPath = toComponentPath.toString();
+
+        remapInteractionPath(event.getFrom().toString(), toPath);
 
         const fromParent = event.getFrom().getParentPath()?.toString();
-        const toParent = event.getTo().getParentPath()?.toString();
+        const toParent = toComponentPath.getParentPath()?.toString();
         if (!fromParent || fromParent === toParent) {
             reconcilePath(fromParent);
-            return;
+        } else {
+            reconcilePath(fromParent);
+            reconcilePath(toParent);
         }
 
-        reconcilePath(fromParent);
-        reconcilePath(toParent);
+        // Re-select the moved component after legacy DOM move and reparse settle.
+        window.queueMicrotask(() => {
+            selectLegacyItemView(toPath);
+            new SelectComponentEvent({path: toComponentPath, position: null}).fire();
+        });
     };
     MoveComponentViewEvent.on(onMove);
     cleanup.push(() => MoveComponentViewEvent.un(onMove));
