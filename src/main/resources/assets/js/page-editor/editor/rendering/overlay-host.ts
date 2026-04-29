@@ -1,6 +1,7 @@
 import {render, type ComponentChildren} from 'preact';
 import {OVERLAY_HOST_ID, OVERLAY_ROOT_ATTR} from '../constants';
 import {injectEditorStyles} from './inject-styles';
+import {registerThemeHost, unregisterThemeHost} from './theme-sync';
 
 export interface OverlayHost {
     host: HTMLElement;
@@ -20,6 +21,7 @@ export function createOverlayHost(content: ComponentChildren): OverlayHost {
 
     const shadow = host.attachShadow({mode: 'open'});
     injectEditorStyles(shadow);
+    registerThemeHost(host);
 
     const mount = document.createElement('div');
     mount.setAttribute(OVERLAY_ROOT_ATTR, 'true');
@@ -31,6 +33,7 @@ export function createOverlayHost(content: ComponentChildren): OverlayHost {
         shadow,
         mount,
         unmount: () => {
+            unregisterThemeHost(host);
             render(null, mount);
             host.remove();
         },

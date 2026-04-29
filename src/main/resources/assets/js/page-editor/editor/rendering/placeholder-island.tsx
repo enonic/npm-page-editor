@@ -1,6 +1,7 @@
 import {render, type ComponentChildren} from 'preact';
 import {PLACEHOLDER_HOST_ATTR} from '../constants';
 import {injectEditorStyles} from './inject-styles';
+import {registerThemeHost, unregisterThemeHost} from './theme-sync';
 import type {PlaceholderIsland} from '../types';
 
 export function createPlaceholderIsland(container: HTMLElement, content: ComponentChildren): PlaceholderIsland {
@@ -13,6 +14,7 @@ export function createPlaceholderIsland(container: HTMLElement, content: Compone
 
     const shadow = host.attachShadow({mode: 'open'});
     injectEditorStyles(shadow);
+    registerThemeHost(host);
 
     const mount = document.createElement('div');
     mount.style.height = '100%';
@@ -24,6 +26,7 @@ export function createPlaceholderIsland(container: HTMLElement, content: Compone
         host,
         shadow,
         unmount: () => {
+            unregisterThemeHost(host);
             render(null, mount);
             host.remove();
         },
