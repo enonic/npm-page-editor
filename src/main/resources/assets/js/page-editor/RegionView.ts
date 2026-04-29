@@ -169,10 +169,12 @@ export class RegionView
     }
 
     registerComponentView(componentView: ComponentView, index?: number) {
-        if (this.componentViews.indexOf(componentView) === -1) { // do not register twice
+        if (this.componentViews.indexOf(componentView) === -1) {
             this.registerComponentViewInParent(componentView, index);
-            this.registerComponentViewListeners(componentView);
         }
+        // ComponentView constructor pre-inserts itself into componentViews when
+        // built with positionIndex, so don't skip listeners wiring
+        this.registerComponentViewListeners(componentView);
     }
 
     registerComponentViewInParent(componentView: ComponentView, index?: number): void {
@@ -185,7 +187,11 @@ export class RegionView
 
     registerComponentViewListeners(componentView: ComponentView): void {
         componentView.setParentItemView(this);
+
+        componentView.unItemViewAdded(this.itemViewAddedListener);
         componentView.onItemViewAdded(this.itemViewAddedListener);
+
+        componentView.unItemViewRemoved(this.itemViewRemovedListener);
         componentView.onItemViewRemoved(this.itemViewRemovedListener);
     }
 
