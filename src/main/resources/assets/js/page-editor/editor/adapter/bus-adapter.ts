@@ -1,5 +1,5 @@
 import {PageBuilder} from '@enonic/lib-contentstudio/app/page/Page';
-import type {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
+import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
 import {PageState} from '@enonic/lib-contentstudio/app/wizard/page/PageState';
 import {ComponentLoadedEvent} from '@enonic/lib-contentstudio/page-editor/event/ComponentLoadedEvent';
 import {PageStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/common/PageStateEvent';
@@ -19,8 +19,12 @@ import {DeselectComponentEvent} from '@enonic/lib-contentstudio/page-editor/even
 import {SelectComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/SelectComponentEvent';
 import type {PageView} from '../../PageView';
 import {EditorEvent, EditorEvents} from '../../event/EditorEvent';
-import {closeContextMenu, setLocked, setModifyAllowed, setSelectedPath} from '../stores/registry';
+import {$hoveredPath, $selectedPath, closeContextMenu, setHoveredPath, setLocked, setModifyAllowed, setSelectedPath} from '../stores/registry';
 import {markLoading, reconcilePage, reconcileSubtree, remapInteractionPath} from './reconcile';
+
+function isPathOrDescendant(candidate: string | undefined, ancestor: string): boolean {
+    return candidate === ancestor || (candidate?.startsWith(`${ancestor}/`) ?? false);
+}
 
 export function registerBusHandlers(pageView: PageView): () => void {
     const cleanup: Array<() => void> = [];
@@ -113,7 +117,21 @@ export function registerBusHandlers(pageView: PageView): () => void {
     AddComponentViewEvent.on(onAdd);
     cleanup.push(() => AddComponentViewEvent.un(onAdd));
 
-    const onRemove = (event: RemoveComponentViewEvent) => reconcileParentPath(event.getComponentPath());
+    const onRemove = (event: RemoveComponentViewEvent) => {
+        const removedPath = event.getComponentPath().toString();
+
+        if (isPathOrDescendant($selectedPath.get(), removedPath)) {
+            setSelectedPath(undefined);
+            closeContextMenu();
+            new DeselectComponentEvent(ComponentPath.root()).fire();
+        }
+
+        if (isPathOrDescendant($hoveredPath.get(), removedPath)) {
+            setHoveredPath(undefined);
+        }
+
+        reconcileParentPath(event.getComponentPath());
+    };
     RemoveComponentViewEvent.on(onRemove);
     cleanup.push(() => RemoveComponentViewEvent.un(onRemove));
 
