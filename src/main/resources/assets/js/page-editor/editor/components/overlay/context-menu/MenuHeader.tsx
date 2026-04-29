@@ -19,14 +19,15 @@ const capitalize = (value: string): string => value.charAt(0).toUpperCase() + va
 export type MenuHeaderProps = {
     kind: 'component' | 'locked-page';
     type: ComponentRecordType | undefined;
+    name?: string;
 };
 
-export const MenuHeader = ({kind, type}: MenuHeaderProps): JSX.Element | null => {
+export const MenuHeader = ({kind, type, name}: MenuHeaderProps): JSX.Element | null => {
     if (kind === 'locked-page') {
         return (
-            <UiContextMenu.Label className='flex items-center gap-2 py-2 font-bold'>
-                <Lock className='size-4' strokeWidth={2} />
-                Locked
+            <UiContextMenu.Label className='flex w-full cursor-default items-center gap-2 py-2 font-bold'>
+                <Lock className='size-4 shrink-0' strokeWidth={2} />
+                <span className='min-w-0 flex-1 truncate'>Locked</span>
             </UiContextMenu.Label>
         );
     }
@@ -37,9 +38,9 @@ export const MenuHeader = ({kind, type}: MenuHeaderProps): JSX.Element | null =>
     if (Icon == null) return null;
 
     return (
-        <UiContextMenu.Label className='flex items-center gap-2 py-2 font-bold'>
-            <Icon className='size-4' strokeWidth={2} />
-            {capitalize(type)}
+        <UiContextMenu.Label className='flex w-full cursor-default items-center gap-2 py-2 font-bold'>
+            <Icon className='size-4 shrink-0' strokeWidth={2} />
+            <span className='min-w-0 flex-1 truncate'>{name || capitalize(type)}</span>
         </UiContextMenu.Label>
     );
 };
