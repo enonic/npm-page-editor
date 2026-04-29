@@ -5,7 +5,6 @@ import {Action} from '@enonic/lib-admin-ui/ui/Action';
 import {LoadMask} from '@enonic/lib-admin-ui/ui/mask/LoadMask';
 import {assertNotNull} from '@enonic/lib-admin-ui/util/Assert';
 import {i18n} from '@enonic/lib-admin-ui/util/Messages';
-
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
 import {AddComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/manipulation/AddComponentEvent';
 import {DeselectComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/DeselectComponentEvent';
@@ -116,6 +115,13 @@ export abstract class ItemView
     private contextMenuActions: Action[];
 
     public static LIVE_EDIT_SELECTED = 'live-edit-selected';
+
+    // ! lib-admin-ui's Action.setClass appends `-action` to whatever value it receives,
+    // so the stored class is `${PREFIX}-action`. Use the prefix when calling setClass and
+    // the full class when comparing against action.getClass().
+    public static SELECT_PARENT_ACTION_PREFIX = 'select-parent';
+
+    public static SELECT_PARENT_ACTION_CLASS = `${ItemView.SELECT_PARENT_ACTION_PREFIX}-action`;
 
     protected constructor(builder: ItemViewBuilder) {
         assertNotNull(builder.type, 'type cannot be null');
@@ -394,6 +400,8 @@ export abstract class ItemView
         const action = new Action(i18n('live.view.selectparent'));
 
         action.setSortOrder(0);
+        // Easy ID for "select parent" action, while they are still created in legacy code
+        action.setClass(ItemView.SELECT_PARENT_ACTION_PREFIX);
         action.onExecuted(() => {
             const parentView: ItemView = this.getParentItemView();
             if (parentView) {

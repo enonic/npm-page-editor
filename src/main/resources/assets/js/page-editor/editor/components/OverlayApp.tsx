@@ -8,6 +8,7 @@ import {DragPreview} from './overlay/DragPreview';
 import {DragTargetHighlighter} from './overlay/DragTargetHighlighter';
 import {Highlighter} from './overlay/Highlighter';
 import {PagePlaceholderOverlay} from './overlay/PagePlaceholderOverlay';
+import {ParentPulseHighlighter} from './overlay/ParentPulseHighlighter';
 import {SelectionHighlighter} from './overlay/SelectionHighlighter';
 import {Shader} from './overlay/Shader';
 
@@ -29,6 +30,7 @@ export const OverlayApp = (): JSX.Element => {
             <DragPreview />
             <Highlighter />
             <SelectionHighlighter />
+            <ParentPulseHighlighter />
             <Shader />
             <ContextMenu portalContainer={portalContainer} />
             <div ref={portalRef} />

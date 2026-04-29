@@ -1,4 +1,5 @@
 import {ContextMenu as UiContextMenu} from '@enonic/ui';
+import {useRef} from 'preact/hooks';
 
 import type {JSX} from 'preact';
 
@@ -38,11 +39,24 @@ export const ContextMenu = ({portalContainer}: ContextMenuProps): JSX.Element | 
     // menu and dismisses before the item's onSelect can fire.
     const stopPropagation = (event: Event): void => event.stopPropagation();
 
+    // ! Re-key on bumpKey so each "Select parent" step remounts Content
+    // and replays the Radix open animation, signalling a new menu.
+    const contentKey = state.bumpKey ?? 0;
+    const contentRef = useRef<HTMLDivElement>(null);
+
     return (
         <UiContextMenu open onOpenChange={handleOpenChange}>
-            <PositionSetter x={state.x} y={state.y} />
+            <PositionSetter
+                key={contentKey}
+                x={state.x}
+                y={state.y}
+                centerX={state.centerX}
+                contentRef={contentRef}
+            />
             <UiContextMenu.Portal container={portalContainer}>
                 <UiContextMenu.Content
+                    ref={contentRef}
+                    key={contentKey}
                     className='pointer-events-auto z-50 max-w-60'
                     data-component={CONTEXT_MENU_NAME}
                     onPointerDown={stopPropagation}

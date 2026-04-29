@@ -1,11 +1,26 @@
 import {ContextMenu as UiContextMenu} from '@enonic/ui';
+import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
+import {SelectComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/SelectComponentEvent';
 import {Box, Columns2, PenLine, Puzzle} from 'lucide-preact';
 
 import type {Action} from '@enonic/lib-admin-ui/ui/Action';
 import type {LucideIcon} from 'lucide-preact';
 import type {JSX} from 'preact';
 
-import {closeContextMenu} from '../../../stores/registry';
+import {
+    SELECT_PARENT_ACTION_CLASS,
+    deselectLegacyItemView,
+    focusLegacyItemViewInstant,
+    getLegacyParentPath,
+    selectLegacyItemView,
+} from '../../../bridge';
+import {
+    $contextMenuState,
+    closeContextMenu,
+    openContextMenu,
+    pulseSelectParent,
+    setSelectedPath,
+} from '../../../stores/registry';
 
 const INSERT_ICONS: Record<string, LucideIcon> = {
     part: Box,
@@ -16,6 +31,8 @@ const INSERT_ICONS: Record<string, LucideIcon> = {
 
 const sortActions = (actions: Action[]): Action[] =>
     [...actions].sort((left, right) => left.getSortOrder() - right.getSortOrder());
+
+const ANCHOR_TOP_GAP = 4;
 
 const resolveIcon = (action: Action): LucideIcon | undefined => {
     const iconClass = action.getIconClass();
@@ -61,13 +78,58 @@ export const ActionItems = ({actions, portalContainer, onPointerDown}: ActionIte
 
                 const Icon = resolveIcon(action);
 
+                const isSelectParent = action.getClass() === SELECT_PARENT_ACTION_CLASS;
+
                 return (
                     <UiContextMenu.Item
                         key={label}
                         disabled={!action.isEnabled()}
-                        onSelect={() => {
-                            action.execute();
-                            closeContextMenu();
+                        onSelect={(event) => {
+                            const previous = $contextMenuState.get();
+                            const parentPath = isSelectParent && previous != null
+                                ? getLegacyParentPath(previous.path)
+                                : undefined;
+
+                            if (!isSelectParent || previous == null || parentPath == null) {
+                                action.execute();
+                                closeContextMenu();
+                                return;
+                            }
+
+                            // ! preventDefault stops Radix's auto-close after onSelect,
+                            // so the menu stays mounted while we re-target it at the parent.
+                            event.preventDefault();
+
+                            // ? Bypass the legacy `selectItemView` flow — its outgoing
+                            //   DeselectComponentEvent triggers closeContextMenu in the bus
+                            //   adapter, fighting our reopen. Drive the transition silently
+                            //   here and fire only the SelectComponentEvent that ContentStudio
+                            //   needs (which already arms the deselect-echo swallow).
+                            deselectLegacyItemView(previous.path);
+                            selectLegacyItemView(parentPath);
+                            setSelectedPath(parentPath);
+                            new SelectComponentEvent({
+                                path: ComponentPath.fromString(parentPath),
+                                position: null,
+                                rightClicked: true,
+                            }).fire();
+
+                            // Instant scroll brings the parent's top into view; anchor the
+                            // menu horizontally on the parent's center, 4px below its top.
+                            const rect = focusLegacyItemViewInstant(parentPath);
+                            const anchorX = rect != null ? rect.left + rect.width / 2 : previous.x;
+                            const anchorY = rect != null ? rect.top + ANCHOR_TOP_GAP : previous.y;
+
+                            openContextMenu({
+                                kind: 'component',
+                                path: parentPath,
+                                x: anchorX,
+                                y: anchorY,
+                                centerX: rect != null,
+                                bumpKey: (previous.bumpKey ?? 0) + 1,
+                            });
+
+                            pulseSelectParent(parentPath);
                         }}
                     >
                         {Icon ? (
