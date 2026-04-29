@@ -1,11 +1,7 @@
 const loaderMocks = vi.hoisted(() => ({
-    descriptors: [] as Array<{
-        getKey(): {toString(): string};
-        getDisplayName(): {toString(): string};
-        getDescription(): {toString(): string};
-        getName(): {toString(): string};
-    }>,
+    descriptors: [] as Array<{getKey(): {toString(): string}}>,
     contentTypeDisplayName: 'Article',
+    handleErrors: [] as unknown[],
 }));
 
 vi.mock('@enonic/lib-contentstudio/app/resource/GetComponentDescriptorsRequest', () => ({
@@ -26,22 +22,25 @@ vi.mock('@enonic/lib-contentstudio/app/resource/GetComponentDescriptorsRequest',
 
 vi.mock('@enonic/lib-contentstudio/app/resource/GetContentTypeByNameRequest', () => ({
     GetContentTypeByNameRequest: class {
-        sendAndParse(): Promise<{getDisplayName(): string}> {
+        sendAndParse(): Promise<{getTitle(): string}> {
             return Promise.resolve({
-                getDisplayName: () => loaderMocks.contentTypeDisplayName,
+                getTitle: () => loaderMocks.contentTypeDisplayName,
             });
         }
     },
 }));
 
+vi.mock('@enonic/lib-admin-ui/DefaultErrorHandler', () => ({
+    DefaultErrorHandler: {
+        handle: (reason: unknown) => loaderMocks.handleErrors.push(reason),
+    },
+}));
+
 import {loadPagePlaceholderState} from './load-page-placeholder';
 
-function makeDescriptor(key: string, displayName: string, description: string) {
+function makeDescriptor(key: string) {
     return {
         getKey: () => ({toString: () => key}),
-        getDisplayName: () => ({toString: () => displayName}),
-        getDescription: () => ({toString: () => description}),
-        getName: () => ({toString: () => displayName}),
     };
 }
 
@@ -49,28 +48,37 @@ describe('loadPagePlaceholderState', () => {
     beforeEach(() => {
         loaderMocks.descriptors = [];
         loaderMocks.contentTypeDisplayName = 'Article';
+        loaderMocks.handleErrors = [];
     });
 
-    it('maps and sorts page controller descriptors for the new placeholder UI', async () => {
-        loaderMocks.descriptors = [
-            makeDescriptor('app:news', 'News page', 'Renders article content with the news application.'),
-            makeDescriptor('app:landing', 'Landing page', 'Best for curated editorial landing pages.'),
-        ];
+    it('reports the controller availability and resolved content type display name', async () => {
+        loaderMocks.descriptors = [makeDescriptor('app:landing'), makeDescriptor('app:news')];
 
         const state = await loadPagePlaceholderState('content-id', 'com.example:article', false);
 
-        expect(state).toMatchObject({
-            loading: false,
-            error: undefined,
-            contentTypeDisplayName: 'com.example:article',
+        expect(state).toEqual({
+            hasControllers: true,
+            contentTypeDisplayName: 'Article',
         });
-        expect(state.options.map((option) => option.displayName)).toEqual([
-            'Landing page',
-            'News page',
-        ]);
-        expect(state.options[1]).toMatchObject({
-            key: 'app:news',
-            description: 'Renders article content with the news application.',
+    });
+
+    it('reports no controllers and no content type display name when descriptor list is empty', async () => {
+        const state = await loadPagePlaceholderState('content-id', 'com.example:article', false);
+
+        expect(state).toEqual({
+            hasControllers: false,
+            contentTypeDisplayName: undefined,
+        });
+    });
+
+    it('omits the content type display name lookup for page templates', async () => {
+        loaderMocks.descriptors = [makeDescriptor('app:landing')];
+
+        const state = await loadPagePlaceholderState('content-id', 'com.example:article', true);
+
+        expect(state).toEqual({
+            hasControllers: true,
+            contentTypeDisplayName: undefined,
         });
     });
 });

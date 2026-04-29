@@ -9,6 +9,7 @@ import {Lock} from 'lucide-preact';
 import {ComponentPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/ComponentPlaceholder';
 import {ContextMenu} from '../../src/main/resources/assets/js/page-editor/editor/components/overlay/context-menu';
 import {DragPreview} from '../../src/main/resources/assets/js/page-editor/editor/components/overlay/DragPreview';
+import {PagePlaceholderCard} from '../../src/main/resources/assets/js/page-editor/editor/components/overlay/PagePlaceholderOverlay';
 import {setCurrentPageView} from '../../src/main/resources/assets/js/page-editor/editor/bridge';
 import {createPlaceholderIsland} from '../../src/main/resources/assets/js/page-editor/editor/rendering/placeholder-island';
 import type {ComponentRecord, ComponentRecordType} from '../../src/main/resources/assets/js/page-editor/editor/types';
@@ -315,5 +316,21 @@ export const ContextMenuText: Story = {
         <IslandMount style={{width: '520px', height: '360px', position: 'relative'}}>
             <ContextMenuTextScene />
         </IslandMount>
+    ),
+};
+
+//
+// * PagePlaceholder
+//
+
+export const PagePlaceholderStates: Story = {
+    name: 'PagePlaceholder / States',
+    parameters: {layout: 'fullscreen'},
+    render: () => (
+        <div className='pe-shell flex min-h-screen flex-col items-center justify-center gap-6 bg-surface-primary p-6'>
+            <PagePlaceholderCard hasControllers={false} />
+            <PagePlaceholderCard hasControllers={true} />
+            <PagePlaceholderCard hasControllers={true} contentTypeDisplayName='Article' />
+        </div>
     ),
 };
