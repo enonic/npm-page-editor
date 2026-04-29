@@ -19,7 +19,7 @@ import {DeselectComponentEvent} from '@enonic/lib-contentstudio/page-editor/even
 import {SelectComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/SelectComponentEvent';
 import type {PageView} from '../../PageView';
 import {EditorEvent, EditorEvents} from '../../event/EditorEvent';
-import {selectLegacyItemView} from '../bridge';
+import {scrollLegacyItemViewIntoView, selectLegacyItemView} from '../bridge';
 import {$hoveredPath, $selectedPath, closeContextMenu, setHoveredPath, setLocked, setModifyAllowed, setSelectedPath} from '../stores/registry';
 import {markLoading, reconcilePage, reconcileSubtree, remapInteractionPath} from './reconcile';
 
@@ -177,7 +177,19 @@ export function registerBusHandlers(pageView: PageView): () => void {
     ComponentLoadedEvent.on(onLoaded);
     cleanup.push(() => ComponentLoadedEvent.un(onLoaded));
 
-    const onDuplicate = (event: DuplicateComponentViewEvent) => reconcileParentPath(event.getComponentPath());
+    const onDuplicate = (event: DuplicateComponentViewEvent) => {
+        const newComponentPath = event.getComponentPath();
+        const newPath = newComponentPath.toString();
+
+        reconcileParentPath(newComponentPath);
+
+        // Select the duplicated component after legacy DOM insert and reparse settle.
+        window.queueMicrotask(() => {
+            selectLegacyItemView(newPath);
+            scrollLegacyItemViewIntoView(newPath);
+            new SelectComponentEvent({path: newComponentPath, position: null}).fire();
+        });
+    };
     DuplicateComponentViewEvent.on(onDuplicate);
     cleanup.push(() => DuplicateComponentViewEvent.un(onDuplicate));
 
