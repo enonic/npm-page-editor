@@ -28,7 +28,7 @@ export const SelectionHighlighter = (): JSX.Element | null => {
                 y={top}
                 width={width}
                 height={height}
-                className='fill-bdr-select/8 stroke-bdr-select stroke-1'
+                className='fill-none stroke-bdr-select stroke-1'
             />
         </svg>
     );
