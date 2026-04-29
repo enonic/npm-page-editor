@@ -4,7 +4,7 @@ import type {JSX} from 'preact';
 
 import {useStoreValue} from '../../../hooks/use-store-value';
 import {$contextMenuState, $dragState, closeContextMenu, getRecord} from '../../../stores/registry';
-import {getActionsForPath, getLockedPageActions} from '../../../bridge';
+import {getActionsForPath, getComponentName, getLockedPageActions} from '../../../bridge';
 
 import {ActionItems} from './ActionItems';
 import {MenuHeader} from './MenuHeader';
@@ -26,6 +26,7 @@ export const ContextMenu = ({portalContainer}: ContextMenuProps): JSX.Element | 
     if (actions.length === 0) return null;
 
     const record = state.kind === 'component' ? getRecord(state.path) : undefined;
+    const name = state.kind === 'component' ? getComponentName(state.path) : undefined;
 
     const handleOpenChange = (open: boolean): void => {
         if (!open) closeContextMenu();
@@ -42,11 +43,11 @@ export const ContextMenu = ({portalContainer}: ContextMenuProps): JSX.Element | 
             <PositionSetter x={state.x} y={state.y} />
             <UiContextMenu.Portal container={portalContainer}>
                 <UiContextMenu.Content
-                    className='pointer-events-auto z-50'
+                    className='pointer-events-auto z-50 max-w-60'
                     data-component={CONTEXT_MENU_NAME}
                     onPointerDown={stopPropagation}
                 >
-                    <MenuHeader kind={state.kind} type={record?.type} />
+                    <MenuHeader kind={state.kind} type={record?.type} name={name} />
                     <ActionItems
                         actions={actions}
                         portalContainer={portalContainer}

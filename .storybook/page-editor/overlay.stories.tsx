@@ -1,6 +1,8 @@
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import {Action} from '@enonic/lib-admin-ui/ui/Action';
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
+import {PageState} from '@enonic/lib-contentstudio/app/wizard/page/PageState';
+import {TextComponentBuilder} from '@enonic/lib-contentstudio/app/page/region/TextComponent';
 import type {ComponentChildren, CSSProperties, JSX} from 'preact';
 import {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'preact/hooks';
 import {Lock} from 'lucide-preact';
@@ -252,4 +254,66 @@ export const ContextMenuComponent: Story = {
 export const ContextMenuLocked: Story = {
     name: 'ContextMenu / Locked Page',
     render: () => <ContextMenuExample kind='locked-page' />,
+};
+
+//
+// * ContextMenu / Text snippet
+//
+
+const TEXT_SCENE_PATH = '/main/0';
+const TEXT_SCENE_TYPE: ComponentRecordType = 'text';
+const LONG_TEXT_HTML =
+    '<p>This is a <strong>text component</strong> body that is intentionally long enough to overflow the menu header so the snippet truncates with an ellipsis.</p>';
+
+const ContextMenuTextScene = (): JSX.Element => {
+    const portalRef = useRef<HTMLDivElement>(null);
+    const [portalContainer, setPortalContainer] = useState<HTMLElement | undefined>(undefined);
+
+    const actions = useMemo(() => createComponentActions(), []);
+
+    useLayoutEffect(() => {
+        if (portalRef.current != null) setPortalContainer(portalRef.current);
+    }, []);
+
+    useEffect(() => {
+        const textComponent = new TextComponentBuilder().setText(LONG_TEXT_HTML).build();
+        const original = PageState.getComponentByPath;
+        (PageState as unknown as {getComponentByPath: () => unknown}).getComponentByPath = () => textComponent;
+
+        mockPageViewWithActions(actions);
+        const cleanupRecord = seedRegistryRecord(TEXT_SCENE_PATH, TEXT_SCENE_TYPE);
+
+        return () => {
+            (PageState as unknown as {getComponentByPath: typeof original}).getComponentByPath = original;
+            closeContextMenu();
+            setCurrentPageView(undefined);
+            cleanupRecord();
+        };
+    }, [actions]);
+
+    const handleContextMenu = (event: MouseEvent): void => {
+        event.preventDefault();
+        event.stopPropagation();
+        openContextMenu({kind: 'component', path: TEXT_SCENE_PATH, x: event.clientX, y: event.clientY});
+    };
+
+    return (
+        <div className='pe-shell relative flex h-full w-full flex-col items-center justify-center gap-y-4'>
+            <p className='text-xs text-subtle'>Right-click the text component below to open the context menu</p>
+            <div onContextMenu={handleContextMenu} className='cursor-context-menu' style={{width: '280px'}}>
+                <ComponentPlaceholder type={TEXT_SCENE_TYPE} error={false} />
+            </div>
+            <div ref={portalRef} />
+            <ContextMenu portalContainer={portalContainer} />
+        </div>
+    );
+};
+
+export const ContextMenuText: Story = {
+    name: 'ContextMenu / Text Snippet',
+    render: () => (
+        <IslandMount style={{width: '520px', height: '360px', position: 'relative'}}>
+            <ContextMenuTextScene />
+        </IslandMount>
+    ),
 };

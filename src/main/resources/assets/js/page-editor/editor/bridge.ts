@@ -1,7 +1,12 @@
 import type {Action} from '@enonic/lib-admin-ui/ui/Action';
 import type {PageView} from '../PageView';
 import type {ItemView} from '../ItemView';
+import {StringHelper} from '@enonic/lib-admin-ui/util/StringHelper';
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
+import {TextComponent} from '@enonic/lib-contentstudio/app/page/region/TextComponent';
+import {PageState} from '@enonic/lib-contentstudio/app/wizard/page/PageState';
+
+const TEXT_SNIPPET_MAX_LENGTH = 100;
 
 let currentPageView: PageView | undefined;
 
@@ -23,6 +28,30 @@ export function getActionsForPath(path: string): Action[] {
 
 export function getLegacyItemViewLabel(path: string): string | undefined {
     return resolveItemView(path)?.getName();
+}
+
+export function getComponentName(path: string): string | undefined {
+    const item = PageState.getComponentByPath(ComponentPath.fromString(path));
+    if (item == null) return undefined;
+
+    if (item instanceof TextComponent) {
+        const snippet = getTextSnippet(item);
+        if (snippet.length > 0) return snippet;
+    }
+
+    const named = item as {getName?: () => {toString(): string} | undefined};
+    const name = named.getName?.()?.toString();
+    return name != null && name.length > 0 ? name : undefined;
+}
+
+function getTextSnippet(component: TextComponent): string {
+    const text = StringHelper.htmlToString(component.getText() || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const codepoints = Array.from(text);
+    return codepoints.length > TEXT_SNIPPET_MAX_LENGTH
+        ? codepoints.slice(0, TEXT_SNIPPET_MAX_LENGTH).join('')
+        : text;
 }
 
 export function getLockedPageActions(): Action[] {
