@@ -1,12 +1,14 @@
 import type {Action} from '@enonic/lib-admin-ui/ui/Action';
 import type {PageView} from '../PageView';
-import type {ItemView} from '../ItemView';
+import {ItemView} from '../ItemView';
 import {StringHelper} from '@enonic/lib-admin-ui/util/StringHelper';
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
 import {TextComponent} from '@enonic/lib-contentstudio/app/page/region/TextComponent';
 import {PageState} from '@enonic/lib-contentstudio/app/wizard/page/PageState';
 
 const TEXT_SNIPPET_MAX_LENGTH = 100;
+
+export const SELECT_PARENT_ACTION_CLASS = ItemView.SELECT_PARENT_ACTION_CLASS;
 
 let currentPageView: PageView | undefined;
 
@@ -24,6 +26,26 @@ export function resolveItemView(path: string): ItemView | undefined {
 
 export function getActionsForPath(path: string): Action[] {
     return resolveItemView(path)?.getContextMenuActions() ?? [];
+}
+
+export function getLegacyParentPath(path: string): string | undefined {
+    const parent = resolveItemView(path)?.getParentItemView();
+    return parent?.getPath().toString();
+}
+
+/**
+ * Aligns the legacy item's *top edge* with the viewport top (instantly) and
+ * returns its post-scroll bounding rect. Used by the new context menu's
+ * "Select parent" flow so the menu can be anchored to the parent's top without
+ * waiting for scrollend.
+ */
+export function focusLegacyItemViewInstant(path: string): DOMRect | undefined {
+    const itemView = resolveItemView(path);
+    if (!itemView) return undefined;
+
+    const element = itemView.getEl().getHTMLElement();
+    element.scrollIntoView({behavior: 'auto', block: 'start'});
+    return element.getBoundingClientRect();
 }
 
 export function getLegacyItemViewLabel(path: string): string | undefined {

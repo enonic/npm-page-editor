@@ -19,6 +19,9 @@ export interface ContextMenuState {
     path: string;
     x: number;
     y: number;
+    /** When true, `x` is treated as the menu's horizontal center (menu shifts left by half its measured width). */
+    centerX?: boolean;
+    bumpKey?: number;
 }
 
 export interface DragState {
@@ -31,6 +34,11 @@ export interface DragState {
     placeholderElement: HTMLElement | undefined;
     x: number | undefined;
     y: number | undefined;
+}
+
+export interface SelectParentPulse {
+    path: string;
+    key: number;
 }
 
 export interface PlaceholderIsland {
