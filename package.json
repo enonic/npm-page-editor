@@ -72,7 +72,7 @@
     "dompurify": "^3.4.0",
     "@enonic/lib-admin-ui": "file:.xp/dev/lib-admin-ui",
     "@enonic/lib-contentstudio": "file:.xp/dev/lib-contentstudio",
-    "@enonic/ui": "^0.48.0",
+    "@enonic/ui": "^0.50.0",
     "@eslint/js": "^9.39.2",
     "@rollup/plugin-inject": "^5.0.5",
     "@storybook/addon-docs": "~10.3.5",
