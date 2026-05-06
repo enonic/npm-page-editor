@@ -7,7 +7,6 @@ import {DragPlaceholderPortal} from './overlay/DragPlaceholderPortal';
 import {DragPreview} from './overlay/DragPreview';
 import {DragTargetHighlighter} from './overlay/DragTargetHighlighter';
 import {Highlighter} from './overlay/Highlighter';
-import {PagePlaceholderOverlay} from './overlay/PagePlaceholderOverlay';
 import {ParentPulseHighlighter} from './overlay/ParentPulseHighlighter';
 import {SelectionHighlighter} from './overlay/SelectionHighlighter';
 import {Shader} from './overlay/Shader';
@@ -25,7 +24,6 @@ export const OverlayApp = (): JSX.Element => {
     return (
         <div data-component={OVERLAY_APP_NAME} className='pe-shell'>
             <DragPlaceholderPortal />
-            <PagePlaceholderOverlay />
             <DragTargetHighlighter />
             <DragPreview />
             <Highlighter />
