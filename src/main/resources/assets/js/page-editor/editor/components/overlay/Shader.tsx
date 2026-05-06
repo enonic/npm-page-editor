@@ -1,4 +1,5 @@
 import type {JSX} from 'preact';
+import {cn} from '@enonic/ui';
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
 import {DeselectComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/DeselectComponentEvent';
 import {SelectComponentEvent} from '@enonic/lib-contentstudio/page-editor/event/outgoing/navigation/SelectComponentEvent';
@@ -27,14 +28,13 @@ export const Shader = (): JSX.Element | null => {
     if (dragState || !locked) return null;
 
     const pagePath = ComponentPath.root().toString();
+    const interacting = contextMenuState?.kind === 'locked-page' || selectedPath === pagePath;
 
     const toggleLockedMenu = (x: number, y: number) => {
         if (contextMenuState?.kind === 'locked-page') {
             closeContextMenu();
             return;
         }
-
-        const pagePath = ComponentPath.root().toString();
 
         openContextMenu({
             kind: 'locked-page',
@@ -67,7 +67,14 @@ export const Shader = (): JSX.Element | null => {
     return (
         <div
             data-component={SHADER_NAME}
-            className='pointer-events-auto fixed inset-0 z-30 bg-black/50'
+            className={cn('pointer-events-auto fixed inset-0 z-30', interacting && 'bg-black/50')}
+            onPointerDown={(event) => {
+                // ! Block the document-level outside-click dismiss in Radix's
+                // ContextMenu. Otherwise Radix closes the menu on pointerdown
+                // and the click below re-opens it at the new position, making
+                // it impossible to dismiss by clicking the shader.
+                event.stopPropagation();
+            }}
             onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
