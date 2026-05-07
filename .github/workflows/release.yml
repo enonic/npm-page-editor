@@ -21,15 +21,35 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: 'master'
           fetch-depth: 0
 
-      - name: Verify tag points to HEAD of master
+      - name: Resolve source branch from tag
+        id: source_branch
         run: |
-          if [ "$GITHUB_SHA" != "$(git rev-parse HEAD)" ]; then
-            echo "Tag $GITHUB_REF_NAME does not point to the latest commit on master"
+          MATCHES=$(git for-each-ref \
+            --format='%(refname:short) %(objectname)' \
+            refs/remotes/origin/master \
+            'refs/remotes/origin/1.*' \
+            | awk -v sha="$GITHUB_SHA" '$2 == sha { sub(/^origin\//, "", $1); print $1 }')
+
+          if [[ -z "$MATCHES" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not point to the HEAD of an allowed branch (master or 1.*)"
             exit 1
           fi
+
+          MATCH_COUNT=$(wc -l <<< "$MATCHES" | tr -d ' ')
+          if [[ "$MATCH_COUNT" -gt 1 ]]; then
+            echo "Tag $GITHUB_REF_NAME is at the HEAD of multiple allowed branches:"
+            echo "$MATCHES"
+            echo "Refusing to guess. Add a divergent commit to the intended release branch and re-tag."
+            exit 1
+          fi
+
+          BRANCH="$MATCHES"
+
+          echo "Resolved source branch: $BRANCH"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          git checkout "$BRANCH"
 
       - uses: actions/setup-java@v5
         with:
@@ -57,11 +77,24 @@ jobs:
         run: exit 1
 
       - name: Set NPM publish tag
+        env:
+          SOURCE_BRANCH: ${{ steps.source_branch.outputs.branch }}
+          IS_PRERELEASE: ${{ steps.publish_vars.outputs.prerelease }}
         run: |
-          if [[ "$RELEASE_VERSION" =~ ^[1-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "NPM_TAG=latest" >> $GITHUB_ENV
+          if [[ "$SOURCE_BRANCH" == "master" ]]; then
+            if [[ "$IS_PRERELEASE" == "true" ]]; then
+              echo "NPM_TAG=beta" >> $GITHUB_ENV
+            else
+              echo "NPM_TAG=latest" >> $GITHUB_ENV
+            fi
           else
-            echo "NPM_TAG=beta" >> $GITHUB_ENV
+            # Prefix the branch name so the dist-tag isn't a valid SemVer range
+            # (npm rejects dist-tags like "1.2"). Examples: "v1.0", "v1.0-beta".
+            if [[ "$IS_PRERELEASE" == "true" ]]; then
+              echo "NPM_TAG=v$SOURCE_BRANCH-beta" >> $GITHUB_ENV
+            else
+              echo "NPM_TAG=v$SOURCE_BRANCH" >> $GITHUB_ENV
+            fi
           fi
 
       - name: Build and prepare package with Gradle
@@ -98,6 +131,6 @@ jobs:
             - gradle.properties
             - package.json
           message: 'Updated to next SNAPSHOT version'
-          push: 'origin HEAD:master'
+          push: 'origin HEAD:${{ steps.source_branch.outputs.branch }}'
           default_author: github_actions
 
