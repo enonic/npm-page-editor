@@ -37,6 +37,10 @@ export default defineConfig(({mode}) => {
             }),
             rollupOptions: {
                 treeshake: true,
+                onwarn(warning, defaultHandler) {
+                    if (warning.code === 'INVALID_ANNOTATION' && warning.id?.includes('@enonic/ui')) return;
+                    defaultHandler(warning);
+                },
                 plugins: [
                     inject({
                         $: 'jquery',
