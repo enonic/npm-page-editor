@@ -40,6 +40,7 @@ import {MoveComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/even
 import {RemoveComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/RemoveComponentViewEvent';
 import {ResetComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/ResetComponentViewEvent';
 import {SetDraggableVisibleEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetDraggableVisibleEvent';
+import {SetModifyAllowedEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetModifyAllowedEvent';
 import {SetPageLockStateEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/SetPageLockStateEvent';
 import {UpdateTextComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/manipulation/UpdateTextComponentViewEvent';
 import {DeselectComponentViewEvent} from '@enonic/lib-contentstudio/page-editor/event/incoming/navigation/DeselectComponentViewEvent';
@@ -144,6 +145,7 @@ function initializeEventBus(): IframeEventBus {
     eventBus.registerClass('LiveEditParams', LiveEditParams);
     eventBus.registerClass('InitializeLiveEditEvent', InitializeLiveEditEvent);
     eventBus.registerClass('PageStateEvent', PageStateEvent);
+    eventBus.registerClass('SetModifyAllowedEvent', SetModifyAllowedEvent);
     eventBus.registerClass('SetPageLockStateEvent', SetPageLockStateEvent);
     eventBus.registerClass('IframeBeforeContentSavedEvent', IframeBeforeContentSavedEvent);
     eventBus.registerClass('CreateOrDestroyDraggableEvent', CreateOrDestroyDraggableEvent);
