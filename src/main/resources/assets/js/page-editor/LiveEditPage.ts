@@ -41,7 +41,7 @@ import {IframeBeforeContentSavedEvent} from '@enonic/lib-contentstudio/app/event
 import {PageBuilder} from '@enonic/lib-contentstudio/app/page/Page';
 import {PageState} from '@enonic/lib-contentstudio/app/wizard/page/PageState';
 import {Project} from '@enonic/lib-contentstudio/app/settings/data/project/Project';
-import {ProjectContext} from '@enonic/lib-contentstudio/app/project/ProjectContext';
+import {setActiveProject} from '@enonic/lib-contentstudio/v6/features/store/activeProject.store';
 import {SessionStorageHelper} from '@enonic/lib-contentstudio/app/util/SessionStorageHelper';
 import type {ContentSummaryAndCompareStatus} from '@enonic/lib-contentstudio/app/content/ContentSummaryAndCompareStatus';
 import {initNewUi} from './editor/init';
@@ -111,7 +111,7 @@ export class LiveEditPage {
         Messages.addMessages(JSON.parse(CONFIG.getString('phrasesAsJson')) as object);
         AuthContext.init(Principal.fromJson(event.getUserJson()), event.getPrincipalsJson().map(Principal.fromJson));
 
-        ProjectContext.get().setProject(Project.fromJson(event.getProjectJson()));
+        setActiveProject(Project.fromJson(event.getProjectJson()));
         PageState.setState(event.getPageJson() ? new PageBuilder().fromJson(event.getPageJson()).build() : null);
 
         ContentContext.get().setContent(event.getContent());
