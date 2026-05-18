@@ -14,6 +14,10 @@ export interface ComponentRecord {
     readonly loading: boolean;
 }
 
+export interface PageEditorConfig {
+    editMode?: boolean;
+}
+
 export interface ContextMenuState {
     kind: 'component' | 'locked-page';
     path: string;
