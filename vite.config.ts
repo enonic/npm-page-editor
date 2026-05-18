@@ -26,7 +26,10 @@ export default defineConfig(({mode}) => {
             sourcemap: isDevelopment,
             assetsInlineLimit: 2_000_000,
             lib: {
-                entry: path.join(IN_PATH, 'js/index.ts'),
+                entry: {
+                    index: path.join(IN_PATH, 'js/index.ts'),
+                    'index.ssr': path.join(IN_PATH, 'js/index.ssr.ts'),
+                },
                 name: 'PageEditor',
                 formats: ['es', 'cjs'],
                 fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'js' : 'cjs'}`

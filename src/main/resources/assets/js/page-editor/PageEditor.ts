@@ -52,7 +52,7 @@ import 'jquery-ui/dist/jquery-ui.js';
 import {LiveEditPage} from './LiveEditPage';
 import {markComponentError, markComponentLoading, renderComponentHtml} from './componentRendering';
 import {getRecord, getRegistry} from './editor/stores/registry';
-import type {ComponentRecord} from './editor/types';
+import type {ComponentRecord, PageEditorConfig} from './editor/types';
 import {EditorEvent, EditorEvents} from './event/EditorEvent';
 
 // ============================================================================
@@ -165,6 +165,9 @@ function initializeGlobalState(): void {
 // PageEditor Class
 // ============================================================================
 
+//
+//  NB! Update SSR version in `./index.ssr.ts` when changing!
+//
 export class PageEditor {
     private static mode: RenderingMode;
     private static liveEditPage: LiveEditPage | null = null;
@@ -218,10 +221,13 @@ export class PageEditor {
         return Object.values(getRegistry());
     }
 
-    static init(editMode: boolean): void {
+    static init(config?: PageEditorConfig): void {
         if (this.mode) {
             throw new Error(`Page editor is already initialized in "${this.mode}" mode.`);
         }
+
+        const editMode = config?.editMode ?? false;
+
         this.mode = editMode ? RenderingMode.EDIT : RenderingMode.INLINE;
 
         initializeGlobalState();
