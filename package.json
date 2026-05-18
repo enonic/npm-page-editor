@@ -54,6 +54,16 @@
   ],
   "exports": {
     ".": {
+      "node": {
+        "types": "./dist/index.ssr.d.ts",
+        "import": "./dist/index.ssr.js",
+        "require": "./dist/index.ssr.cjs"
+      },
+      "workerd": {
+        "types": "./dist/index.ssr.d.ts",
+        "import": "./dist/index.ssr.js",
+        "require": "./dist/index.ssr.cjs"
+      },
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
