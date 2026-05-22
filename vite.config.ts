@@ -6,6 +6,7 @@ import {defineConfig} from 'vite';
 import dts from 'vite-plugin-dts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url)) ?? '';
+const preactPath = path.join(__dirname, 'node_modules/preact');
 
 export default defineConfig(({mode}) => {
     const isProduction = mode === 'production';
@@ -87,11 +88,16 @@ export default defineConfig(({mode}) => {
             alias: {
                 '@enonic/lib-admin-ui': path.join(__dirname, '.xp/dev/lib-admin-ui'),
                 '@enonic/lib-contentstudio': path.join(__dirname, '.xp/dev/lib-contentstudio'),
-                'react': 'preact/compat',
-                'react-dom': 'preact/compat',
-                'react/jsx-runtime': 'preact/jsx-runtime',
-                'react/jsx-dev-runtime': 'preact/jsx-dev-runtime',
+                'react': path.join(preactPath, 'compat'),
+                'react-dom': path.join(preactPath, 'compat'),
+                'react/jsx-runtime': path.join(preactPath, 'jsx-runtime'),
+                'react/jsx-dev-runtime': path.join(preactPath, 'jsx-dev-runtime'),
             },
+            // ! Pinning every Preact entry to this project's node_modules keeps a
+            //   single instance when `@enonic/ui` is consumed via a `link:` override
+            //   (the linked package ships its own Preact). Two Preacts break hooks
+            //   with `TypeError: can't access property "__H", … is undefined`.
+            dedupe: ['preact', 'preact/compat', 'preact/hooks', 'preact/jsx-runtime', 'preact/jsx-dev-runtime'],
             extensions: ['.ts', '.tsx', '.js', '.jsx']
         },
         ...(isDevelopment && {
