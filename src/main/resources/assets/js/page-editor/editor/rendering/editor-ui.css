@@ -18,6 +18,31 @@
     }
 
     /*
+     * ! Tailwind 4 box-shadow token reset
+     * Tailwind 4 ships `@property` rules that register the five `--tw-*-shadow`
+     * tokens with `inherits: false`, so under spec compliance an element's
+     * `shadow-*`/`ring-*` value cannot leak into its descendants. Inside a
+     * shadow root the registration is not always effective — the tokens fall
+     * back to ordinary custom-property semantics (inheriting), and a parent's
+     * `shadow-lg` (e.g. `ContextMenu.Content`) cascades into every descendant.
+     * Children that later compose `box-shadow` from those vars then paint the
+     * inherited soft shadow even when they own no `shadow-*` utility.
+     *
+     * Resetting per element with `:where(*)` keeps specificity at zero — any
+     * `shadow-*` / `ring-*` utility still wins on the element that declares
+     * it — while severing the inheritance path so descendants always start at
+     * `0 0 #0000`. This emulates the `inherits: false` semantics that
+     * `@property` is supposed to provide.
+     */
+    :where(*) {
+        --tw-shadow: 0 0 #0000;
+        --tw-inset-shadow: 0 0 #0000;
+        --tw-ring-shadow: 0 0 #0000;
+        --tw-inset-ring-shadow: 0 0 #0000;
+        --tw-ring-offset-shadow: 0 0 #0000;
+    }
+
+    /*
      * ! Shadow-DOM rem isolation
      * `rem` inside a shadow root always resolves against the document's
      * `<html>`, not `:host`. Host pages using the legacy 62.5% reset
