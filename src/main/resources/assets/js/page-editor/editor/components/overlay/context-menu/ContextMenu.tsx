@@ -1,5 +1,5 @@
 import {ContextMenu as UiContextMenu} from '@enonic/ui';
-import {useRef} from 'preact/hooks';
+import {useEffect, useRef} from 'preact/hooks';
 
 import type {JSX} from 'preact';
 
@@ -20,6 +20,24 @@ export type ContextMenuProps = {
 export const ContextMenu = ({portalContainer}: ContextMenuProps): JSX.Element | null => {
     const state = useStoreValue($contextMenuState);
     const dragState = useStoreValue($dragState);
+
+    // ! Outside clicks land in the parent (Content Studio) and never reach
+    // this iframe's document, so Radix's dismiss-on-outside never fires.
+    // Mirror the same pointerdown semantics by listening on the parent's
+    // document directly — XP admin is same-origin. Tracking the real
+    // dismissal cause avoids false positives from focus shifts caused by
+    // the parent's own reaction to the opening SelectComponentEvent.
+    const open = state != null;
+    useEffect(() => {
+        if (!open) return;
+
+        const parentDoc = window.parent.document;
+        if (parentDoc === document) return;
+
+        const handlePointerDown = (): void => closeContextMenu();
+        parentDoc.addEventListener('pointerdown', handlePointerDown);
+        return () => parentDoc.removeEventListener('pointerdown', handlePointerDown);
+    }, [open]);
 
     if (dragState != null || state == null) return null;
 
