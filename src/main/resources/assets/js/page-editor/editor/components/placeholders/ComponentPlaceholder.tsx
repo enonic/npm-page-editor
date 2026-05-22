@@ -3,7 +3,7 @@ import {Box, Columns2, PenLine, Puzzle} from 'lucide-preact';
 
 import type {ComponentRecordType} from '../../types';
 import type {LucideIcon} from 'lucide-preact';
-import type {JSX} from 'preact';
+import type {CSSProperties, JSX} from 'preact';
 
 export type ComponentPlaceholderProps = {
     type: ComponentRecordType;
@@ -11,6 +11,7 @@ export type ComponentPlaceholderProps = {
     error: boolean;
     bare?: boolean;
     className?: string;
+    style?: CSSProperties;
 };
 
 const COMPONENT_PLACEHOLDER_NAME = 'ComponentPlaceholder';
@@ -42,12 +43,13 @@ const WireframeLines = ({className}: WireframeLinesProps): JSX.Element => (
 // * Component
 //
 
-export const ComponentPlaceholder = ({type, descriptor, error, bare = false, className}: ComponentPlaceholderProps): JSX.Element => {
+export const ComponentPlaceholder = ({type, descriptor, error, bare = false, className, style}: ComponentPlaceholderProps): JSX.Element => {
     if (error) {
         return (
             <div
                 data-component={COMPONENT_PLACEHOLDER_NAME}
                 className={cn('pe-shell overflow-hidden bg-surface-neutral select-none', className)}
+                style={style}
             >
                 <div className={cn('h-full', !bare && 'p-2.5')}>
                     <div
@@ -71,6 +73,7 @@ export const ComponentPlaceholder = ({type, descriptor, error, bare = false, cla
         <div
             data-component={COMPONENT_PLACEHOLDER_NAME}
             className={cn('pe-shell @container overflow-hidden bg-surface-neutral select-none', className)}
+            style={style}
         >
             <div className={cn(!bare && 'p-2.5')}>
                 <div
