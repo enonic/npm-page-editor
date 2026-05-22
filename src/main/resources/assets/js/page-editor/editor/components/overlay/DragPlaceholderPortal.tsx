@@ -12,23 +12,10 @@ export function DragPlaceholderPortal(): null {
             return undefined;
         }
 
-        const island = createPlaceholderIsland(
-            dragState.placeholderElement,
-            <DragPlaceholder
-                itemLabel={dragState.itemLabel}
-                dropAllowed={dragState.dropAllowed}
-                message={dragState.message}
-            />,
-        );
+        const island = createPlaceholderIsland(dragState.placeholderElement, <DragPlaceholder />);
 
         return () => island.unmount();
-    }, [
-        dragState?.placeholderElement,
-        dragState?.targetPath,
-        dragState?.itemLabel,
-        dragState?.dropAllowed,
-        dragState?.message,
-    ]);
+    }, [dragState?.placeholderElement, dragState?.targetPath]);
 
     return null;
 }

@@ -9,6 +9,7 @@ export type ComponentPlaceholderProps = {
     type: ComponentRecordType;
     descriptor?: string;
     error: boolean;
+    bare?: boolean;
     className?: string;
 };
 
@@ -41,15 +42,20 @@ const WireframeLines = ({className}: WireframeLinesProps): JSX.Element => (
 // * Component
 //
 
-export const ComponentPlaceholder = ({type, descriptor, error, className}: ComponentPlaceholderProps): JSX.Element => {
+export const ComponentPlaceholder = ({type, descriptor, error, bare = false, className}: ComponentPlaceholderProps): JSX.Element => {
     if (error) {
         return (
             <div
                 data-component={COMPONENT_PLACEHOLDER_NAME}
                 className={cn('pe-shell overflow-hidden bg-surface-neutral select-none', className)}
             >
-                <div className='h-full p-2.5'>
-                    <div className='flex min-h-25 items-center justify-center border border-error px-4 py-2.5'>
+                <div className={cn('h-full', !bare && 'p-2.5')}>
+                    <div
+                        className={cn(
+                            'flex min-h-25 items-center justify-center px-4 py-2.5',
+                            !bare && 'border border-error',
+                        )}
+                    >
                         <p className='text-error'>
                             {descriptor || 'This component could not be rendered.'}
                         </p>
@@ -66,8 +72,13 @@ export const ComponentPlaceholder = ({type, descriptor, error, className}: Compo
             data-component={COMPONENT_PLACEHOLDER_NAME}
             className={cn('pe-shell @container overflow-hidden bg-surface-neutral select-none', className)}
         >
-            <div className='p-2.5'>
-                <div className='flex min-h-25 items-center justify-center border border-decorative p-2 @[12rem]:gap-4 @[12rem]:px-4 @[12rem]:py-2.5'>
+            <div className={cn(!bare && 'p-2.5')}>
+                <div
+                    className={cn(
+                        'flex min-h-25 items-center justify-center p-2 @[12rem]:gap-4 @[12rem]:px-4 @[12rem]:py-2.5',
+                        !bare && 'border border-decorative',
+                    )}
+                >
                     {Icon != null ? (
                         <div className='size-8 shrink-0 text-decorative @[12rem]:size-16'>
                             <Icon className='size-full' strokeWidth={1.5} />

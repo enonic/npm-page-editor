@@ -2,7 +2,6 @@ import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {ComponentChildren} from 'preact';
 import {useEffect, useRef} from 'preact/hooks';
 import {ComponentPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/ComponentPlaceholder';
-import {DragPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/DragPlaceholder';
 import {EmptyPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/EmptyPlaceholder';
 import {LoadingPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/LoadingPlaceholder';
 import {RegionPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/RegionPlaceholder';
@@ -57,28 +56,6 @@ export const DropzoneDefault: Story = {
     render: () => (
         <IslandMount className='w-160'>
             <RegionPlaceholder path='/main' regionName='main' />
-        </IslandMount>
-    ),
-};
-
-export const DropzoneDragOver: Story = {
-    name: 'Dropzone / Drag Over',
-    render: () => (
-        <IslandMount className='w-160'>
-            <DragPlaceholder itemLabel='Hero banner' dropAllowed={true} />
-        </IslandMount>
-    ),
-};
-
-export const DropzoneForbidden: Story = {
-    name: 'Dropzone / Forbidden',
-    render: () => (
-        <IslandMount className='w-160'>
-            <DragPlaceholder
-                itemLabel='Layout'
-                dropAllowed={false}
-                message='This is a message that describes the error'
-            />
         </IslandMount>
     ),
 };
