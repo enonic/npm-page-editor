@@ -124,7 +124,11 @@ type Story = StoryObj<typeof meta>;
 //
 
 const DragPreviewExample = ({dropAllowed, label}: {dropAllowed: boolean; label: string}): JSX.Element => {
-    useEffect(() => {
+    const frameRef = useRef<HTMLDivElement | null>(null);
+
+    useLayoutEffect(() => {
+        if (!frameRef.current) return undefined;
+        const rect = frameRef.current.getBoundingClientRect();
         setDragState({
             itemType: 'part',
             itemLabel: label,
@@ -133,16 +137,18 @@ const DragPreviewExample = ({dropAllowed, label}: {dropAllowed: boolean; label: 
             dropAllowed,
             message: undefined,
             placeholderElement: undefined,
-            x: 200,
-            y: 160,
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
         });
         return () => setDragState(undefined);
     }, [dropAllowed, label]);
 
     return (
-        <IslandMount style={{width: '480px', height: '240px', position: 'relative'}}>
-            <DragPreview />
-        </IslandMount>
+        <div ref={frameRef} style={{width: '480px', height: '240px', position: 'relative'}}>
+            <IslandMount style={{width: '100%', height: '100%'}}>
+                <DragPreview />
+            </IslandMount>
+        </div>
     );
 };
 
