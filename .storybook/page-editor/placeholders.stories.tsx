@@ -3,6 +3,7 @@ import type {ComponentChildren} from 'preact';
 import {useEffect, useRef} from 'preact/hooks';
 import {ComponentPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/ComponentPlaceholder';
 import {EmptyPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/EmptyPlaceholder';
+import {LoadingOverlayPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/LoadingOverlayPlaceholder';
 import {LoadingPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/LoadingPlaceholder';
 import {RegionPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/RegionPlaceholder';
 import {createPlaceholderIsland} from '../../src/main/resources/assets/js/page-editor/editor/rendering/placeholder-island';
@@ -14,9 +15,11 @@ import {createPlaceholderIsland} from '../../src/main/resources/assets/js/page-e
 interface IslandMountProps {
     children: ComponentChildren;
     className?: string;
+    overlay?: boolean;
+    underlay?: ComponentChildren;
 }
 
-function IslandMount({children, className}: IslandMountProps) {
+function IslandMount({children, className, overlay, underlay}: IslandMountProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -24,11 +27,11 @@ function IslandMount({children, className}: IslandMountProps) {
             return undefined;
         }
 
-        const island = createPlaceholderIsland(containerRef.current, children);
+        const island = createPlaceholderIsland(containerRef.current, children, {overlay});
         return () => island.unmount();
-    }, [children]);
+    }, [children, overlay]);
 
-    return <div ref={containerRef} className={className} />;
+    return <div ref={containerRef} className={className}>{underlay}</div>;
 }
 
 //
@@ -137,5 +140,32 @@ export const LoadingBlock: Story = {
         <IslandMount className='w-160'>
             <LoadingPlaceholder />
         </IslandMount>
+    ),
+};
+
+export const LoadingOverlay: Story = {
+    name: 'States / Loading Overlay',
+    render: () => (
+        <div className='flex flex-col items-center gap-y-3 p-4'>
+            <div className='max-w-120 text-sm text-subtle'>
+                Shown over a non-empty part while it is being reloaded — keeps the existing rendered
+                content visible behind a transparent shimmer until the new HTML arrives.
+            </div>
+            <IslandMount
+                className='w-160 rounded border border-decorative bg-surface-neutral p-6'
+                overlay
+                underlay={(
+                    <article>
+                        <h1 className='text-xl font-semibold'>Hero Banner</h1>
+                        <p className='mt-2 text-sm'>
+                            Existing rendered content stays visible underneath the shimmer overlay
+                            while the part configuration is being applied.
+                        </p>
+                    </article>
+                )}
+            >
+                <LoadingOverlayPlaceholder />
+            </IslandMount>
+        </div>
     ),
 };
