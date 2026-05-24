@@ -1,4 +1,5 @@
 import {ComponentPlaceholder} from '../components/placeholders/ComponentPlaceholder';
+import {LoadingOverlayPlaceholder} from '../components/placeholders/LoadingOverlayPlaceholder';
 import {LoadingPlaceholder} from '../components/placeholders/LoadingPlaceholder';
 import {RegionPlaceholder} from '../components/placeholders/RegionPlaceholder';
 import {createPlaceholderIsland} from '../rendering/placeholder-island';
@@ -8,8 +9,13 @@ import type {ComponentRecord, DragState, PlaceholderIsland} from '../types';
 const placeholderIslands = new Map<string, PlaceholderIsland>();
 const placeholderKinds = new Map<string, string>();
 
+function isLoadingOverlay(record: ComponentRecord): boolean {
+    return Boolean(record.loading) && !record.error && !record.empty && record.type !== 'region';
+}
+
 function getPlaceholderKind(record: ComponentRecord): string {
     if (record.type === 'region') return 'region';
+    if (isLoadingOverlay(record)) return 'loading-overlay';
     if (record.loading && !record.error) return 'loading';
     return `component:${record.type}:${record.error ? '1' : '0'}:${record.descriptor ?? ''}`;
 }
@@ -68,13 +74,16 @@ export function syncPlaceholders(records: Record<string, ComponentRecord>): void
 
         destroyPlaceholder(path);
 
+        const overlay = isLoadingOverlay(record);
         const content = record.type === 'region'
             ? <RegionPlaceholder path={path} regionName={String(record.path.getPath())} />
-            : record.loading && !record.error
-                ? <LoadingPlaceholder />
-                : <ComponentPlaceholder type={record.type} descriptor={record.descriptor} error={record.error} />;
+            : overlay
+                ? <LoadingOverlayPlaceholder />
+                : record.loading && !record.error
+                    ? <LoadingPlaceholder />
+                    : <ComponentPlaceholder type={record.type} descriptor={record.descriptor} error={record.error} />;
 
-        placeholderIslands.set(path, createPlaceholderIsland(record.element, content));
+        placeholderIslands.set(path, createPlaceholderIsland(record.element, content, {overlay}));
         placeholderKinds.set(path, kind);
     });
 
