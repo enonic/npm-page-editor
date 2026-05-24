@@ -5,7 +5,7 @@ vi.mock('@enonic/lib-contentstudio/app/wizard/page/PageState', () => ({
 }));
 
 import {destroyPlaceholders, initPlaceholderDragSync} from './placeholder-lifecycle';
-import {reconcilePage, reconcileSubtree} from './reconcile';
+import {markLoading, reconcilePage, reconcileSubtree} from './reconcile';
 import {PLACEHOLDER_HOST_ATTR} from '../constants';
 import {getRegistry, setDragState, setRegistry} from '../stores/registry';
 
@@ -139,6 +139,54 @@ describe('reconcilePage', () => {
             stopDragSync();
             setDragState(undefined);
         }
+    });
+
+    it('shows a loading overlay above a non-empty part while it is reloading', () => {
+        document.body.innerHTML = `
+            <section data-portal-region="main">
+                <article data-portal-component-type="part">
+                    <h1>Title</h1>
+                    <p>Body</p>
+                </article>
+            </section>
+        `;
+
+        reconcilePage(createPageView() as never);
+
+        const partEl = document.querySelector('article[data-portal-component-type="part"]') as HTMLElement;
+        expect(getRegistry()['/main/0'].empty).toBe(false);
+
+        markLoading('/main/0', true);
+
+        const overlay = partEl.querySelector(`[${PLACEHOLDER_HOST_ATTR}="overlay"]`) as HTMLElement | null;
+        expect(overlay).not.toBeNull();
+        expect(overlay?.style.position).toBe('absolute');
+        expect(overlay?.style.inset).toBe('0');
+        expect(partEl.style.position).toBe('relative');
+
+        markLoading('/main/0', false);
+
+        expect(partEl.querySelector(`[${PLACEHOLDER_HOST_ATTR}]`)).toBeNull();
+        expect(partEl.style.position).toBe('');
+    });
+
+    it('still shows a full-block loading placeholder while an empty part is loading', () => {
+        document.body.innerHTML = `
+            <section data-portal-region="main">
+                <article data-portal-component-type="part"></article>
+            </section>
+        `;
+
+        reconcilePage(createPageView() as never);
+        expect(getRegistry()['/main/0'].empty).toBe(true);
+
+        markLoading('/main/0', true);
+
+        const partEl = document.querySelector('article[data-portal-component-type="part"]') as HTMLElement;
+        const host = partEl.querySelector(`[${PLACEHOLDER_HOST_ATTR}]`) as HTMLElement | null;
+        expect(host).not.toBeNull();
+        expect(host?.getAttribute(PLACEHOLDER_HOST_ATTR)).toBe('true');
+        expect(host?.style.position).toBe('');
     });
 
     it('reconciles fragment pages against the root component path', () => {
