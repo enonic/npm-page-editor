@@ -56,4 +56,13 @@
   .pe-parent-pulse {
     animation: pe-parent-pulse 750ms ease-out 1;
   }
+
+  @keyframes pe-shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
 }
