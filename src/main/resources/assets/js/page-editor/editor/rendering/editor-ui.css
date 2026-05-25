@@ -18,21 +18,27 @@
     }
 
     /*
-     * ! Tailwind 4 box-shadow token reset
-     * Tailwind 4 ships `@property` rules that register the five `--tw-*-shadow`
-     * tokens with `inherits: false`, so under spec compliance an element's
-     * `shadow-*`/`ring-*` value cannot leak into its descendants. Inside a
-     * shadow root the registration is not always effective — the tokens fall
-     * back to ordinary custom-property semantics (inheriting), and a parent's
-     * `shadow-lg` (e.g. `ContextMenu.Content`) cascades into every descendant.
-     * Children that later compose `box-shadow` from those vars then paint the
-     * inherited soft shadow even when they own no `shadow-*` utility.
+     * ! Tailwind 4 @property token reset
+     * Tailwind 4 ships `@property` rules for its internal `--tw-*` tokens with
+     * `inherits: false` and (for some) an `initial-value`. Inside a shadow root
+     * the registration is not always effective: tokens fall back to ordinary
+     * custom-property semantics, meaning they (a) inherit from ancestors and
+     * (b) have no initial value, so any `var(--tw-…)` reference resolves to
+     * IACVT and the entire declaration is dropped.
+     *
+     * Two symptoms in this codebase:
+     *   - `shadow-*` / `ring-*` from a parent (e.g. `ContextMenu.Content`)
+     *     cascades into descendants that own no `shadow-*` utility.
+     *   - `bg-gradient-to-* from-* via-* to-*` produces no background because
+     *     `--tw-gradient-*-position` defaults (`0%`/`50%`/`100%`) are missing,
+     *     making `--tw-gradient-via-stops` invalid (DevTools: "not defined").
      *
      * Resetting per element with `:where(*)` keeps specificity at zero — any
-     * `shadow-*` / `ring-*` utility still wins on the element that declares
-     * it — while severing the inheritance path so descendants always start at
-     * `0 0 #0000`. This emulates the `inherits: false` semantics that
-     * `@property` is supposed to provide.
+     * `shadow-*`/`ring-*`/`from-*`/`via-*`/`to-*` utility still wins on the
+     * element that declares it — while restoring the `inherits: false` +
+     * `initial-value` semantics that `@property` is supposed to provide. The
+     * gradient defaults mirror the @supports fallback Tailwind ships for
+     * older engines (https://github.com/tailwindlabs/tailwindcss `@layer properties`).
      */
     :where(*) {
         --tw-shadow: 0 0 #0000;
@@ -40,6 +46,16 @@
         --tw-ring-shadow: 0 0 #0000;
         --tw-inset-ring-shadow: 0 0 #0000;
         --tw-ring-offset-shadow: 0 0 #0000;
+
+        --tw-gradient-position: initial;
+        --tw-gradient-from: #0000;
+        --tw-gradient-via: #0000;
+        --tw-gradient-to: #0000;
+        --tw-gradient-stops: initial;
+        --tw-gradient-via-stops: initial;
+        --tw-gradient-from-position: 0%;
+        --tw-gradient-via-position: 50%;
+        --tw-gradient-to-position: 100%;
     }
 
     /*

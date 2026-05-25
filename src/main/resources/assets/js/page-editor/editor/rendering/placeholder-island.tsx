@@ -30,7 +30,6 @@ export function createPlaceholderIsland(
         }
         host.style.position = 'absolute';
         host.style.inset = '0';
-        host.style.pointerEvents = 'none';
     } else {
         host.style.display = 'block';
         host.style.width = '100%';
