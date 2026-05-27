@@ -25,6 +25,7 @@ import {
     getElementsAtPoint,
     resolveInsertionIndex,
 } from './drop-positioning';
+import {createEdgeAutoScroll} from './edge-auto-scroll';
 
 interface ContextWindowDragSession {
     itemType: ItemType;
@@ -110,6 +111,14 @@ function fireDragCanceled(): void {
 export function initContextWindowDrag(): () => void {
     let session: ContextWindowDragSession | undefined;
 
+    const recomputeDropTarget = (): void => {
+        if (!session?.visible || session.x == null || session.y == null) return;
+        resolveDropTarget(session, session.x, session.y);
+        publishState(session);
+    };
+
+    const edgeScroll = createEdgeAutoScroll({onScrolled: recomputeDropTarget});
+
     const resetVisibleState = () => {
         if (!session) {
             return;
@@ -120,6 +129,8 @@ export function initContextWindowDrag(): () => void {
     };
 
     const destroySession = (canceled: boolean) => {
+        edgeScroll.stop();
+
         if (!session) {
             return;
         }
@@ -181,6 +192,7 @@ export function initContextWindowDrag(): () => void {
         closeContextMenu();
 
         if (!session.visible) {
+            edgeScroll.stop();
             resetVisibleState();
             return;
         }
@@ -195,6 +207,7 @@ export function initContextWindowDrag(): () => void {
 
         session.x = event.clientX;
         session.y = event.clientY;
+        edgeScroll.update(event.clientX, event.clientY);
         resolveDropTarget(session, event.clientX, event.clientY);
         publishState(session);
     };
@@ -218,16 +231,31 @@ export function initContextWindowDrag(): () => void {
         destroySession(true);
     };
 
+    const handleDocumentMouseLeave = () => {
+        edgeScroll.stop();
+    };
+
+    const handleVisibilityChange = () => {
+        if (document.hidden) {
+            edgeScroll.stop();
+        }
+    };
+
     CreateOrDestroyDraggableEvent.on(handleCreateOrDestroy);
     SetDraggableVisibleEvent.on(handleVisible);
     document.addEventListener('mousemove', handleMouseMove, {capture: true, passive: true});
     document.addEventListener('mouseup', handleMouseUp, {capture: true});
+    document.addEventListener('mouseleave', handleDocumentMouseLeave);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
         CreateOrDestroyDraggableEvent.un(handleCreateOrDestroy);
         SetDraggableVisibleEvent.un(handleVisible);
         document.removeEventListener('mousemove', handleMouseMove, {capture: true});
         document.removeEventListener('mouseup', handleMouseUp, {capture: true});
+        document.removeEventListener('mouseleave', handleDocumentMouseLeave);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        edgeScroll.stop();
         if (session) {
             clearTarget(session);
             session = undefined;
