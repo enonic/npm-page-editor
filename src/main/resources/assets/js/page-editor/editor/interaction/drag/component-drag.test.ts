@@ -768,4 +768,72 @@ describe('initComponentDrag', () => {
         window.dispatchEvent(new Event('blur'));
         stop();
     });
+
+    it('auto-scrolls the page when a dragged component nears the viewport bottom edge', async () => {
+        Object.defineProperty(window, 'innerHeight', {configurable: true, value: 400});
+
+        const scrollingElement = document.scrollingElement ?? document.documentElement;
+        Object.defineProperty(scrollingElement, 'scrollHeight', {configurable: true, value: 2000});
+        Object.defineProperty(scrollingElement, 'clientHeight', {configurable: true, value: 400});
+        let scrollTop = 0;
+        const observedDeltas: number[] = [];
+        Object.defineProperty(scrollingElement, 'scrollTop', {
+            configurable: true,
+            get: () => scrollTop,
+            set: (value: number) => {
+                const next = Math.max(0, Math.min(1600, value));
+                observedDeltas.push(next - scrollTop);
+                scrollTop = next;
+            },
+        });
+
+        const region = document.createElement('section');
+        region.dataset.portalRegion = 'main';
+        const item = document.createElement('article');
+        item.dataset.portalComponentType = 'part';
+        region.append(item);
+        document.body.appendChild(region);
+
+        setRect(item, {top: 20, left: 0, width: 300, height: 80});
+
+        const records: Record<string, ComponentRecord> = {
+            '/main': createRecord('/main', region, 'region', ComponentPath.root().toString(), ['/main/0']),
+            '/main/0': createRecord('/main/0', item, 'part', '/main'),
+        };
+
+        setRegistry(records);
+        rebuildIndex(records);
+        vi.mocked(document.elementsFromPoint).mockReturnValue([]);
+
+        const frames: Array<(now: number) => void> = [];
+        const originalRAF = window.requestAnimationFrame;
+        const originalCAF = window.cancelAnimationFrame;
+        window.requestAnimationFrame = ((cb: (now: number) => void): number => {
+            frames.push(cb);
+            return frames.length;
+        }) as typeof requestAnimationFrame;
+        window.cancelAnimationFrame = ((id: number): void => {
+            frames[id - 1] = () => {};
+        }) as typeof cancelAnimationFrame;
+
+        const stop = initComponentDrag();
+
+        dispatchMouseDown(item, 50, 50);
+        dispatchMouseMove(50, 70);
+
+        // Drag is active — now move pointer near the bottom of the viewport
+        dispatchMouseMove(50, 395);
+
+        // Drive two frames: first primes the timestamp, second performs the scroll
+        frames.shift()?.(1000);
+        frames.shift()?.(1016);
+
+        expect(observedDeltas.length).toBeGreaterThan(0);
+        expect(observedDeltas[0]).toBeGreaterThan(0);
+
+        window.requestAnimationFrame = originalRAF;
+        window.cancelAnimationFrame = originalCAF;
+        window.dispatchEvent(new Event('blur'));
+        stop();
+    });
 });

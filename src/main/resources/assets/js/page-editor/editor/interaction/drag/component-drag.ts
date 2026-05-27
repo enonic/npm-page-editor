@@ -32,6 +32,7 @@ import {
     getElementsAtPoint,
     resolveInsertionIndex,
 } from './drop-positioning';
+import {createEdgeAutoScroll} from './edge-auto-scroll';
 
 const DRAG_START_DISTANCE = 8;
 
@@ -115,8 +116,11 @@ function fireDragCanceled(path: string): void {
 }
 
 let activeDragSession: ActiveComponentDrag | undefined;
+let stopEdgeScroll: (() => void) | undefined;
 
 function destroyActiveDrag(canceled: boolean): void {
+    stopEdgeScroll?.();
+
     if (!activeDragSession) {
         setDragState(undefined);
         return;
@@ -144,6 +148,15 @@ export function cancelActiveDrag(): void {
 
 export function initComponentDrag(): () => void {
     let pending: PendingComponentDrag | undefined;
+
+    const recomputeDropTarget = (): void => {
+        if (!activeDragSession) return;
+        resolveDropTarget(activeDragSession);
+        publishState(activeDragSession);
+    };
+
+    const edgeScroll = createEdgeAutoScroll({onScrolled: recomputeDropTarget});
+    stopEdgeScroll = edgeScroll.stop;
 
     const beginDrag = (path: string, x: number, y: number): void => {
         const record = getRecord(path);
@@ -206,6 +219,7 @@ export function initComponentDrag(): () => void {
         if (activeDragSession) {
             activeDragSession.x = event.clientX;
             activeDragSession.y = event.clientY;
+            edgeScroll.update(event.clientX, event.clientY);
             resolveDropTarget(activeDragSession);
             publishState(activeDragSession);
             return;
@@ -252,17 +266,35 @@ export function initComponentDrag(): () => void {
         cancelActiveDrag();
     };
 
+    // ? Best-effort stop signal — `mouseleave` is unreliable across browsers
+    // when the pointer crosses an iframe boundary, so we treat it as a hint, not a guarantee.
+    const handleDocumentMouseLeave = () => {
+        edgeScroll.stop();
+    };
+
+    const handleVisibilityChange = () => {
+        if (document.hidden) {
+            edgeScroll.stop();
+        }
+    };
+
     document.addEventListener('mousedown', handleMouseDown, {capture: true});
     document.addEventListener('mousemove', handleMouseMove, {capture: true, passive: true});
     document.addEventListener('mouseup', handleMouseUp, {capture: true});
+    document.addEventListener('mouseleave', handleDocumentMouseLeave);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleWindowBlur);
 
     return () => {
         pending = undefined;
         cancelActiveDrag();
+        edgeScroll.stop();
+        stopEdgeScroll = undefined;
         document.removeEventListener('mousedown', handleMouseDown, {capture: true});
         document.removeEventListener('mousemove', handleMouseMove, {capture: true});
         document.removeEventListener('mouseup', handleMouseUp, {capture: true});
+        document.removeEventListener('mouseleave', handleDocumentMouseLeave);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
         window.removeEventListener('blur', handleWindowBlur);
         setDragState(undefined);
     };
