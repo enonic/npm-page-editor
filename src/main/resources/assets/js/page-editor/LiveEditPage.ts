@@ -57,7 +57,7 @@ export class LiveEditPage {
 
     private skipConfirmationListener: (event: SkipLiveEditReloadConfirmationEvent) => void;
 
-    private unloadListener: (event: UIEvent) => void;
+    private unloadListener: (event: PageTransitionEvent) => void;
 
     private selectComponentRequestedListener: (event: SelectComponentViewEvent) => void;
 
