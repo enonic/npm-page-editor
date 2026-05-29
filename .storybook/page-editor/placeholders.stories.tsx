@@ -2,6 +2,7 @@ import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {ComponentChildren} from 'preact';
 import {useEffect, useRef} from 'preact/hooks';
 import {ComponentPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/ComponentPlaceholder';
+import {DragPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/DragPlaceholder';
 import {EmptyPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/EmptyPlaceholder';
 import {LoadingOverlayPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/LoadingOverlayPlaceholder';
 import {LoadingPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/LoadingPlaceholder';
@@ -59,6 +60,15 @@ export const DropzoneDefault: Story = {
     render: () => (
         <IslandMount className='w-160'>
             <RegionPlaceholder path='/main' regionName='main' />
+        </IslandMount>
+    ),
+};
+
+export const DropzoneDragPlaceholder: Story = {
+    name: 'Dropzone / Drag Placeholder',
+    render: () => (
+        <IslandMount className='w-160'>
+            <DragPlaceholder />
         </IslandMount>
     ),
 };
