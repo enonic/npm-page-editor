@@ -41,6 +41,10 @@
     --_dash: var(--color-error);
   }
 
+  .pe-dash-select {
+    --_dash: var(--color-bdr-select);
+  }
+
   @keyframes pe-parent-pulse {
     0% {
       box-shadow: inset 0 0 0 0 transparent;
