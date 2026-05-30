@@ -27,6 +27,13 @@ describe('shadow rendering', () => {
         expect(island.shadow.querySelector('style[data-page-editor-ui]')).not.toBeNull();
         expect(island.shadow.textContent).toContain('Placeholder');
 
+        // The host is a light-DOM child of the edited page — its margin/padding
+        // are forced to 0 !important so host-page spacing rules cannot shift it.
+        expect(island.host.style.getPropertyValue('margin')).toMatch(/^0(px)?$/);
+        expect(island.host.style.getPropertyPriority('margin')).toBe('important');
+        expect(island.host.style.getPropertyValue('padding')).toMatch(/^0(px)?$/);
+        expect(island.host.style.getPropertyPriority('padding')).toBe('important');
+
         island.unmount();
         expect(container.querySelector('[data-pe-placeholder-host]')).toBeNull();
     });

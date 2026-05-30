@@ -625,7 +625,10 @@ function LoadReplaceDemo() {
         const next = {
             ...current,
             '/main': {...parent, empty: false, children: [...parent.children, path]},
-            [path]: makeRecord(path, 'fragment', el, '/main', [], false),
+            // A freshly inserted component has no rendered HTML yet, so it is
+            // empty: a full LoadingPlaceholder block is shown while it loads
+            // (not the overlay shimmer, which is meant for reloading existing content).
+            [path]: makeRecord(path, 'fragment', el, '/main', [], true),
         };
         setRegistry(next);
         rebuildIndex(next);

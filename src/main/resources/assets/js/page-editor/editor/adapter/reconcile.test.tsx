@@ -105,6 +105,51 @@ describe('reconcilePage', () => {
         }
     });
 
+    it('destroys the region placeholder while the region is the active drop target', () => {
+        document.body.innerHTML = `
+            <section data-portal-region="main"></section>
+        `;
+
+        const stopDragSync = initPlaceholderDragSync();
+        const pageView = createPageView();
+
+        try {
+            reconcilePage(pageView as never);
+
+            const regionEl = document.querySelector('[data-portal-region="main"]') as HTMLElement;
+            const countHosts = () => Array.from(regionEl.children)
+                .filter((child) => child.hasAttribute(PLACEHOLDER_HOST_ATTR))
+                .length;
+
+            // Empty region shows its RegionPlaceholder island.
+            expect(countHosts()).toBe(1);
+
+            // Region becomes the active drop target — its placeholder host is
+            // destroyed so it cannot stack above the drag placeholder.
+            setDragState({
+                itemType: 'part',
+                itemLabel: 'Part',
+                sourcePath: '/external',
+                targetPath: '/main',
+                dropAllowed: true,
+                message: undefined,
+                placeholderElement: undefined,
+                x: undefined,
+                y: undefined,
+            });
+
+            expect(countHosts()).toBe(0);
+
+            // Target leaves the region — its placeholder host is restored.
+            setDragState(undefined);
+
+            expect(countHosts()).toBe(1);
+        } finally {
+            stopDragSync();
+            setDragState(undefined);
+        }
+    });
+
     it('does not show a region placeholder when other children remain visible', () => {
         document.body.innerHTML = `
             <section data-portal-region="main">

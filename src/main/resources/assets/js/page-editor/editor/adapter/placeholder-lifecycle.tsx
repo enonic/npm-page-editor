@@ -32,8 +32,14 @@ function isRegionDraggedEmpty(record: ComponentRecord, dragState: DragState | un
     return record.children.every((childPath) => childPath === sourcePath);
 }
 
-function shouldShowPlaceholder(record: ComponentRecord, dragState: DragState | undefined): boolean {
+function shouldShowPlaceholder(path: string, record: ComponentRecord, dragState: DragState | undefined): boolean {
     if (record.type === 'page') return false;
+
+    // ? While a region is the active drop target, the drag placeholder (mounted
+    //   in its own anchor) is the sole occupant. Destroy the region placeholder
+    //   host so its empty box does not stack above the drag placeholder.
+    if (record.type === 'region' && dragState?.targetPath === path) return false;
+
     if (record.empty || record.error || record.loading) return true;
 
     return isRegionDraggedEmpty(record, dragState);
@@ -55,7 +61,7 @@ export function syncPlaceholders(records: Record<string, ComponentRecord>): void
     const nextPaths = new Set<string>();
 
     Object.entries(records).forEach(([path, record]) => {
-        if (!record.element || !shouldShowPlaceholder(record, dragState)) {
+        if (!record.element || !shouldShowPlaceholder(path, record, dragState)) {
             destroyPlaceholder(path);
             return;
         }
@@ -100,12 +106,15 @@ export function destroyPlaceholders(): void {
 
 export function initPlaceholderDragSync(): () => void {
     let lastSourcePath = $dragState.get()?.sourcePath;
+    let lastTargetPath = $dragState.get()?.targetPath;
 
     return $dragState.listen((state) => {
         const sourcePath = state?.sourcePath;
-        if (sourcePath === lastSourcePath) return;
+        const targetPath = state?.targetPath;
+        if (sourcePath === lastSourcePath && targetPath === lastTargetPath) return;
 
         lastSourcePath = sourcePath;
+        lastTargetPath = targetPath;
         syncPlaceholders(getRegistry());
     });
 }
