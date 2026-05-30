@@ -75,3 +75,19 @@ Unless asked for specific format by the user, use the default one:
 
   <sub>*Drafted with AI assistance*</sub>
   ```
+
+### Releases
+
+Tag-driven via `.github/workflows/release.yml` — **the tag is authoritative**. Tag the branch HEAD and CI does the rest: reads the version from the tag, rewrites the version files, publishes (npm dist-tag `v1.0-beta` for prereleases, `v1.0` for stable), creates the GitHub release, and pushes a snapshot-bump commit back. Don't use the generic gradle-release flow — it strips `-SNAPSHOT` and tags a bare `v1.0.0`, i.e. a *stable* release, which is wrong when you mean a beta/rc.
+
+Annotated + signed tag (`tag.gpgsign=true`) on a clean, synced `1.0`, version by type:
+
+- beta → `v1.0.0-beta.<n>` · rc → `v1.0.0-rc.<n>` · stable → `v1.0.0`
+
+```bash
+git tag -a -m "Release v1.0.0-beta.7" v1.0.0-beta.7   # match tag to the message
+git push --follow-tags origin 1.0
+git pull --ff-only                                    # after CI's snapshot bump
+```
+
+The `gradle.properties` version at the tagged commit is ignored (CI overwrites it from the tag). Betas have added an optional cosmetic `Release v1.0.0-B<n>` commit bumping `gradle.properties` only — `package.json` stays `-SNAPSHOT`; older stable `v0.0.x` releases skipped it and just tagged HEAD.
