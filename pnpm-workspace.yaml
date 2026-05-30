@@ -1,6 +1,5 @@
-ignoredBuiltDependencies:
-  - esbuild
-  - less
+allowBuilds:
+  esbuild: false
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - '@enonic/ui'
