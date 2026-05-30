@@ -16,6 +16,12 @@ export function createPlaceholderIsland(
     const host = document.createElement('div');
     host.setAttribute(PLACEHOLDER_HOST_ATTR, options.overlay ? 'overlay' : 'true');
 
+    // ! The host is a light-DOM child of the edited page's region — shadow DOM
+    //   isolates its contents, not its own box. Force margin/padding to 0 so the
+    //   host page's child-spacing rules (e.g. `> * + *` margins) cannot shift it.
+    host.style.setProperty('margin', '0', 'important');
+    host.style.setProperty('padding', '0', 'important');
+
     let savedContainerPosition: string | undefined;
 
     if (options.overlay) {

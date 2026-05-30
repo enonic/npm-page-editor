@@ -1,8 +1,5 @@
 import type {JSX} from 'preact';
 
-import {useStoreValue} from '../../hooks/use-store-value';
-import {$dragState} from '../../stores/registry';
-
 export type RegionPlaceholderProps = {
     path: string;
     regionName: string;
@@ -10,11 +7,7 @@ export type RegionPlaceholderProps = {
 
 const REGION_PLACEHOLDER_NAME = 'RegionPlaceholder';
 
-export const RegionPlaceholder = ({path}: RegionPlaceholderProps): JSX.Element | null => {
-    const dragState = useStoreValue($dragState);
-
-    if (dragState?.targetPath === path) return null;
-
+export const RegionPlaceholder = (_props: RegionPlaceholderProps): JSX.Element => {
     return (
         <div
             data-component={REGION_PLACEHOLDER_NAME}

@@ -110,6 +110,10 @@ export function ensurePlaceholderAnchor(
     const beforeElement = getDirectChildren(regionRecord, sourcePath)[targetIndex]?.element ?? null;
 
     anchor.setAttribute(DRAG_ANCHOR_ATTR, 'true');
+    // ! Anchor is a light-DOM child of the edited region; neutralize the host
+    //   page's child-spacing rules so the drag placeholder is not pushed off.
+    anchor.style.setProperty('margin', '0', 'important');
+    anchor.style.setProperty('padding', '0', 'important');
     regionElement.insertBefore(anchor, beforeElement);
 
     return anchor;
