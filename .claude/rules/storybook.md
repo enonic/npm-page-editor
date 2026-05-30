@@ -1,7 +1,7 @@
 ---
 paths:
-  - "**/*.stories.tsx"
-  - ".storybook/**/*.{ts,tsx}"
+    - '**/*.stories.tsx'
+    - '.storybook/**/*.{ts,tsx}'
 ---
 
 # Storybook Stories Standards
@@ -78,6 +78,13 @@ export const Simple: Story = {
 // ❌ DON'T: Add excessive wrapper divs without purpose
 // ❌ DON'T: Use fixed widths that break responsive design
 ```
+
+## Styling
+
+When the project uses Tailwind, style stories with utility classes, not inline `style` objects, and prefer the default scal
+e over arbitrary values (`w-2xl`, not `w-[700px]`). Otherwise follow the project's existing styling approach.
+
+Exception: fixture CSS simulating the embedding page's stylesheet — keep as a raw `<style>` block with a comment.
 
 ## `args` vs `render`
 
