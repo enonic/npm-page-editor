@@ -1,6 +1,8 @@
 import {cn} from '@enonic/ui';
 import {Box, Columns2, PenLine, Puzzle} from 'lucide-preact';
 
+import {useI18n} from '../../i18n';
+
 import type {ComponentRecordType} from '../../types';
 import type {LucideIcon} from 'lucide-preact';
 import type {CSSProperties, JSX} from 'preact';
@@ -44,6 +46,8 @@ const WireframeLines = ({className}: WireframeLinesProps): JSX.Element => (
 //
 
 export const ComponentPlaceholder = ({type, descriptor, error, bare = false, className, style}: ComponentPlaceholderProps): JSX.Element => {
+    const t = useI18n();
+
     if (error) {
         return (
             <div
@@ -59,7 +63,7 @@ export const ComponentPlaceholder = ({type, descriptor, error, bare = false, cla
                         )}
                     >
                         <p className='text-error'>
-                            {descriptor || 'This component could not be rendered.'}
+                            {descriptor || t('live.view.component.renderError')}
                         </p>
                     </div>
                 </div>
