@@ -1,5 +1,7 @@
 import type {JSX} from 'preact';
 
+import {useI18n} from '../../i18n';
+
 export type RegionPlaceholderProps = {
     path: string;
     regionName: string;
@@ -8,6 +10,8 @@ export type RegionPlaceholderProps = {
 const REGION_PLACEHOLDER_NAME = 'RegionPlaceholder';
 
 export const RegionPlaceholder = (_props: RegionPlaceholderProps): JSX.Element => {
+    const t = useI18n();
+
     return (
         <div
             data-component={REGION_PLACEHOLDER_NAME}
@@ -15,7 +19,7 @@ export const RegionPlaceholder = (_props: RegionPlaceholderProps): JSX.Element =
         >
             <div className="h-full p-2.5">
                 <div className="pe-dash flex h-full min-h-25 items-center justify-center px-4 py-2.5">
-                    <p className="text-center text-subtle italic">Drop components here...</p>
+                    <p className="text-center text-subtle italic">{t('live.view.region.drop')}</p>
                 </div>
             </div>
         </div>

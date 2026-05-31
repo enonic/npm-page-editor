@@ -1,6 +1,7 @@
-import {i18n} from '@enonic/lib-admin-ui/util/Messages';
 import {ContextMenu as UiContextMenu} from '@enonic/ui';
 import {Blocks, Box, Columns2, Globe, Lock, PenLine, Puzzle} from 'lucide-preact';
+
+import {useI18n} from '../../../i18n';
 
 import type {LucideIcon} from 'lucide-preact';
 import type {JSX} from 'preact';
@@ -25,11 +26,13 @@ export type MenuHeaderProps = {
 };
 
 export const MenuHeader = ({kind, type, name}: MenuHeaderProps): JSX.Element | null => {
+    const t = useI18n();
+
     if (kind === 'locked-page') {
         return (
             <UiContextMenu.Label className='flex w-full cursor-default items-center gap-2 py-2 font-bold'>
                 <Lock className='size-4 shrink-0' strokeWidth={2} />
-                <span className='min-w-0 flex-1 truncate'>Locked</span>
+                <span className='min-w-0 flex-1 truncate'>{t('live.view.page.locked')}</span>
             </UiContextMenu.Label>
         );
     }
@@ -39,7 +42,7 @@ export const MenuHeader = ({kind, type, name}: MenuHeaderProps): JSX.Element | n
     const Icon = TYPE_ICONS[type];
     if (Icon == null) return null;
 
-    const label = type === 'page' ? i18n('field.page') : (name || capitalize(type));
+    const label = type === 'page' ? t('field.page') : (name || capitalize(type));
 
     return (
         <UiContextMenu.Label className='flex w-full cursor-default items-center gap-2 py-2 font-bold'>
