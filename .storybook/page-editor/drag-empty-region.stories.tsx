@@ -1,4 +1,5 @@
 import type {Meta, StoryObj} from '@storybook/preact-vite';
+import {cn} from '@enonic/ui';
 import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
 import {useEffect, useRef} from 'preact/hooks';
 import {DragPlaceholderPortal} from '../../src/main/resources/assets/js/page-editor/editor/components/overlay/DragPlaceholderPortal';
@@ -64,6 +65,8 @@ function createMockPageView(element: HTMLElement) {
 
 // Mimic the embedding site: a grid region that stretches its cell, plus a hostile
 // child-margin rule (verticalSpace-style) that would shift our injected boxes.
+// `.site-flex` is a shrink-to-fit context — a flex row that sizes its child to
+// content, which is where an empty drop placeholder would collapse to its padding.
 const SITE_CSS = `
 .site-grid {
     display: grid;
@@ -73,13 +76,23 @@ const SITE_CSS = `
 .site-grid > * {
     margin-top: 4!important;
 }
+.site-flex {
+    display: flex;
+    gap: 12px;
+    min-height: 120px;
+}
 `;
 
 //
 // * Story component
 //
 
-function EmptyRegionDropTarget() {
+type EmptyRegionDropTargetProps = {
+    layout?: 'grid' | 'flex';
+    widthClassName?: string;
+};
+
+function EmptyRegionDropTarget({layout = 'grid', widthClassName = 'w-2xl'}: EmptyRegionDropTargetProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mainRegionRef = useRef<HTMLElement>(null);
 
@@ -142,24 +155,34 @@ function EmptyRegionDropTarget() {
     }, []);
 
     return (
-        <div>
+        <div className="flex flex-col items-center max-w-120">
             {/* biome-ignore lint/security/noDangerouslySetInnerHtml: story-only site CSS simulation */}
             <style dangerouslySetInnerHTML={{__html: SITE_CSS}} />
             <div
                 ref={containerRef}
                 data-testid="empty-region-canvas"
-                className="w-2xl rounded-xl border border-decorative bg-white p-5"
+                className={cn(widthClassName, 'rounded-xl border border-decorative bg-white p-5')}
             >
                 <section
                     ref={mainRegionRef}
-                    className="site-grid"
+                    className={layout === 'flex' ? 'site-flex' : 'site-grid'}
                     data-portal-region="main"
                     data-testid="main-region"
                 />
             </div>
             <p className="mt-3 text-xs text-subtle">
-                Static snapshot — not interactive. Shows the drag placeholder filling an empty
-                region while that region is the active drop target.
+                {layout === 'flex' ? (
+                    <>
+                        Static snapshot — the region is a shrink-to-fit flex container. The drag placeholder keeps the
+                        same intrinsic width as the idle “Drop components here...” placeholder instead of collapsing to
+                        its padding.
+                    </>
+                ) : (
+                    <>
+                        Static snapshot — not interactive. Shows the drag placeholder filling an empty region while that
+                        region is the active drop target.
+                    </>
+                )}
             </p>
         </div>
     );
@@ -180,4 +203,9 @@ type Story = StoryObj<typeof meta>;
 export const EmptyRegionTarget: Story = {
     name: 'Drag / Empty Region Drop Target',
     render: () => <EmptyRegionDropTarget />,
+};
+
+export const EmptyRegionTargetShrinkToFit: Story = {
+    name: 'Drag / Empty Region (Shrink-to-fit)',
+    render: () => <EmptyRegionDropTarget layout="flex" widthClassName="w-80" />,
 };
