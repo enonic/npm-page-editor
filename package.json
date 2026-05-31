@@ -80,6 +80,8 @@
     "q": "^1.5.1"
   },
   "devDependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
     "@enonic/eslint-config": "^2.1.0",
     "@enonic/lib-admin-ui": "file:.xp/dev/lib-admin-ui",
     "@enonic/lib-contentstudio": "file:.xp/dev/lib-contentstudio",
@@ -93,11 +95,13 @@
     "@types/jquery": "^3.5.33",
     "@types/jqueryui": "^1.12.24",
     "@types/node": "^25.0.10",
+    "dayjs": "^1.11.20",
     "dompurify": "^3.4.0",
     "eslint": "^9.33.0",
     "globals": "^16.3.0",
     "jsdom": "^26.1.0",
     "lucide-preact": "^1.8.0",
+    "lucide-react": "^1.17.0",
     "mousetrap": "^1.6.5",
     "preact": "^10.29.1",
     "storybook": "~10.3.5",
