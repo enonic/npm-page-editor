@@ -360,7 +360,9 @@ export abstract class ItemView
         if (isInRegion && !this.getRegionView().hasParentLayoutComponentView() && !isFragmentContent) {
             actions.push(this.createInsertSubAction('layout', LayoutItemType.get()));
         }
-        actions.push(this.createInsertSubAction('text', TextItemType.get()));
+        if (this.liveEditParams.enableTextComponent) {
+            actions.push(this.createInsertSubAction('text', TextItemType.get()));
+        }
         actions.push(this.createInsertSubAction('fragment', FragmentItemType.get()));
 
         return actions;
