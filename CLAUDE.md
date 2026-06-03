@@ -78,7 +78,7 @@ Unless asked for specific format by the user, use the default one:
 
 ### Releases
 
-Tag-driven via `.github/workflows/release.yml` — **the tag is authoritative**. Tag the branch HEAD and CI does the rest: reads the version from the tag, rewrites the version files, publishes (npm dist-tag `v1.0-beta` for prereleases, `v1.0` for stable), creates the GitHub release, and pushes a snapshot-bump commit back. Don't use the generic gradle-release flow — it strips `-SNAPSHOT` and tags a bare `v1.0.0`, i.e. a *stable* release, which is wrong when you mean a beta/rc.
+Tag-driven via `.github/workflows/release.yml` — **the tag is authoritative**. Tag the branch HEAD and CI does the rest: reads the version from the tag, rewrites the version files, publishes (npm dist-tag `beta` for `x.y.z-beta.N`/`x.y.z-rc.N` prereleases, `latest` for `x.y.z` stable; any other version format fails the release), creates the GitHub release, and pushes a snapshot-bump commit back. Don't use the generic gradle-release flow — it strips `-SNAPSHOT` and tags a bare `v1.0.0`, i.e. a *stable* release, which is wrong when you mean a beta/rc.
 
 Annotated + signed tag (`tag.gpgsign=true`) on a clean, synced `1.0`, version by type:
 
