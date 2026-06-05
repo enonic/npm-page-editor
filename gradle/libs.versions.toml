@@ -1,6 +1,6 @@
 [versions]
 
-enonicDefaults = "2.1.6"
+enonicDefaults = "2.1.7"
 xpApp = "4.0.0-A2"
 nodeGradle = "7.1.0"
 
