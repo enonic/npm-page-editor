@@ -523,6 +523,60 @@ describe('initComponentDrag', () => {
         expect(part.style.display).not.toBe('none');
     });
 
+    it('places the anchor before the first item when dragging upward within a block region', () => {
+        const region = document.createElement('section');
+        region.dataset.portalRegion = 'main';
+        const first = document.createElement('article');
+        first.dataset.portalComponentType = 'part';
+        const second = document.createElement('article');
+        second.dataset.portalComponentType = 'part';
+        region.append(first, second);
+        document.body.appendChild(region);
+
+        // Full-width flat sections in a block-flow region: with the dragged
+        // source excluded, only one (wide) sibling remains — the axis must stay
+        // vertical so the pointer's Y decides before/after the first item.
+        setRect(first, {top: 0, left: 0, width: 1000, height: 200});
+        setRect(second, {top: 200, left: 0, width: 1000, height: 200});
+
+        const records: Record<string, ComponentRecord> = {
+            '/main': createRecord('/main', region, 'region', ComponentPath.root().toString(), ['/main/0', '/main/1']),
+            '/main/0': createRecord('/main/0', first, 'part', '/main'),
+            '/main/1': createRecord('/main/1', second, 'part', '/main'),
+        };
+
+        setRegistry(records);
+        rebuildIndex(records);
+
+        // Pointer over the top half of the first component
+        vi.mocked(document.elementsFromPoint).mockReturnValue([first]);
+
+        const stop = initComponentDrag();
+
+        // Drag the second component upward; pointer X is right of the first
+        // item's horizontal midpoint so a mis-inferred 'x' axis would resolve
+        // to index 1 instead of 0.
+        dispatchMouseDown(second, 900, 250);
+        dispatchMouseMove(900, 40);
+
+        expect($dragState.get()).toMatchObject({
+            sourcePath: '/main/1',
+            targetPath: '/main',
+            dropAllowed: true,
+        });
+
+        const anchor = $dragState.get()?.placeholderElement;
+        expect(anchor?.parentElement).toBe(region);
+        expect(anchor?.nextElementSibling).toBe(first);
+
+        dispatchMouseUp(900, 40);
+
+        expect(calls('move-component-requested')).toHaveLength(1);
+        expect(calls('move-component-requested')[0].payload.to).toBe('/main/0');
+
+        stop();
+    });
+
     it('excludes source from insertion index when dragging within the same region', () => {
         const region = document.createElement('section');
         region.dataset.portalRegion = 'main';
