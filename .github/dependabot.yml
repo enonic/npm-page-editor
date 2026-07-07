@@ -9,15 +9,54 @@ updates:
       - "pmi"
     reviewers:
       - "pmi"
-  - package-ecosystem: "gradle"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    assignees:
-      - "rymsha"
-    reviewers:
-      - "rymsha"
+    groups:
+      storybook:
+        patterns:
+          - "storybook"
+          - "@storybook/*"
+          - "@chromatic-com/*"
+        update-types:
+          - "minor"
+          - "patch"
+      vite:
+        patterns:
+          - "vite"
+          - "vite-plus"
+          - "vite-plugin-*"
+          - "@voidzero-dev/*"
+          - "@preact/preset-vite"
+          - "rollup-plugin-*"
+          - "terser"
+        update-types:
+          - "minor"
+          - "patch"
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "tw-animate-css"
+        update-types:
+          - "minor"
+          - "patch"
+      lucide:
+        patterns:
+          - "lucide-*"
+        update-types:
+          - "minor"
+          - "patch"
+      types:
+        patterns:
+          - "@types/*"
+        update-types:
+          - "minor"
+          - "patch"
+      size-limit:
+        patterns:
+          - "size-limit"
+          - "@size-limit/*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -27,3 +66,11 @@ updates:
       - "rymsha"
     reviewers:
       - "rymsha"
+    groups:
+      actions:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"

@@ -1,13 +1,15 @@
+import {useEffect, useRef} from 'preact/hooks';
+
 import type {Meta, StoryObj} from '@storybook/preact-vite';
 import type {ComponentChildren} from 'preact';
-import {useEffect, useRef} from 'preact/hooks';
-import {ComponentPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/ComponentPlaceholder';
-import {DragPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/DragPlaceholder';
-import {EmptyPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/EmptyPlaceholder';
-import {LoadingOverlayPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/LoadingOverlayPlaceholder';
-import {LoadingPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/LoadingPlaceholder';
-import {RegionPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/RegionPlaceholder';
-import {createPlaceholderIsland} from '../../src/main/resources/assets/js/page-editor/editor/rendering/placeholder-island';
+
+import {ComponentPlaceholder} from '../../src/page-editor/editor/components/placeholders/ComponentPlaceholder';
+import {DragPlaceholder} from '../../src/page-editor/editor/components/placeholders/DragPlaceholder';
+import {EmptyPlaceholder} from '../../src/page-editor/editor/components/placeholders/EmptyPlaceholder';
+import {LoadingOverlayPlaceholder} from '../../src/page-editor/editor/components/placeholders/LoadingOverlayPlaceholder';
+import {LoadingPlaceholder} from '../../src/page-editor/editor/components/placeholders/LoadingPlaceholder';
+import {RegionPlaceholder} from '../../src/page-editor/editor/components/placeholders/RegionPlaceholder';
+import {createPlaceholderIsland} from '../../src/page-editor/editor/rendering/placeholder-island';
 
 //
 // * Helpers
@@ -32,7 +34,11 @@ function IslandMount({children, className, overlay, underlay}: IslandMountProps)
         return () => island.unmount();
     }, [children, overlay]);
 
-    return <div ref={containerRef} className={className}>{underlay}</div>;
+    return (
+        <div ref={containerRef} className={className}>
+            {underlay}
+        </div>
+    );
 }
 
 //
@@ -126,11 +132,7 @@ export const ErrorBlock: Story = {
     name: 'States / Error',
     render: () => (
         <IslandMount className='w-160'>
-            <ComponentPlaceholder
-                type='part'
-                descriptor='This is a message that describes the error'
-                error={true}
-            />
+            <ComponentPlaceholder type='part' descriptor='This is a message that describes the error' error={true} />
         </IslandMount>
     ),
 };
@@ -158,21 +160,21 @@ export const LoadingOverlay: Story = {
     render: () => (
         <div className='flex flex-col items-center gap-y-3 p-4'>
             <div className='max-w-120 text-sm text-subtle'>
-                Shown over a non-empty part while it is being reloaded — keeps the existing rendered
-                content visible behind a transparent shimmer until the new HTML arrives.
+                Shown over a non-empty part while it is being reloaded — keeps the existing rendered content visible
+                behind a transparent shimmer until the new HTML arrives.
             </div>
             <IslandMount
                 className='w-160 rounded border border-decorative bg-surface-neutral p-6'
                 overlay
-                underlay={(
+                underlay={
                     <article>
                         <h1 className='text-xl font-semibold'>Hero Banner</h1>
                         <p className='mt-2 text-sm'>
-                            Existing rendered content stays visible underneath the shimmer overlay
-                            while the part configuration is being applied.
+                            Existing rendered content stays visible underneath the shimmer overlay while the part
+                            configuration is being applied.
                         </p>
                     </article>
-                )}
+                }
             >
                 <LoadingOverlayPlaceholder />
             </IslandMount>

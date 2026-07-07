@@ -4,10 +4,9 @@ node_modules/
 # Build output
 dist/
 build/
+coverage/
+reports/
 *.tgz
-
-# Gradle
-.gradle/
 
 # IDE
 .idea/
@@ -20,7 +19,8 @@ build/
 # Logs
 *.log
 
-# ESLint
+# Lint/format caches
+.oxlintcache
 .eslintcache
 
 storybook-static/

@@ -1,20 +1,20 @@
-import type {Meta, StoryObj} from '@storybook/preact-vite';
-import {Action} from '@enonic/lib-admin-ui/ui/Action';
-import {Event} from '@enonic/lib-admin-ui/event/Event';
-import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
-import type {CSSProperties} from 'preact';
 import {useEffect, useRef, useState} from 'preact/hooks';
-import {OverlayApp} from '../../src/main/resources/assets/js/page-editor/editor/components/OverlayApp';
-import {RegionPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/RegionPlaceholder';
-import {markError, markLoading} from '../../src/main/resources/assets/js/page-editor/editor/adapter/reconcile';
-import {syncPlaceholders} from '../../src/main/resources/assets/js/page-editor/editor/adapter/placeholder-lifecycle';
-import {setCurrentPageView} from '../../src/main/resources/assets/js/page-editor/editor/bridge';
-import {initGeometryTriggers, markDirty} from '../../src/main/resources/assets/js/page-editor/editor/geometry/scheduler';
-import {getTrackedTarget, isOverlayChromeEvent} from '../../src/main/resources/assets/js/page-editor/editor/interaction/common/click-guard';
-import {initHoverDetection} from '../../src/main/resources/assets/js/page-editor/editor/interaction/hover';
-import {createOverlayHost} from '../../src/main/resources/assets/js/page-editor/editor/rendering/overlay-host';
-import {createPlaceholderIsland} from '../../src/main/resources/assets/js/page-editor/editor/rendering/placeholder-island';
-import {elementIndex, rebuildIndex} from '../../src/main/resources/assets/js/page-editor/editor/stores/element-index';
+
+import type {ComponentRecord, ComponentRecordType} from '../../src/page-editor/editor/types';
+import type {Meta, StoryObj} from '@storybook/preact-vite';
+import type {CSSProperties} from 'preact';
+
+import {syncPlaceholders} from '../../src/page-editor/editor/adapter/placeholder-lifecycle';
+import {markError, markLoading, setPageRoot} from '../../src/page-editor/editor/adapter/reconcile';
+import {OverlayApp} from '../../src/page-editor/editor/components/OverlayApp';
+import {RegionPlaceholder} from '../../src/page-editor/editor/components/placeholders/RegionPlaceholder';
+import {initGeometryTriggers, markDirty} from '../../src/page-editor/editor/geometry/scheduler';
+import {getTrackedTarget, isOverlayChromeEvent} from '../../src/page-editor/editor/interaction/common/click-guard';
+import {initHoverDetection} from '../../src/page-editor/editor/interaction/hover';
+import {createOverlayHost} from '../../src/page-editor/editor/rendering/overlay-host';
+import {createPlaceholderIsland} from '../../src/page-editor/editor/rendering/placeholder-island';
+import {elementIndex, rebuildIndex} from '../../src/page-editor/editor/stores/element-index';
+import {$params, setParams} from '../../src/page-editor/editor/stores/params';
 import {
     $selectedPath,
     closeContextMenu,
@@ -27,32 +27,13 @@ import {
     setModifyAllowed,
     setRegistry,
     setSelectedPath,
-} from '../../src/main/resources/assets/js/page-editor/editor/stores/registry';
-import type {ComponentRecord, ComponentRecordType} from '../../src/main/resources/assets/js/page-editor/editor/types';
-import {EditorEvent, EditorEvents} from '../../src/main/resources/assets/js/page-editor/event/EditorEvent';
+} from '../../src/page-editor/editor/stores/registry';
+import {emit, subscribe} from '../../src/page-editor/event/editorEvents';
+import {ComponentPath} from '../../src/page-editor/protocol';
 
 //
 // * Helpers
 //
-
-function createActions(): Action[] {
-    return [
-        new Action('Inspect').setSortOrder(10),
-        new Action('Duplicate').setSortOrder(20),
-        new Action('Reset').setSortOrder(30).setEnabled(false),
-    ];
-}
-
-function createMockPageView(element: HTMLElement) {
-    return {
-        getHTMLElement: () => element,
-        isLocked: () => false,
-        getSelectedView: () => undefined,
-        getLiveEditParams: () => ({contentId: 'storybook', isFragment: false, modifyPermissions: true}),
-        getComponentViewByPath: () => ({getContextMenuActions: () => createActions()}),
-        getLockedMenuActions: () => [],
-    } as never;
-}
 
 function makeRecord(
     path: string,
@@ -75,6 +56,10 @@ function makeRecord(
     };
 }
 
+function seedParams(): void {
+    setParams({contentId: 'storybook', isFragmentAllowed: true, enableTextComponent: true});
+}
+
 function resetState(): void {
     closeContextMenu();
     setSelectedPath(undefined);
@@ -83,7 +68,8 @@ function resetState(): void {
     setModifyAllowed(true);
     setDragState(undefined);
     setRegistry({});
-    setCurrentPageView(undefined);
+    $params.set(undefined);
+    setPageRoot(undefined);
 }
 
 //
@@ -109,18 +95,18 @@ function initInteraction(): () => void {
     // so the drag placeholder is the sole flex child and fills the space
     const showRegionHosts = () => {
         if (activeEmptyRegion) {
-            activeEmptyRegion.querySelectorAll('[data-pe-placeholder-host]').forEach(
-                (h) => { (h as HTMLElement).style.display = ''; },
-            );
+            activeEmptyRegion.querySelectorAll('[data-pe-placeholder-host]').forEach(h => {
+                (h as HTMLElement).style.display = '';
+            });
             activeEmptyRegion = undefined;
         }
     };
 
     const hideRegionHosts = (regionEl: HTMLElement) => {
         showRegionHosts();
-        regionEl.querySelectorAll('[data-pe-placeholder-host]').forEach(
-            (h) => { (h as HTMLElement).style.display = 'none'; },
-        );
+        regionEl.querySelectorAll('[data-pe-placeholder-host]').forEach(h => {
+            (h as HTMLElement).style.display = 'none';
+        });
         activeEmptyRegion = regionEl;
     };
 
@@ -267,7 +253,8 @@ function initInteraction(): () => void {
 
             const ph = getPlaceholder();
 
-            const isEmpty = !targetRec?.children.length ||
+            const isEmpty =
+                !targetRec?.children.length ||
                 (targetRec.children.length === 1 && targetRec.children[0] === sourcePath);
 
             if (isEmpty) {
@@ -433,7 +420,17 @@ function OverlayTest() {
         const layoutD = layoutDRef.current;
         const centerRegion = centerRegionRef.current;
 
-        if (!container || !mainRegion || !partA || !layoutB || !leftRegion || !textC || !rightRegion || !layoutD || !centerRegion) {
+        if (
+            !container ||
+            !mainRegion ||
+            !partA ||
+            !layoutB ||
+            !leftRegion ||
+            !textC ||
+            !rightRegion ||
+            !layoutD ||
+            !centerRegion
+        ) {
             return undefined;
         }
 
@@ -449,7 +446,8 @@ function OverlayTest() {
             '/main/2/center': makeRecord('/main/2/center', 'region', centerRegion, '/main/2', [], true),
         };
 
-        setCurrentPageView(createMockPageView(container));
+        setPageRoot(container);
+        seedParams();
 
         const overlay = createOverlayHost(<OverlayApp />);
         setRegistry(records);
@@ -603,7 +601,7 @@ function LoadReplaceDemo() {
     const [events, setEvents] = useState<string[]>([]);
 
     const log = (line: string): void => {
-        setEvents((prev) => [...prev, `${new Date().toLocaleTimeString()} · ${line}`].slice(-12));
+        setEvents(prev => [...prev, `${new Date().toLocaleTimeString()} · ${line}`].slice(-12));
     };
 
     const addComponent = (variant: 'regular' | 'error'): void => {
@@ -635,9 +633,8 @@ function LoadReplaceDemo() {
         markLoading(path, true);
         markDirty();
 
-        const cpath = ComponentPath.fromString(path);
-        new EditorEvent(EditorEvents.ComponentLoadRequest, {path: cpath, isExisting: false}).fire();
-        new EditorEvent(EditorEvents.ComponentLoadStarted, {path: cpath}).fire();
+        // Simulate the host asking the editor to load this component.
+        emit('component-load-request', {path: ComponentPath.fromString(path), isExisting: false});
 
         window.setTimeout(() => {
             const rec = getRecord(path);
@@ -648,11 +645,11 @@ function LoadReplaceDemo() {
                 const updated = {...recs, [path]: {...rec, loading: false, empty: true}};
                 setRegistry(updated);
                 syncPlaceholders(updated);
-                new EditorEvent(EditorEvents.ComponentLoaded, {path: cpath}).fire();
+                log(`renderComponent → bus: component-loaded  path=${path}`);
             } else {
                 markLoading(path, false);
                 markError(path, true);
-                new EditorEvent(EditorEvents.ComponentLoadFailed, {path: cpath, reason: new Error('Simulated 500 from server')}).fire();
+                log(`renderErrorComponent → bus: component-load-failed  path=${path}`);
             }
             markDirty();
         }, 1000);
@@ -687,7 +684,8 @@ function LoadReplaceDemo() {
             '/main': makeRecord('/main', 'region', mainRegion, '/', [], true),
         };
 
-        setCurrentPageView(createMockPageView(container));
+        setPageRoot(container);
+        seedParams();
 
         const overlay = createOverlayHost(<OverlayApp />);
         setRegistry(records);
@@ -698,31 +696,12 @@ function LoadReplaceDemo() {
         const stopGeometry = initGeometryTriggers();
         markDirty();
 
-        const onRequest = (event: EditorEvent<{path: ComponentPath; isExisting: boolean}>): void => {
-            const data = event.getData();
-            log(`ComponentLoadRequest  path=${data?.path.toString()} isExisting=${String(data?.isExisting)}`);
-        };
-        const onStarted = (event: EditorEvent<{path: ComponentPath}>): void => {
-            log(`ComponentLoadStarted  path=${event.getData()?.path.toString()}`);
-        };
-        const onLoaded = (event: EditorEvent<{path: ComponentPath}>): void => {
-            log(`ComponentLoaded       path=${event.getData()?.path.toString()}`);
-        };
-        const onFailed = (event: EditorEvent<{path: ComponentPath; reason: Error}>): void => {
-            const data = event.getData();
-            log(`ComponentLoadFailed   path=${data?.path.toString()} reason=${data?.reason.message}`);
-        };
-
-        Event.bind(EditorEvents.ComponentLoadRequest, onRequest);
-        Event.bind(EditorEvents.ComponentLoadStarted, onStarted);
-        Event.bind(EditorEvents.ComponentLoaded, onLoaded);
-        Event.bind(EditorEvents.ComponentLoadFailed, onFailed);
+        const unsubscribe = subscribe('component-load-request', ({path, isExisting}) => {
+            log(`component-load-request  path=${path.toString()} isExisting=${String(isExisting)}`);
+        });
 
         return () => {
-            Event.unbind(EditorEvents.ComponentLoadRequest, onRequest);
-            Event.unbind(EditorEvents.ComponentLoadStarted, onStarted);
-            Event.unbind(EditorEvents.ComponentLoaded, onLoaded);
-            Event.unbind(EditorEvents.ComponentLoadFailed, onFailed);
+            unsubscribe();
             stopGeometry();
             overlay.unmount();
             resetState();

@@ -1,7 +1,8 @@
+import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+
 import type {StorybookConfig} from '@storybook/preact-vite';
-import tailwindcss from '@tailwindcss/vite';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const preactPath = path.resolve(__dirname, '../node_modules/preact');
@@ -37,14 +38,23 @@ const config: StorybookConfig = {
         ];
 
         config.esbuild = {
-            ...(config.esbuild ?? {}),
+            ...config.esbuild,
             jsx: 'automatic',
             jsxImportSource: 'preact',
         };
 
-        config.plugins = (config.plugins ?? [])
-            .flat()
-            .filter((plugin) => Boolean(plugin) && (!('name' in plugin) || plugin.name !== 'vite:dts'));
+        config.build ??= {};
+        // rolldown-vite minifies CSS with lightningcss, which rejects JS targets like ES2023.
+        // Pin esbuild here too so the Storybook preview build matches vite.config.ts.
+        config.build.cssMinify = 'esbuild';
+
+        config.plugins = (config.plugins ?? []).flat().filter(plugin => {
+            if (!plugin || typeof plugin !== 'object' || !('name' in plugin)) {
+                return Boolean(plugin);
+            }
+            // The library build emits declarations; Storybook's preview build does not need them.
+            return plugin.name !== 'vite:dts';
+        });
         config.plugins.push(tailwindcss());
 
         return config;

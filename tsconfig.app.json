@@ -1,0 +1,38 @@
+{
+    "compilerOptions": {
+        "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+        "incremental": true,
+        "target": "ES2023",
+        "types": ["@voidzero-dev/vite-plus-test/globals"],
+        "lib": ["ES2023", "DOM"],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "outDir": "dist",
+        "rootDir": "src",
+        // Ensures that types are generated for every file,
+        // essential for the "types" field in your package.json.
+        "declaration": true,
+        "declarationMap": true,
+        "emitDeclarationOnly": true,
+        // Remove comments from the output to reduce npm package size.
+        "removeComments": true,
+        "verbatimModuleSyntax": true,
+        "isolatedModules": true,
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "jsx": "react-jsx",
+        "jsxImportSource": "preact",
+        "paths": {
+            "react": ["./node_modules/preact/compat"],
+            "react-dom": ["./node_modules/preact/compat"],
+            "react/jsx-runtime": ["./node_modules/preact/jsx-runtime"],
+            "react/jsx-dev-runtime": ["./node_modules/preact/jsx-dev-runtime"]
+        }
+    },
+    "include": ["./src/types.d.ts", "src/**/*"],
+    "exclude": ["node_modules", "dist", "build"]
+}

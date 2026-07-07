@@ -1,10 +1,12 @@
-import type {Meta, StoryObj} from '@storybook/preact-vite';
 import {useEffect, useRef, useState} from 'preact/hooks';
+
+import type {Meta, StoryObj} from '@storybook/preact-vite';
+
 import {
     calcEdgeIntensity,
     createEdgeAutoScroll,
     HOT_ZONE_PX,
-} from '../../src/main/resources/assets/js/page-editor/editor/interaction/drag/edge-auto-scroll';
+} from '../../src/page-editor/editor/interaction/drag/edge-auto-scroll';
 
 //
 // * Helpers
@@ -57,12 +59,7 @@ interface AutoScrollDemoProps {
     contentHeight?: number;
 }
 
-function AutoScrollDemo({
-    width = 480,
-    height = 360,
-    contentWidth = 480,
-    contentHeight = 2400,
-}: AutoScrollDemoProps) {
+function AutoScrollDemo({width = 480, height = 360, contentWidth = 480, contentHeight = 2400}: AutoScrollDemoProps) {
     const wrapperRef = useRef<HTMLDivElement | null>(null);
     const scrollerRef = useRef<HTMLDivElement | null>(null);
     const [dragging, setDragging] = useState(false);
@@ -116,10 +113,9 @@ function AutoScrollDemo({
     return (
         <div className='flex flex-col gap-y-4 p-6'>
             <div className='max-w-200 text-sm text-subtle'>
-                Press and hold <span className='font-medium'>Drag me</span>, then move the pointer
-                toward any edge of the scroll container. Auto-scroll uses a cubic ease-in curve.
-                Hot-zone shading and the intensity readout reflect the current curve value
-                (the actual velocity is <code>MIN + (MAX - MIN) * intensity</code>).
+                Press and hold <span className='font-medium'>Drag me</span>, then move the pointer toward any edge of
+                the scroll container. Auto-scroll uses a cubic ease-in curve. Hot-zone shading and the intensity readout
+                reflect the current curve value (the actual velocity is <code>MIN + (MAX - MIN) * intensity</code>).
                 {horizontal && ' This demo also scrolls horizontally.'} Release to stop.
             </div>
 
@@ -137,10 +133,7 @@ function AutoScrollDemo({
                         ref={scrollerRef}
                         className='absolute inset-0 overflow-auto border border-default rounded-md bg-surface-subtle'
                     >
-                        <div
-                            className='relative'
-                            style={{width: contentWidth, height: contentHeight}}
-                        >
+                        <div className='relative' style={{width: contentWidth, height: contentHeight}}>
                             {Array.from({length: Math.ceil(contentHeight / 100)}, (_, idx) => (
                                 <div
                                     key={idx}
@@ -193,19 +186,26 @@ function AutoScrollDemo({
                     {intensities && (
                         <>
                             <div className='text-default font-medium mt-3 mb-1'>intensity</div>
-                            <div className={intensities.top > 0 ? 'text-rose-600' : ''}>top: {formatPercent(intensities.top)}</div>
-                            <div className={intensities.bottom > 0 ? 'text-rose-600' : ''}>bot: {formatPercent(intensities.bottom)}</div>
+                            <div className={intensities.top > 0 ? 'text-rose-600' : ''}>
+                                top: {formatPercent(intensities.top)}
+                            </div>
+                            <div className={intensities.bottom > 0 ? 'text-rose-600' : ''}>
+                                bot: {formatPercent(intensities.bottom)}
+                            </div>
                             {horizontal && (
                                 <>
-                                    <div className={intensities.left > 0 ? 'text-rose-600' : ''}>left: {formatPercent(intensities.left)}</div>
-                                    <div className={intensities.right > 0 ? 'text-rose-600' : ''}>right: {formatPercent(intensities.right)}</div>
+                                    <div className={intensities.left > 0 ? 'text-rose-600' : ''}>
+                                        left: {formatPercent(intensities.left)}
+                                    </div>
+                                    <div className={intensities.right > 0 ? 'text-rose-600' : ''}>
+                                        right: {formatPercent(intensities.right)}
+                                    </div>
                                 </>
                             )}
                         </>
                     )}
                 </div>
             </div>
-
         </div>
     );
 }

@@ -1,23 +1,19 @@
-import type {Meta, StoryObj} from '@storybook/preact-vite';
-import {Action} from '@enonic/lib-admin-ui/ui/Action';
-import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
-import {PageState} from '@enonic/lib-contentstudio/app/wizard/page/PageState';
-import {TextComponentBuilder} from '@enonic/lib-contentstudio/app/page/region/TextComponent';
-import type {ComponentChildren, CSSProperties, JSX} from 'preact';
-import {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'preact/hooks';
 import {Lock} from 'lucide-preact';
-import {ComponentPlaceholder} from '../../src/main/resources/assets/js/page-editor/editor/components/placeholders/ComponentPlaceholder';
-import {ContextMenu} from '../../src/main/resources/assets/js/page-editor/editor/components/overlay/context-menu';
-import {DragPreview} from '../../src/main/resources/assets/js/page-editor/editor/components/overlay/DragPreview';
-import {setCurrentPageView} from '../../src/main/resources/assets/js/page-editor/editor/bridge';
-import {createPlaceholderIsland} from '../../src/main/resources/assets/js/page-editor/editor/rendering/placeholder-island';
-import type {ComponentRecord, ComponentRecordType} from '../../src/main/resources/assets/js/page-editor/editor/types';
-import {
-    $registry,
-    closeContextMenu,
-    openContextMenu,
-    setDragState,
-} from '../../src/main/resources/assets/js/page-editor/editor/stores/registry';
+import {useEffect, useLayoutEffect, useRef, useState} from 'preact/hooks';
+
+import type {ComponentRecord, ComponentRecordType} from '../../src/page-editor/editor/types';
+import type {PageJson} from '../../src/page-editor/protocol';
+import type {Meta, StoryObj} from '@storybook/preact-vite';
+import type {ComponentChildren, CSSProperties, JSX} from 'preact';
+
+import {ContextMenu} from '../../src/page-editor/editor/components/overlay/context-menu';
+import {DragPreview} from '../../src/page-editor/editor/components/overlay/DragPreview';
+import {ComponentPlaceholder} from '../../src/page-editor/editor/components/placeholders/ComponentPlaceholder';
+import {createPlaceholderIsland} from '../../src/page-editor/editor/rendering/placeholder-island';
+import {$page} from '../../src/page-editor/editor/stores/page';
+import {$params} from '../../src/page-editor/editor/stores/params';
+import {$registry, closeContextMenu, openContextMenu, setDragState} from '../../src/page-editor/editor/stores/registry';
+import {ComponentPath} from '../../src/page-editor/protocol/component-path';
 
 //
 // * Helpers
@@ -41,69 +37,44 @@ function IslandMount({children, className, style}: IslandMountProps) {
     return <div ref={containerRef} className={className} style={style} />;
 }
 
-function makeAction(label: string, sortOrder: number, enabled = true): Action {
-    const action = new Action(label);
-    action.setSortOrder(sortOrder);
-    if (!enabled) action.setEnabled(false);
-    return action;
-}
-
-function makeInsertAction(label: string, iconKey: string, sortOrder: number): Action {
-    const action = makeAction(label, sortOrder);
-    action.setIconClass(`xp-admin-common-icon-${iconKey}`);
-    return action;
-}
-
-function createComponentActions(): Action[] {
-    const insertGroup = makeAction('Insert', 20);
-    insertGroup.setChildActions([
-        makeInsertAction('Part', 'part', 10),
-        makeInsertAction('Layout', 'layout', 20),
-        makeInsertAction('Text', 'text', 30),
-        makeInsertAction('Fragment', 'fragment', 40),
-    ]);
-
-    return [
-        makeAction('Select parent', 0),
-        insertGroup,
-        makeAction('Inspect', 30),
-        makeAction('Duplicate', 40),
-        makeAction('Reset', 50, false),
-        makeAction('Delete', 60),
-    ];
-}
-
-function createLockedActions(): Action[] {
-    return [
-        makeAction('Unlock', 10),
-        makeAction('Open settings', 20),
-    ];
-}
-
-function mockPageViewWithActions(actions: Action[]): void {
-    setCurrentPageView({
-        getComponentViewByPath: () => ({getContextMenuActions: () => actions}),
-        getLockedMenuActions: () => actions,
-    } as never);
-}
-
-function seedRegistryRecord(path: string, type: ComponentRecordType): () => void {
-    const record: ComponentRecord = {
+function makeRecord(
+    path: string,
+    type: ComponentRecordType,
+    parentPath: string | undefined,
+    children: string[],
+    empty = false,
+): ComponentRecord {
+    return {
         path: ComponentPath.fromString(path),
         type,
         element: undefined,
-        parentPath: undefined,
-        children: [],
-        empty: false,
+        parentPath,
+        children,
+        empty,
         error: false,
         descriptor: undefined,
         loading: false,
     };
-    $registry.setKey(path, record);
+}
+
+/**
+ * Seeds the stores the context menu reads. The component scene mirrors a part
+ * inside a top-level region, so `buildMenuItems` produces select-parent,
+ * insert (part/layout/text/fragment), inspect, reset, remove, duplicate and
+ * create-fragment.
+ */
+function seedComponentScene(path: string, type: ComponentRecordType): () => void {
+    $params.set({contentId: 'storybook', isFragmentAllowed: true, enableTextComponent: true});
+    $registry.set({
+        '/': makeRecord('/', 'page', undefined, ['/main']),
+        '/main': makeRecord('/main', 'region', '/', [path]),
+        [path]: makeRecord(path, type, '/main', []),
+    });
+
     return () => {
-        const next = {...$registry.get()};
-        delete next[path];
-        $registry.set(next);
+        $registry.set({});
+        $params.set(undefined);
+        $page.set(undefined);
     };
 }
 
@@ -180,43 +151,21 @@ const LockedPageCard = (): JSX.Element => (
 
 const ContextMenuScene = ({kind}: {kind: SceneKind}): JSX.Element => {
     const portalRef = useRef<HTMLDivElement>(null);
-    const targetRef = useRef<HTMLDivElement>(null);
     const [portalContainer, setPortalContainer] = useState<HTMLElement | undefined>(undefined);
-    const [lastAction, setLastAction] = useState<string | undefined>(undefined);
-
-    const actions = useMemo(() => {
-        const list = kind === 'locked-page' ? createLockedActions() : createComponentActions();
-
-        const wire = (action: Action): void => {
-            action.onExecuted(a => {
-                const label = a.getLabel();
-                // eslint-disable-next-line no-console
-                console.log(`[ContextMenu story] action executed: ${label}`);
-                setLastAction(label);
-            });
-            if (action.hasChildActions()) {
-                action.getChildActions().forEach(wire);
-            }
-        };
-
-        list.forEach(wire);
-        return list;
-    }, [kind]);
 
     useLayoutEffect(() => {
         if (portalRef.current != null) setPortalContainer(portalRef.current);
     }, []);
 
     useEffect(() => {
-        mockPageViewWithActions(actions);
-        const cleanupRecord = kind === 'component' ? seedRegistryRecord(COMPONENT_SCENE_PATH, COMPONENT_SCENE_TYPE) : undefined;
+        const cleanup =
+            kind === 'component' ? seedComponentScene(COMPONENT_SCENE_PATH, COMPONENT_SCENE_TYPE) : undefined;
 
         return () => {
             closeContextMenu();
-            setCurrentPageView(undefined);
-            cleanupRecord?.();
+            cleanup?.();
         };
-    }, [actions, kind]);
+    }, [kind]);
 
     const handleContextMenu = (event: MouseEvent): void => {
         event.preventDefault();
@@ -227,19 +176,13 @@ const ContextMenuScene = ({kind}: {kind: SceneKind}): JSX.Element => {
     return (
         <div className='pe-shell relative flex h-full w-full flex-col items-center justify-center gap-y-4'>
             <p className='text-xs text-subtle'>Right-click the component below to open the context menu</p>
-            <div
-                ref={targetRef}
-                onContextMenu={handleContextMenu}
-                className='cursor-context-menu'
-                style={{width: '280px'}}
-            >
-                {kind === 'locked-page' ? <LockedPageCard /> : <ComponentPlaceholder type={COMPONENT_SCENE_TYPE} error={false} />}
+            <div onContextMenu={handleContextMenu} className='cursor-context-menu' style={{width: '280px'}}>
+                {kind === 'locked-page' ? (
+                    <LockedPageCard />
+                ) : (
+                    <ComponentPlaceholder type={COMPONENT_SCENE_TYPE} error={false} />
+                )}
             </div>
-            {lastAction != null && (
-                <div className='absolute top-3 rounded-sm border border-bdr-subtle bg-surface-neutral px-3 py-1.5 text-xs shadow-md'>
-                    Executed: <strong>{lastAction}</strong>
-                </div>
-            )}
             <div ref={portalRef} />
             <ContextMenu portalContainer={portalContainer} />
         </div>
@@ -275,27 +218,24 @@ const ContextMenuTextScene = (): JSX.Element => {
     const portalRef = useRef<HTMLDivElement>(null);
     const [portalContainer, setPortalContainer] = useState<HTMLElement | undefined>(undefined);
 
-    const actions = useMemo(() => createComponentActions(), []);
-
     useLayoutEffect(() => {
         if (portalRef.current != null) setPortalContainer(portalRef.current);
     }, []);
 
     useEffect(() => {
-        const textComponent = new TextComponentBuilder().setText(LONG_TEXT_HTML).build();
-        const original = PageState.getComponentByPath;
-        (PageState as unknown as {getComponentByPath: () => unknown}).getComponentByPath = () => textComponent;
+        const cleanup = seedComponentScene(TEXT_SCENE_PATH, TEXT_SCENE_TYPE);
 
-        mockPageViewWithActions(actions);
-        const cleanupRecord = seedRegistryRecord(TEXT_SCENE_PATH, TEXT_SCENE_TYPE);
+        // The menu header reads the text snippet from the page store (WS4).
+        const page: PageJson = {
+            regions: [{name: 'main', components: [{TextComponent: {text: LONG_TEXT_HTML}}]}],
+        };
+        $page.set(page);
 
         return () => {
-            (PageState as unknown as {getComponentByPath: typeof original}).getComponentByPath = original;
             closeContextMenu();
-            setCurrentPageView(undefined);
-            cleanupRecord();
+            cleanup();
         };
-    }, [actions]);
+    }, []);
 
     const handleContextMenu = (event: MouseEvent): void => {
         event.preventDefault();
@@ -323,4 +263,3 @@ export const ContextMenuText: Story = {
         </IslandMount>
     ),
 };
-
