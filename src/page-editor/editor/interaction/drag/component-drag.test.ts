@@ -691,13 +691,13 @@ describe('initComponentDrag', () => {
         const frames: Array<(now: number) => void> = [];
         const originalRAF = window.requestAnimationFrame;
         const originalCAF = window.cancelAnimationFrame;
-        window.requestAnimationFrame = ((cb: (now: number) => void): number => {
+        window.requestAnimationFrame = (cb: (now: number) => void): number => {
             frames.push(cb);
             return frames.length;
-        }) as typeof requestAnimationFrame;
-        window.cancelAnimationFrame = ((id: number): void => {
+        };
+        window.cancelAnimationFrame = (id: number): void => {
             frames[id - 1] = () => {};
-        }) as typeof cancelAnimationFrame;
+        };
 
         const stop = initComponentDrag();
 

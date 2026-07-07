@@ -163,6 +163,7 @@ export default defineConfig(({mode}) => {
             },
             options: {
                 typeAware: true,
+                typeCheck: true,
             },
             env: {
                 builtin: true,

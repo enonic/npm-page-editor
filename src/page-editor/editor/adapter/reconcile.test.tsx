@@ -210,7 +210,7 @@ describe('reconcilePage', () => {
 
         markLoading('/main/0', true);
 
-        const overlay = partEl.querySelector(`[${PLACEHOLDER_HOST_ATTR}="overlay"]`) as HTMLElement | null;
+        const overlay = partEl.querySelector<HTMLElement>(`[${PLACEHOLDER_HOST_ATTR}="overlay"]`);
         expect(overlay).not.toBeNull();
         expect(overlay?.style.position).toBe('absolute');
         expect(overlay?.style.inset).toBe('0px');
@@ -236,7 +236,7 @@ describe('reconcilePage', () => {
         markLoading('/main/0', true);
 
         const partEl = document.querySelector('article[data-portal-component-type="part"]') as HTMLElement;
-        const host = partEl.querySelector(`[${PLACEHOLDER_HOST_ATTR}]`) as HTMLElement | null;
+        const host = partEl.querySelector<HTMLElement>(`[${PLACEHOLDER_HOST_ATTR}]`);
         expect(host).not.toBeNull();
         expect(host?.getAttribute(PLACEHOLDER_HOST_ATTR)).toBe('true');
         expect(host?.style.position).toBe('');

@@ -80,7 +80,7 @@ describe('initKeyboardHandling', () => {
         posted = [];
         initTransport();
         vi.spyOn(getBus()!, 'post').mockImplementation((type, payload) => {
-            posted.push({type, payload} as PostCall);
+            posted.push({type, payload});
         });
     });
 

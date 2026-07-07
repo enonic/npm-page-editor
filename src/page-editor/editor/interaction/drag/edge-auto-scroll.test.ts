@@ -124,15 +124,15 @@ beforeEach(() => {
     originalCAF = window.cancelAnimationFrame;
     originalInnerHeight = window.innerHeight;
 
-    window.requestAnimationFrame = ((cb: Frame): number => {
+    window.requestAnimationFrame = (cb: Frame): number => {
         const id = nextFrameId++;
         frameQueue.push({id, cb});
         return id;
-    }) as typeof requestAnimationFrame;
+    };
 
-    window.cancelAnimationFrame = ((id: number): void => {
+    window.cancelAnimationFrame = (id: number): void => {
         frameQueue = frameQueue.filter(entry => entry.id !== id);
-    }) as typeof cancelAnimationFrame;
+    };
 
     Object.defineProperty(window, 'innerHeight', {configurable: true, value: 400});
 });
