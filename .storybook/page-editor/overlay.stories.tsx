@@ -13,7 +13,7 @@ import {createPlaceholderIsland} from '../../src/page-editor/editor/rendering/pl
 import {$page} from '../../src/page-editor/editor/stores/page';
 import {$params} from '../../src/page-editor/editor/stores/params';
 import {$registry, closeContextMenu, openContextMenu, setDragState} from '../../src/page-editor/editor/stores/registry';
-import {ComponentPath} from '../../src/page-editor/protocol/component-path';
+import {ComponentPath} from '../../src/page-editor/protocol';
 
 //
 // * Helpers
