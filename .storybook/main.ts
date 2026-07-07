@@ -53,7 +53,8 @@ const config: StorybookConfig = {
                 return Boolean(plugin);
             }
             // The library build emits declarations; Storybook's preview build does not need them.
-            return plugin.name !== 'vite:dts';
+            // vite-plugin-dts 5.x renamed its plugin from `vite:dts` to `unplugin-dts`.
+            return plugin.name !== 'unplugin-dts' && plugin.name !== 'vite:dts';
         });
         config.plugins.push(tailwindcss());
 
