@@ -1,5 +1,24 @@
+catalog:
+    vite: npm:@voidzero-dev/vite-plus-core@^0.1.24
+    vite-plus: ^0.1.24
+
+overrides:
+    vite: 'catalog:'
+
+peerDependencyRules:
+    allowAny:
+        - vite
+    allowedVersions:
+        vite: '*'
+
 allowBuilds:
-  esbuild: false
+    esbuild: false
+
+ignoredBuiltDependencies:
+    - '@tailwindcss/oxide'
+    - esbuild
+    - unrs-resolver
+
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
-  - '@enonic/ui'
+    - '@enonic/ui'

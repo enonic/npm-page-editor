@@ -1,27 +1,18 @@
-import type {Meta, StoryObj} from '@storybook/preact-vite';
 import {cn} from '@enonic/ui';
-import {ComponentPath} from '@enonic/lib-contentstudio/app/page/region/ComponentPath';
 import {useEffect, useRef} from 'preact/hooks';
-import {DragPlaceholderPortal} from '../../src/main/resources/assets/js/page-editor/editor/components/overlay/DragPlaceholderPortal';
-import {
-    initPlaceholderDragSync,
-    syncPlaceholders,
-} from '../../src/main/resources/assets/js/page-editor/editor/adapter/placeholder-lifecycle';
-import {setCurrentPageView} from '../../src/main/resources/assets/js/page-editor/editor/bridge';
-import {
-    initGeometryTriggers,
-    markDirty,
-} from '../../src/main/resources/assets/js/page-editor/editor/geometry/scheduler';
-import {ensurePlaceholderAnchor} from '../../src/main/resources/assets/js/page-editor/editor/interaction/drag/drop-positioning';
-import {createOverlayHost} from '../../src/main/resources/assets/js/page-editor/editor/rendering/overlay-host';
-import {rebuildIndex} from '../../src/main/resources/assets/js/page-editor/editor/stores/element-index';
-import {
-    getRecord,
-    setDragState,
-    setModifyAllowed,
-    setRegistry,
-} from '../../src/main/resources/assets/js/page-editor/editor/stores/registry';
-import type {ComponentRecord, ComponentRecordType} from '../../src/main/resources/assets/js/page-editor/editor/types';
+
+import type {ComponentRecord, ComponentRecordType} from '../../src/page-editor/editor/types';
+import type {Meta, StoryObj} from '@storybook/preact-vite';
+
+import {initPlaceholderDragSync, syncPlaceholders} from '../../src/page-editor/editor/adapter/placeholder-lifecycle';
+import {setPageRoot} from '../../src/page-editor/editor/adapter/reconcile';
+import {DragPlaceholderPortal} from '../../src/page-editor/editor/components/overlay/DragPlaceholderPortal';
+import {initGeometryTriggers, markDirty} from '../../src/page-editor/editor/geometry/scheduler';
+import {ensurePlaceholderAnchor} from '../../src/page-editor/editor/interaction/drag/drop-positioning';
+import {createOverlayHost} from '../../src/page-editor/editor/rendering/overlay-host';
+import {rebuildIndex} from '../../src/page-editor/editor/stores/element-index';
+import {getRecord, setDragState, setModifyAllowed, setRegistry} from '../../src/page-editor/editor/stores/registry';
+import {ComponentPath} from '../../src/page-editor/protocol';
 
 //
 // * Helpers
@@ -46,17 +37,6 @@ function makeRecord(
         descriptor: undefined,
         loading: false,
     };
-}
-
-function createMockPageView(element: HTMLElement) {
-    return {
-        getHTMLElement: () => element,
-        isLocked: () => false,
-        getSelectedView: () => undefined,
-        getLiveEditParams: () => ({contentId: 'storybook', isFragment: false, modifyPermissions: true}),
-        getComponentViewByPath: () => ({getContextMenuActions: () => []}),
-        getLockedMenuActions: () => [],
-    } as never;
 }
 
 //
@@ -106,7 +86,7 @@ function EmptyRegionDropTarget({layout = 'grid', widthClassName = 'w-2xl'}: Empt
             '/main': makeRecord('/main', 'region', mainRegion, '/', [], true),
         };
 
-        setCurrentPageView(createMockPageView(container));
+        setPageRoot(container);
 
         // Only the drag placeholder portal is needed for this demo — the rest of
         // the overlay chrome (DragPreview, highlighters) would render a stray
@@ -150,27 +130,27 @@ function EmptyRegionDropTarget({layout = 'grid', widthClassName = 'w-2xl'}: Empt
             setDragState(undefined);
             overlay.unmount();
             setRegistry({});
-            setCurrentPageView(undefined);
+            setPageRoot(undefined);
         };
     }, []);
 
     return (
-        <div className="flex flex-col items-center max-w-120">
+        <div className='flex flex-col items-center max-w-120'>
             {/* biome-ignore lint/security/noDangerouslySetInnerHtml: story-only site CSS simulation */}
             <style dangerouslySetInnerHTML={{__html: SITE_CSS}} />
             <div
                 ref={containerRef}
-                data-testid="empty-region-canvas"
+                data-testid='empty-region-canvas'
                 className={cn(widthClassName, 'rounded-xl border border-decorative bg-white p-5')}
             >
                 <section
                     ref={mainRegionRef}
                     className={layout === 'flex' ? 'site-flex' : 'site-grid'}
-                    data-portal-region="main"
-                    data-testid="main-region"
+                    data-portal-region='main'
+                    data-testid='main-region'
                 />
             </div>
-            <p className="mt-3 text-xs text-subtle">
+            <p className='mt-3 text-xs text-subtle'>
                 {layout === 'flex' ? (
                     <>
                         Static snapshot — the region is a shrink-to-fit flex container. The drag placeholder keeps the
@@ -207,5 +187,5 @@ export const EmptyRegionTarget: Story = {
 
 export const EmptyRegionTargetShrinkToFit: Story = {
     name: 'Drag / Empty Region (Shrink-to-fit)',
-    render: () => <EmptyRegionDropTarget layout="flex" widthClassName="w-80" />,
+    render: () => <EmptyRegionDropTarget layout='flex' widthClassName='w-80' />,
 };

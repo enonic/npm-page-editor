@@ -1,15 +1,12 @@
-import jQuery from 'jquery';
 import {withThemeByClassName} from '@storybook/addon-themes';
-import type {Preview} from '@storybook/preact-vite';
 import {themes} from 'storybook/theming';
-import {Messages} from '@enonic/lib-admin-ui/util/Messages';
 
+import type {Preview} from '@storybook/preact-vite';
+
+import {addPhrases} from '../src/page-editor/editor/i18n/store';
 import './storybook.css';
 
-globalThis.$ = jQuery;
-globalThis.jQuery = jQuery;
-
-Messages.setMessages({
+addPhrases({
     'text.selectcontroller': 'Select a component to create a page',
     'text.nocontrollers': 'No page controllers found',
     'text.addapplications': 'Please add an application to your site to enable preview',

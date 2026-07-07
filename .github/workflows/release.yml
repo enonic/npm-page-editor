@@ -5,132 +5,92 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  id-token: write  # Required for OIDC
-  contents: write
-
 concurrency:
-  group: release
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
-jobs:
+permissions:
+  contents: write
+  id-token: write
 
-  release:
+jobs:
+  precheck:
+    name: Verify tag points to master or version branches (x.y)
+    runs-on: ubuntu-latest
+    outputs:
+      allowed: ${{ steps.contains.outputs.allowed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check if tag commit is in allowed branches
+        id: contains
+        shell: bash
+        run: |
+          git fetch --quiet origin '+refs/heads/*:refs/remotes/origin/*' || true
+
+          contains="$(git branch -r --contains "${GITHUB_SHA}" | sed 's/^[ *]*//')"
+
+          echo "Branches containing the tag commit:"
+          echo "${contains}"
+
+          if echo "${contains}" | grep -Eq '^origin/(main|master|[0-9]+\.[0-9]+)$'; then
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  npm-publish:
+    name: Publish to NPM
+    needs: precheck
+    if: needs.precheck.outputs.allowed == 'true'
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Resolve source branch from tag
-        id: source_branch
-        run: |
-          MATCHES=$(git for-each-ref \
-            --format='%(refname:short) %(objectname)' \
-            refs/remotes/origin/master \
-            'refs/remotes/origin/1.*' \
-            | awk -v sha="$GITHUB_SHA" '$2 == sha { sub(/^origin\//, "", $1); print $1 }')
-
-          if [[ -z "$MATCHES" ]]; then
-            echo "Tag $GITHUB_REF_NAME does not point to the HEAD of an allowed branch (master or 1.*)"
-            exit 1
-          fi
-
-          MATCH_COUNT=$(wc -l <<< "$MATCHES" | tr -d ' ')
-          if [[ "$MATCH_COUNT" -gt 1 ]]; then
-            echo "Tag $GITHUB_REF_NAME is at the HEAD of multiple allowed branches:"
-            echo "$MATCHES"
-            echo "Refusing to guess. Add a divergent commit to the intended release branch and re-tag."
-            exit 1
-          fi
-
-          BRANCH="$MATCHES"
-
-          echo "Resolved source branch: $BRANCH"
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-          git checkout "$BRANCH"
-
-      - uses: actions/setup-java@v5
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
         with:
-          java-version: 25
-          distribution: 'temurin'
+          package_json_file: package.json
 
-      - uses: gradle/actions/setup-gradle@v6
-
-      - name: Set release version from git tag
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          sed -i "s/^version=.*/version=$VERSION/" gradle.properties
-          npm version "$VERSION" --no-git-tag-version
-          echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Get publishing variables
-        id: publish_vars
-        uses: enonic/release-tools/publish-vars@master
-        env:
-          PROPERTIES_PATH: './gradle.properties'
-          JAVA_HOME: '' # Unset to avoid interfering with publish-vars action
-
-      - name: Verify release version
-        if: steps.publish_vars.outputs.release != 'true'
-        run: exit 1
-
-      - name: Set NPM publish tag
-        env:
-          SOURCE_BRANCH: ${{ steps.source_branch.outputs.branch }}
-          IS_PRERELEASE: ${{ steps.publish_vars.outputs.prerelease }}
-        run: |
-          if [[ "$SOURCE_BRANCH" == "master" ]]; then
-            if [[ "$IS_PRERELEASE" == "true" ]]; then
-              echo "NPM_TAG=beta" >> $GITHUB_ENV
-            else
-              echo "NPM_TAG=latest" >> $GITHUB_ENV
-            fi
-          else
-            # Prefix the branch name so the dist-tag isn't a valid SemVer range
-            # (npm rejects dist-tags like "1.2"). Examples: "v1.0", "v1.0-beta".
-            if [[ "$IS_PRERELEASE" == "true" ]]; then
-              echo "NPM_TAG=v$SOURCE_BRANCH-beta" >> $GITHUB_ENV
-            else
-              echo "NPM_TAG=v$SOURCE_BRANCH" >> $GITHUB_ENV
-            fi
-          fi
-
-      - name: Build and prepare package with Gradle
-        run: ./gradlew preparePackage
-
-      - uses: actions/setup-node@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: '24'
+          cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Publish to npm
-        working-directory: build/npm-resources
-        run: npm publish --tag $NPM_TAG
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Create github release
-        uses: softprops/action-gh-release@v3
-        with:
-          name: Enonic Page Editor v${{ steps.publish_vars.outputs.version }}
-          generate_release_notes: true
-          prerelease: ${{ steps.publish_vars.outputs.prerelease == 'true' }}
-
-      - name: Update to next snapshot version
-        if: steps.publish_vars.outputs.release == 'true'
+      - name: Verify tag matches package.json version
+        shell: bash
         run: |
-          NEXT_SNAPSHOT="${{ steps.publish_vars.outputs.nextSnapshot }}"
-          sed -i "s/^version=.*/version=$NEXT_SNAPSHOT/" gradle.properties
-          npm version "$NEXT_SNAPSHOT" --no-git-tag-version
+          tag_version="${GITHUB_REF_NAME#v}"
+          pkg_version="$(node -p "require('./package.json').version")"
+          if [ "$tag_version" != "$pkg_version" ]; then
+            echo "Tag/version mismatch: tag=$tag_version package.json=$pkg_version"
+            exit 1
+          fi
+          echo "Tag and package.json version match: $pkg_version"
 
-      - name: Commit and push snapshot version
-        if: steps.publish_vars.outputs.release == 'true'
-        uses: EndBug/add-and-commit@v10
+      - name: Publish
+        # The build runs via the `prepublishOnly` lifecycle script (check + test + build + size).
+        # --no-git-checks: CI runs in detached HEAD state (tag checkout).
+        # --tag: pre-release tags (containing '-') publish to 'beta', stable tags to 'latest'.
+        run: pnpm publish --no-git-checks --tag ${{ contains(github.ref_name, '-') && 'beta' || 'latest' }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
-          add: |
-            - gradle.properties
-            - package.json
-          message: 'Updated to next SNAPSHOT version'
-          push: 'origin HEAD:${{ steps.source_branch.outputs.branch }}'
-          default_author: github_actions
-
+          name: Enonic Page Editor ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
