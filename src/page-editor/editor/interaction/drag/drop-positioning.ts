@@ -44,9 +44,22 @@ export function inferAxis(regionElement: HTMLElement, childRecords: ComponentRec
         }
     }
 
-    if (childRecords[0]?.element) {
-        const rect = childRecords[0].element.getBoundingClientRect();
-        return rect.width > rect.height ? 'x' : 'y';
+    if (style.display.includes('grid')) {
+        return style.gridAutoFlow.startsWith('column') ? 'x' : 'y';
+    }
+
+    // ! A single child (e.g. the only sibling left after excluding the dragged
+    //   source) gives no offset to compare, and its aspect ratio says nothing
+    //   about flow direction — a full-width section is wide, yet the next
+    //   sibling still lands below it. Only inline-level or floated children
+    //   imply horizontal flow; everything else stacks vertically.
+    const childElement = childRecords[0]?.element;
+    if (childElement) {
+        const childStyle = window.getComputedStyle(childElement);
+        const floated = childStyle.cssFloat === 'left' || childStyle.cssFloat === 'right';
+        if (floated || childStyle.display.startsWith('inline')) {
+            return 'x';
+        }
     }
 
     return 'y';
@@ -118,7 +131,11 @@ export function ensurePlaceholderAnchor(
     //   page's child-spacing rules so the drag placeholder is not pushed off.
     anchor.style.setProperty('margin', '0', 'important');
     anchor.style.setProperty('padding', '0', 'important');
-    regionElement.insertBefore(anchor, beforeElement);
+    // ! Tracked components are not always direct DOM children of their region —
+    //   host markup may wrap them — so insert beside the component in its real
+    //   parent; `regionElement.insertBefore` throws for wrapped children.
+    const parentElement = beforeElement?.parentElement ?? regionElement;
+    parentElement.insertBefore(anchor, beforeElement);
 
     return anchor;
 }
