@@ -1,4 +1,4 @@
-import {describe, expect, it, vi} from '@voidzero-dev/vite-plus-test';
+import {describe, expect, it, vi} from 'vite-plus/test';
 
 import {FakeWindow} from '../../test/fake-bus';
 import {createEditorBus, createHostBus} from './bus';

@@ -7,7 +7,7 @@ import dts from 'vite-plugin-dts';
 import {defineConfig} from 'vite-plus';
 
 // Loads the `test` augmentation onto vite-plus' UserConfig so the `test` block below typechecks.
-import type {} from '@voidzero-dev/vite-plus-test/config';
+import type {} from 'vite-plus/test/config';
 
 // `vp` (oxc) loads this config as native ESM where `__dirname` is undefined.
 const __dirname = path.dirname(fileURLToPath(import.meta.url)) ?? '';

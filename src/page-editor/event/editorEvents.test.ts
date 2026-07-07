@@ -1,4 +1,4 @@
-import {afterEach, describe, expect, it, vi} from '@voidzero-dev/vite-plus-test';
+import {afterEach, describe, expect, it, vi} from 'vite-plus/test';
 
 import {ComponentPath} from '../protocol';
 import {emit, reset, subscribe} from './editorEvents';
