@@ -12,6 +12,13 @@ import {initNewUi} from './init';
 import {setHostContext} from './stores/host';
 import {setPage} from './stores/page';
 import {setParams} from './stores/params';
+import {getRegistry} from './stores/registry';
+
+function collectErrorPaths(): string[] {
+    return Object.entries(getRegistry())
+        .filter(([, record]) => record.error)
+        .map(([path]) => path);
+}
 
 export class EditorBoot {
     private readonly bus: EditorBus;
@@ -56,7 +63,7 @@ export class EditorBoot {
             return;
         }
 
-        this.bus.post('ready', {});
+        this.bus.post('ready', {errorPaths: collectErrorPaths()});
     }
 
     destroy(): void {

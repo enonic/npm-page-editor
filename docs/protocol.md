@@ -54,7 +54,7 @@ the authoritative types live in `protocol/messages.ts`
 | Message                                           | Payload                            |
 | ------------------------------------------------- | ---------------------------------- |
 | `editor-loaded`                                   | `{}`                               |
-| `ready`                                           | `{}`                               |
+| `ready`                                           | `{errorPaths}`                     |
 | `init-error`                                      | `{message}`                        |
 | `component-selected`                              | `{path, position?, rightClicked?}` |
 | `component-deselected`                            | `{path?}`                          |
@@ -123,6 +123,11 @@ Behavioral guarantees consumers and contributors must preserve:
   `set-modify-allowed`, or the initial `params.locked`.
 - **`component-load-failed` carries `{message}`, not an `Error`.** No error
   instance crosses the frame boundary.
+- **`ready.errorPaths` is a full snapshot.** Every `ready` lists all components
+  whose markup rendered as an error placeholder
+  (`data-portal-placeholder-error`), possibly empty — the host replaces its
+  render-error state rather than merging. Failures of host-triggered loads
+  arrive incrementally via `component-load-failed` instead.
 - **Same-origin sessionStorage contract.** Selection/cursor state uses
   `contentstudio:liveedit:*` keys, shared with the host in same-origin
   embedding — keep the keys stable. Cross-origin embedding gets isolated (and

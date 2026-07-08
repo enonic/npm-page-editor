@@ -117,8 +117,11 @@ export type HostToEditorPayloads = {
 export type EditorToHostPayloads = {
     /** The iframe finished loading; the host may send `initialize`. */
     'editor-loaded': Record<string, never>;
-    /** The editor finished booting and parsed the page. */
-    ready: Record<string, never>;
+    /**
+     * The editor finished booting and parsed the page. `errorPaths` is the full
+     * snapshot of components whose markup rendered as an error placeholder.
+     */
+    ready: {errorPaths: string[]};
     'init-error': {message: string};
 
     'component-selected': {path: string; position?: ClickPosition; rightClicked?: boolean};

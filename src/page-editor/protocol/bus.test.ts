@@ -45,11 +45,16 @@ describe('PageEditorBus', () => {
             local: editorWindow,
         });
 
-        editor.post('ready', {});
+        editor.post('ready', {errorPaths: []});
 
         expect(hostWindow.posted).toEqual([
             {
-                message: {channel: PROTOCOL_CHANNEL, version: PROTOCOL_VERSION, type: 'ready', payload: {}},
+                message: {
+                    channel: PROTOCOL_CHANNEL,
+                    version: PROTOCOL_VERSION,
+                    type: 'ready',
+                    payload: {errorPaths: []},
+                },
                 targetOrigin: 'https://admin.example.com',
             },
         ]);
@@ -211,7 +216,7 @@ describe('PageEditorBus', () => {
         expect(second).not.toHaveBeenCalled();
 
         editor.destroy();
-        editor.post('ready', {});
+        editor.post('ready', {errorPaths: []});
         expect(hostWindow.posted.filter(entry => (entry.message as {type?: string}).type === 'ready')).toHaveLength(0);
     });
 });
