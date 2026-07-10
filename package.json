@@ -98,7 +98,7 @@
         "@storybook/preact-vite": "~10.4.6",
         "@tailwindcss/vite": "~4.3.2",
         "@types/node": "~26.1.0",
-        "@typescript/native-preview": "7.0.0-dev.20260614.1",
+        "@typescript/native-preview": "7.0.0-dev.20260707.2",
         "jsdom": "^29.1.1",
         "lucide-preact": "^1.23.0",
         "preact": "^10.29.4",
