@@ -137,6 +137,18 @@ describe('buildMenuItems — component records', () => {
         expect(byId(items, 'create-fragment')?.label).toBe('Create Fragment');
     });
 
+    it('omits reset for an empty component', () => {
+        setParams({});
+        seed([
+            record({type: 'region', path: '/main', parentPath: '/', children: ['/main/0', '/main/1']}),
+            record({type: 'part', path: '/main/0', parentPath: '/main', empty: true}),
+            record({type: 'part', path: '/main/1', parentPath: '/main', empty: false}),
+        ]);
+
+        expect(byId(buildMenuItems('/main/0'), 'reset')).toBeUndefined();
+        expect(byId(buildMenuItems('/main/1'), 'reset')?.label).toBe('Reset');
+    });
+
     it('omits create-fragment when isFragmentAllowed is false', () => {
         setParams({isFragmentAllowed: false});
         seed([
@@ -325,6 +337,13 @@ describe('buildMenuItems — fragment-mode root component', () => {
         // Inspect, reset and create-fragment remain.
         expect(ids(items)).toEqual(['inspect', 'reset', 'create-fragment']);
     });
+
+    it('omits reset after the root component is reset (empty)', () => {
+        setParams({isFragment: true, isFragmentAllowed: true});
+        seed([record({type: 'part', path: '/', parentPath: undefined, empty: true})]);
+
+        expect(ids(buildMenuItems('/'))).toEqual(['inspect', 'create-fragment']);
+    });
 });
 
 //
@@ -375,6 +394,22 @@ describe('buildMenuItems — page record', () => {
         const items = buildMenuItems('/');
         expect(ids(items)).toEqual(['inspect', 'reset']);
         expect(byId(items, 'save-as-template')).toBeUndefined();
+    });
+
+    it('omits save-as-template in fragment mode', () => {
+        setParams({isResetEnabled: true, isFragment: true});
+        seed([record({type: 'page', path: '/', children: []})]);
+
+        const items = buildMenuItems('/');
+        expect(byId(items, 'save-as-template')).toBeUndefined();
+        expect(byId(items, 'reset')?.label).toBe('Reset');
+    });
+
+    it('omits reset for an empty fragment page', () => {
+        setParams({isResetEnabled: true, isFragment: true});
+        seed([record({type: 'page', path: '/', children: [], empty: true})]);
+
+        expect(ids(buildMenuItems('/'))).toEqual(['inspect']);
     });
 });
 
