@@ -197,13 +197,15 @@ function buildComponentMenuItems(path: string, record: ComponentRecord): MenuIte
         });
     }
 
-    items.push({
-        id: 'reset',
-        label: i18n('live.view.reset'),
-        run: () => {
-            getBus()?.post('reset-component-requested', {path});
-        },
-    });
+    if (!record.empty) {
+        items.push({
+            id: 'reset',
+            label: i18n('live.view.reset'),
+            run: () => {
+                getBus()?.post('reset-component-requested', {path});
+            },
+        });
+    }
 
     if (!topFragment) {
         items.push({
@@ -283,7 +285,7 @@ function appendKindSpecificItems(items: MenuItem[], path: string, record: Compon
 // * Page
 //
 
-function buildPageMenuItems(): MenuItem[] {
+function buildPageMenuItems(record: ComponentRecord): MenuItem[] {
     const params = getParams();
 
     const items: MenuItem[] = [
@@ -294,17 +296,20 @@ function buildPageMenuItems(): MenuItem[] {
                 getBus()?.post('component-inspect-requested', {path: ROOT_PATH});
             },
         },
-        {
+    ];
+
+    if (!(isFragmentMode() && record.empty)) {
+        items.push({
             id: 'reset',
             label: i18n('live.view.reset'),
             disabled: !params?.isResetEnabled,
             run: () => {
                 getBus()?.post('page-reset-requested', {});
             },
-        },
-    ];
+        });
+    }
 
-    if (!params?.isPageTemplate) {
+    if (!params?.isPageTemplate && !isFragmentMode()) {
         items.push({
             id: 'save-as-template',
             label: i18n('action.saveAsTemplate'),
@@ -337,7 +342,7 @@ export function buildMenuItems(path: string): MenuItem[] {
     const record = getRecord(path);
     if (record == null) return [];
 
-    if (record.type === 'page') return buildPageMenuItems();
+    if (record.type === 'page') return buildPageMenuItems(record);
 
     if (record.type === 'region') return buildRegionMenuItems(path, record);
 
