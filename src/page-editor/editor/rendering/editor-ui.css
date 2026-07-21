@@ -3,7 +3,7 @@
 @import '@enonic/ui/preset.css';
 @import './editor-fonts.css';
 
-@source "../../../../../../../../node_modules/@enonic/ui";
+@source "../../../../node_modules/@enonic/ui";
 @source "../";
 
 /* Preset 0.47.7+ sets tokens + color + font-smoothing on :host — only extras here. */
