@@ -11,6 +11,7 @@ import type {ComponentRecord} from './types';
 import {createFakeBusPair, type FakeBusPair} from '../../test/fake-bus';
 import {ComponentPath, type InitializePayload} from '../protocol';
 import {EditorBoot} from './EditorBoot';
+import {$params} from './stores/params';
 import {setRegistry} from './stores/registry';
 
 function createRecord(path: string, error: boolean): ComponentRecord {
@@ -41,6 +42,9 @@ describe('EditorBoot', () => {
     afterEach(() => {
         boot.destroy();
         setRegistry({});
+        $params.set(undefined);
+        document.body.removeAttribute('data-portal-component-type');
+        document.body.innerHTML = '';
         bootMocks.initNewUi.mockReset();
         bootMocks.initNewUi.mockImplementation(() => vi.fn());
     });
@@ -92,5 +96,33 @@ describe('EditorBoot', () => {
 
         expect(onReady).not.toHaveBeenCalled();
         expect(onInitError).toHaveBeenCalledWith({message: expect.stringContaining('boom')});
+    });
+
+    it('keeps params.locked when the body is a page-engine render', () => {
+        document.body.setAttribute('data-portal-component-type', 'page');
+
+        pair.host.post('initialize', {params: {contentId: 'page-content', locked: false}});
+
+        expect($params.get()?.locked).toBe(false);
+    });
+
+    it('forces params.locked when the document has no live-edit markup', () => {
+        pair.host.post('initialize', {params: {contentId: 'mapped-content', locked: false}});
+
+        expect($params.get()?.locked).toBe(true);
+    });
+
+    it('forces params.locked for a fragment page without a rendered fragment component', () => {
+        pair.host.post('initialize', {params: {contentId: 'fragment-content', isFragment: true, locked: false}});
+
+        expect($params.get()?.locked).toBe(true);
+    });
+
+    it('keeps params.locked for a fragment page with a rendered fragment component', () => {
+        document.body.innerHTML = '<div data-portal-component-type="part"></div>';
+
+        pair.host.post('initialize', {params: {contentId: 'fragment-content', isFragment: true, locked: false}});
+
+        expect($params.get()?.locked).toBe(false);
     });
 });
