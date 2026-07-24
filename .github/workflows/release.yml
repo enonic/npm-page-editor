@@ -37,7 +37,12 @@ jobs:
           echo "Branches containing the tag commit:"
           echo "${contains}"
 
-          if echo "${contains}" | grep -Eq '^origin/(main|master|[0-9]+\.[0-9]+)$'; then
+          # Pre-release tags (containing '-') publish to the 'beta' dist-tag and
+          # may be cut from any branch; stable tags must point to master or x.y.
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+            echo "Pre-release tag: allowed from any branch"
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+          elif echo "${contains}" | grep -Eq '^origin/(main|master|[0-9]+\.[0-9]+)$'; then
             echo "allowed=true" >> "$GITHUB_OUTPUT"
           else
             echo "allowed=false" >> "$GITHUB_OUTPUT"
