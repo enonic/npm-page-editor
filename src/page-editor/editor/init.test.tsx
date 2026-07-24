@@ -67,13 +67,17 @@ import type {EditorBus} from '../protocol';
 
 import {initNewUi} from './init';
 import {$params, setParams} from './stores/params';
+import {$locked} from './stores/registry';
 
 const fakeBus = {} as EditorBus;
 
 describe('initNewUi', () => {
     afterEach(() => {
         document.body.className = '';
+        document.body.removeAttribute('data-portal-component-type');
+        document.body.innerHTML = '';
         $params.set(undefined);
+        $locked.set(false);
 
         initMocks.registerBusHandlers.mockClear();
         initMocks.reconcilePage.mockClear();
@@ -114,5 +118,65 @@ describe('initNewUi', () => {
         expect(initMocks.destroyPlaceholders).toHaveBeenCalledTimes(1);
         expect(initMocks.setPageRoot).toHaveBeenLastCalledWith(undefined);
         expect(document.body.classList.contains('pe-overlay-active')).toBe(false);
+    });
+
+    it('keeps the page unlocked when the root is a page-engine render', () => {
+        document.body.setAttribute('data-portal-component-type', 'page');
+        setParams({
+            contentId: 'page-content',
+            locked: false,
+            modifyPermissions: true,
+        });
+
+        const destroy = initNewUi(document.body, fakeBus);
+
+        expect($locked.get()).toBe(false);
+
+        destroy();
+    });
+
+    it('locks the page when the document has no live-edit markup', () => {
+        setParams({
+            contentId: 'mapped-content',
+            locked: false,
+            modifyPermissions: true,
+        });
+
+        const destroy = initNewUi(document.body, fakeBus);
+
+        expect($locked.get()).toBe(true);
+
+        destroy();
+    });
+
+    it('locks a fragment page without a rendered fragment component', () => {
+        setParams({
+            isFragment: true,
+            contentId: 'fragment-content',
+            locked: false,
+            modifyPermissions: true,
+        });
+
+        const destroy = initNewUi(document.body, fakeBus);
+
+        expect($locked.get()).toBe(true);
+
+        destroy();
+    });
+
+    it('keeps a fragment page unlocked when the fragment component is rendered', () => {
+        document.body.innerHTML = '<div data-portal-component-type="part"></div>';
+        setParams({
+            isFragment: true,
+            contentId: 'fragment-content',
+            locked: false,
+            modifyPermissions: true,
+        });
+
+        const destroy = initNewUi(document.body, fakeBus);
+
+        expect($locked.get()).toBe(false);
+
+        destroy();
     });
 });

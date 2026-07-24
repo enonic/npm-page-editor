@@ -4,17 +4,25 @@ import {registerBusHandlers} from './adapter/bus-adapter';
 import {destroyPlaceholders, initPlaceholderDragSync} from './adapter/placeholder-lifecycle';
 import {reconcilePage, setPageRoot} from './adapter/reconcile';
 import {OverlayApp} from './components/OverlayApp';
+import {COMPONENT_SELECTOR} from './constants';
 import {initGeometryTriggers} from './geometry/scheduler';
 import {initComponentDrag, initContextWindowDrag} from './interaction/drag';
 import {initHoverDetection} from './interaction/hover';
 import {initKeyboardHandling} from './interaction/keyboard';
 import {initSelectionDetection} from './interaction/selection';
 import {isEditorInjectedElement} from './parse/emptiness';
+import {isComponentElement} from './parse/parse-page';
 import {restoreStoredSelection, syncSelectionStorage} from './persistence/selection-storage';
 import {createOverlayHost} from './rendering/overlay-host';
 import {getParams} from './stores/params';
 import {setLocked, setModifyAllowed} from './stores/registry';
 import {prepareTextComponents} from './text/text-component';
+
+// A root without live-edit markup was not rendered by the page engine — e.g. a
+// controller mapping matched the request in edit mode — so it cannot be edited.
+function isLiveEditRender(root: HTMLElement, isFragment: boolean): boolean {
+    return isFragment ? root.querySelector(COMPONENT_SELECTOR) != null : isComponentElement(root);
+}
 
 function hasMeaningfulMutation(mutation: MutationRecord): boolean {
     return [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)].some(
@@ -68,7 +76,11 @@ export function initNewUi(root: HTMLElement, bus: EditorBus): () => void {
 
     reconcilePage();
     prepareTextComponents();
-    setLocked(params?.locked === true || params?.modifyPermissions === false);
+    setLocked(
+        params?.locked === true ||
+            params?.modifyPermissions === false ||
+            !isLiveEditRender(root, params?.isFragment === true),
+    );
     setModifyAllowed(params?.modifyPermissions !== false);
     restoreStoredSelection(params?.contentId, params?.isFragment);
 
