@@ -97,7 +97,7 @@
         "@storybook/addon-themes": "~10.5.3",
         "@storybook/preact-vite": "~10.5.3",
         "@tailwindcss/vite": "~4.3.2",
-        "@types/node": "~26.1.0",
+        "@types/node": "~26.2.0",
         "@typescript/native-preview": "7.0.0-dev.20260707.2",
         "jsdom": "^30.0.1",
         "lucide-preact": "^1.23.0",
