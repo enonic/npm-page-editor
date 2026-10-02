@@ -19,7 +19,7 @@ importers:
     dependencies:
       nanostores:
         specifier: ^1.4.0
-        version: 1.5.3
+        version: 1.5.4
     devDependencies:
       '@enonic/ui':
         specifier: ~1.2.0
@@ -2259,8 +2259,8 @@ packages:
   nanospinner@1.2.2:
     resolution: {integrity: sha512-Zt/AmG6qRU3e+WnzGGLuMCEAO/dAu45stNbHY223tUxldaDAeE+FxSPsd9Q+j+paejmm0ZbrNVs5Sraqy3dRxA==}
 
-  nanostores@1.5.3:
-    resolution: {integrity: sha512-rQLB6eV4f2AW/n3L0JmwCROpaisYy9EDEADvEFSd1C/qG8hB6O5TPlh9A791JRbJr4CnMQBzptDcvD9OR1+6WA==}
+  nanostores@1.5.4:
+    resolution: {integrity: sha512-4UXY7OAJEK0Y6V3SudBU7cXjAzTDc189R78dDOh0Xbm19gpKYto6WizSg58LJf12lTsRxKSLGyE117OiLpM4DQ==}
     engines: {node: ^20.0.0 || >=22.0.0}
 
   node-html-parser@6.1.13:
@@ -4574,7 +4574,7 @@ snapshots:
     dependencies:
       picocolors: 1.1.1
 
-  nanostores@1.5.3: {}
+  nanostores@1.5.4: {}
 
   node-html-parser@6.1.13:
     dependencies:
