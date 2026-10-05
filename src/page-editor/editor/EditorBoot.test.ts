@@ -106,6 +106,15 @@ describe('EditorBoot', () => {
         expect($params.get()?.locked).toBe(false);
     });
 
+    it('keeps params.locked when the page component is rendered inside the body', () => {
+        document.body.innerHTML =
+            '<div data-portal-component-type="page"><div data-portal-component-type="text"></div></div>';
+
+        pair.host.post('initialize', {params: {contentId: 'page-content', locked: false}});
+
+        expect($params.get()?.locked).toBe(false);
+    });
+
     it('forces params.locked when the document has no live-edit markup', () => {
         pair.host.post('initialize', {params: {contentId: 'mapped-content', locked: false}});
 
