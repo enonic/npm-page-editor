@@ -56,7 +56,7 @@ importers:
         version: 31.0.0
       lucide-preact:
         specifier: ^1.23.0
-        version: 1.72.0(preact@10.29.8)
+        version: 1.75.0(preact@10.29.8)
       preact:
         specifier: ^10.29.4
         version: 10.29.8
@@ -1812,8 +1812,8 @@ packages:
   css.escape@1.5.1:
     resolution: {integrity: sha512-YUifsXXuknHlUsmlgyY0PKzgPOr7/FjCePfHNt0jxm83wHZi44VDMQ7/fGNkjY3/jV1MC+1CmZbaHzugyeRtpg==}
 
-  csstype@3.2.3:
-    resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+  csstype@3.2.4:
+    resolution: {integrity: sha512-PoKaoPzQapnEoqUSnHx1u6W6ku8CVEgKsnpmmzU3m1nwkidpPBQ8V/Zq2+bWNrsOKoKLwTGdbx6xF7BXP1zLVQ==}
 
   data-urls@8.0.0:
     resolution: {integrity: sha512-JQUCCK+/CAGbGGx618PlFZMXH81Jtj7t73CHv9dd/zVWvxgGT2zLFRjnKb+Ng46GIwcy+f7f88qd4duqllK+WQ==}
@@ -2177,8 +2177,8 @@ packages:
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
-  lucide-preact@1.72.0:
-    resolution: {integrity: sha512-VgfNlXjlv24CBcuydAByLXiOBA3SjGg5Sn/oCndq+FHQ8q2TDQ3jNV7AtdK2br34aGclukSuO3NP9tc/XSKuug==}
+  lucide-preact@1.75.0:
+    resolution: {integrity: sha512-0LEiGFM//4GYZdGEmSPUHvleB+wfamFxylTL9ZK+QgXapTvFiPYJ3AV9GN3OADNe0fI3qk2yAkE5vWd41CTEiA==}
     peerDependencies:
       preact: ^10.27.2 || ^11.0.0-0
 
@@ -3739,7 +3739,7 @@ snapshots:
 
   '@types/react@19.2.14':
     dependencies:
-      csstype: 3.2.3
+      csstype: 3.2.4
 
   '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260707.2':
     optional: true
@@ -4136,7 +4136,7 @@ snapshots:
 
   css.escape@1.5.1: {}
 
-  csstype@3.2.3: {}
+  csstype@3.2.4: {}
 
   data-urls@8.0.0:
     dependencies:
@@ -4447,7 +4447,7 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
-  lucide-preact@1.72.0(preact@10.29.8):
+  lucide-preact@1.75.0(preact@10.29.8):
     dependencies:
       preact: 10.29.8
 
