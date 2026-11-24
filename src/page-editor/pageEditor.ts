@@ -78,6 +78,8 @@ function initListeners(editMode: boolean): void {
         } else {
             window.addEventListener('load', postEditorLoaded, {once: true});
         }
+
+        return;
     }
 
     window.addEventListener('click', createWindowClickListener(window));

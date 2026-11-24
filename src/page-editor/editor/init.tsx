@@ -8,6 +8,7 @@ import {initGeometryTriggers} from './geometry/scheduler';
 import {initComponentDrag, initContextWindowDrag} from './interaction/drag';
 import {initHoverDetection} from './interaction/hover';
 import {initKeyboardHandling} from './interaction/keyboard';
+import {initNavigationGuard} from './interaction/navigation';
 import {initSelectionDetection} from './interaction/selection';
 import {isEditorInjectedElement} from './parse/emptiness';
 import {restoreStoredSelection, syncSelectionStorage} from './persistence/selection-storage';
@@ -57,6 +58,7 @@ export function initNewUi(root: HTMLElement, bus: EditorBus): () => void {
     const stopGeometry = initGeometryTriggers();
     const stopHover = initHoverDetection();
     const stopSelection = initSelectionDetection();
+    const stopNavigationGuard = initNavigationGuard();
     const stopKeyboard = initKeyboardHandling();
     const stopComponentDrag = initComponentDrag();
     const stopContextWindowDrag = initContextWindowDrag(bus);
@@ -80,6 +82,7 @@ export function initNewUi(root: HTMLElement, bus: EditorBus): () => void {
         stopContextWindowDrag();
         stopComponentDrag();
         stopKeyboard();
+        stopNavigationGuard();
         stopSelection();
         stopHover();
         stopGeometry();
