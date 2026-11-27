@@ -102,7 +102,7 @@
         "jsdom": "^31.0.0",
         "lucide-preact": "^1.23.0",
         "preact": "^10.29.4",
-        "rollup-plugin-visualizer": "~7.1.1",
+        "rollup-plugin-visualizer": "~7.3.0",
         "size-limit": "~12.1.0",
         "storybook": "~10.6.0",
         "tailwindcss": "~4.3.2",
